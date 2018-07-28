@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "pixi.js": "^4.8.0"
+  },
+  "devDependencies": {
+    "@types/pixi.js": "^4.8.0",
+    "systemjs": "0.20",
+    "typescript": "2.7.2"
+  }
+}

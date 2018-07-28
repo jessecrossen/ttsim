@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "noImplicitAny": true,
+        "alwaysStrict": true,
+        "noImplicitThis": true,
+        "noImplicitReturns": true,
+        "strictFunctionTypes": true,
+        "forceConsistentCasingInFileNames": true,
+        "baseUrl": "./src",
+        "target": "es6",
+        "module": "system",
+        "moduleResolution": "node",
+        "outFile": "dist/app.js"
+    },
+    "files": [
+        "src/index.ts"
+    ]
+}

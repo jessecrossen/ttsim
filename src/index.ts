@@ -13,12 +13,19 @@ const container = document.getElementById('container');
 const view = app.renderer.view;
 container.appendChild(app.renderer.view);
 
+// the simulator, which will be initialized once resources have loaded
+let sim:SimulatorApp;
+
 // dynamically resize the app to track the size of the browser window
 container.style.overflow = 'hidden';
 const resizeApp = () => {
   const r = container.getBoundingClientRect();
   app.renderer.autoResize = true;
   app.renderer.resize(r.width, r.height);
+  if (sim) {
+    sim.width = r.width;
+    sim.height = r.height;
+  }
 }
 resizeApp();
 window.addEventListener('resize', resizeApp);
@@ -26,10 +33,9 @@ window.addEventListener('resize', resizeApp);
 // load sprites
 const loader = PIXI.loader;
 loader.add('images/parts.json').load(() => {
-
-  console.log('loaded');
-
-  const simApp = new SimulatorApp(
+  sim = new SimulatorApp(
     PIXI.loader.resources["images/parts.json"].textures);
-  app.stage.addChild(simApp);
+  sim.width = app.renderer.width;
+  sim.height = app.renderer.height;
+  app.stage.addChild(sim);
 });

@@ -10,7 +10,7 @@
         "target": "es6",
         "module": "system",
         "moduleResolution": "node",
-        "outFile": "dist/app.js"
+        "outFile": "docs/app.js"
     },
     "files": [
         "src/index.ts"

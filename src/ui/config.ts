@@ -11,3 +11,7 @@ export const enum Alphas {
   // preview parts
   PREVIEW_ALPHA = 0.25
 }
+
+export const enum Delays {
+  FLIP = 0.25
+}

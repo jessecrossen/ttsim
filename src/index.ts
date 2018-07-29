@@ -3,7 +3,7 @@
 import { SimulatorApp } from './app'
 
 // create the application
-const app = new PIXI.Application({
+export const app = new PIXI.Application({
   width: 256,
   height: 256,
   antialias: true,

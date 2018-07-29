@@ -4,6 +4,7 @@ import { Part } from '../parts/part';
 import { ToolType } from '../board/board';
 import { PartFactory, PartType } from '../parts/factory';
 import { Button, PartButton, SpriteButton } from './button';
+import { Delays } from './config';
 
 export class Toolbox extends PIXI.Container {
 
@@ -86,7 +87,7 @@ export class Toolbox extends PIXI.Container {
       const newPart:Part = e.target.part;
       if (newPart === this._partPrototype) {
         // toggle direction if the selected part is clicked again
-        this._partPrototype.flip();
+        this._partPrototype.flip(Delays.FLIP);
       }
       else {
         this._partPrototype = newPart;

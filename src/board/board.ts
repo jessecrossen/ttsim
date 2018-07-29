@@ -2,7 +2,9 @@
 
 import { Part, Layer } from '../parts/part';
 import { PartFactory, PartType } from '../parts/factory';
-import { Alphas } from '../ui/colors';
+import { GearBase, Gear } from '../parts/gearbit';
+import { Alphas, Delays } from '../ui/config';
+import { DisjointSet } from '../util/disjoint';
 
 export const enum ToolType {
   NONE,
@@ -141,10 +143,8 @@ export class Board {
   public set tool(v:ToolType) {
     if (v === this._tool) return;
     this._tool = v;
-    if (this.tool == ToolType.FLIPPER) this.view.cursor = 'ew-resize';
-    else if ((this.tool == ToolType.PART) ||
-             (this.tool == ToolType.ERASER)) this.view.cursor = 'pointer';
-    else this.view.cursor = 'auto';
+    this.view.cursor = (this.tool != ToolType.NONE) ?
+      'pointer' : 'auto';
   }
   private _tool:ToolType = ToolType.NONE;
 
@@ -174,10 +174,26 @@ export class Board {
     if ((column < 0) || (column >= this._columnCount) ||
         (row < 0) || (row >= this._rowCount)) return;
     const oldPart = this.getPart(column, row);
+    if (oldPart === newPart) return;
     if (oldPart) this.removePart(oldPart);
     if (newPart) this.addPart(newPart);
     this._grid[row][column] = newPart;
     if (newPart) this.layoutPart(newPart, column, row);
+    // update gear connections
+    if ((oldPart instanceof GearBase) || (newPart instanceof GearBase)) {
+      // disconnect the old part
+      if (oldPart instanceof GearBase) oldPart.connected = null;
+      // rebuild connections between gears and gearbits
+      this._connectGears();
+      // merge the new part's rotation with the connected set
+      if ((newPart instanceof GearBase) && (newPart.connected)) {
+        let sum:number = 0.0;
+        for (const part of newPart.connected) {
+          sum += part.rotation;
+        }
+        newPart.rotation = ((sum / newPart.connected.size) >= 0.5) ? 1.0 : 0.0;
+      }
+    }
   }
 
   // clear parts from the given coordinates
@@ -247,6 +263,68 @@ export class Board {
     return(this.margin + Math.round(row * this.partSize * 1.0625));
   }
 
+  // connect adjacent sets of gears
+  //  see: https://en.wikipedia.org/wiki/Connected-component_labeling
+  protected _connectGears():void {
+    let r:number;
+    let c:number;
+    let label:number = 0;
+    let min:number, max:number;
+    let westPart:Part, westLabel:number;
+    let northPart:Part, northLabel:number;
+    let allGears:Set<GearBase> = new Set();
+    for (const row of this._grid) {
+      for (const part of row) {
+        if (part instanceof GearBase) allGears.add(part);
+      }
+    }
+    let equivalence:DisjointSet = new DisjointSet(allGears.size);
+    r = 0;
+    for (const row of this._grid) {
+      c = 0;
+      westPart = null;
+      for (const part of row) {
+        northPart = r > 0 ? this.getPart(c, r - 1) : null;
+        if (part instanceof GearBase) {
+          northLabel = (northPart instanceof GearBase) ? 
+            northPart._connectionLabel : -1;
+          westLabel = (westPart instanceof GearBase) ? 
+            westPart._connectionLabel : -1;
+          if ((northLabel >= 0) && (westLabel >= 0)) {
+            if (northLabel === westLabel) {
+              part._connectionLabel = northLabel;
+            }
+            else {
+              min = Math.min(northLabel, westLabel);
+              max = Math.max(northLabel, westLabel);
+              part._connectionLabel = min;
+              equivalence.mergeSets(min, max);
+            }
+          }
+          else if (northLabel >= 0) {
+            part._connectionLabel = northLabel;
+          }
+          else if (westLabel >= 0) {
+            part._connectionLabel = westLabel;
+          }
+          else part._connectionLabel = label++;
+        }
+        westPart = part;
+        c++;
+      }
+      r++;
+    }
+    // group labeled gears into sets
+    const sets:Map<number,Set<GearBase>> = new Map();
+    for (const part of allGears) {
+      label = equivalence.getRepr(part._connectionLabel);
+      if (! sets.has(label)) sets.set(label, new Set());
+      const set = sets.get(label);
+      set.add(part);
+      part.connected = set;
+    }
+  }
+
   // INTERACTION **************************************************************
 
   private _bindMouseEvents():void {
@@ -285,7 +363,7 @@ export class Board {
     }
     else if (this.tool == ToolType.FLIPPER) {
       const part = this.getPart(column, row);
-      if (part) part.flip();
+      if (part) part.flip(Delays.FLIP);
     }
   }
 

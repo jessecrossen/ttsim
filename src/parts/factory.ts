@@ -44,7 +44,7 @@ export class PartFactory {
     if (! part) return(null);
     const newPart:Part = this.make(part.type);
     if (newPart) {
-      newPart.rotation = part.rotation;
+      newPart.rotation = part.bitValue ? 1.0 : 0.0;
       newPart.isFlipped = part.isFlipped;
     }
     return(newPart);

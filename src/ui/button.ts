@@ -1,7 +1,7 @@
 /// <reference types="pixi.js" />
 
 import { Part, Layer } from '../parts/part';
-import { Colors, Alphas } from './colors';
+import { Colors, Alphas } from './config';
 
 export abstract class Button extends PIXI.Sprite {
 

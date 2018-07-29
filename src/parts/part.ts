@@ -1,5 +1,6 @@
 /// <reference types="pixi.js" />
 
+import { app } from '../index';
 import { PartType } from './factory';
 
 export const enum Layer {
@@ -47,6 +48,14 @@ export abstract class Part {
   }
   private _rotation:number = 0.0;
 
+  // whether the part is pointing right (or will be when animations finish)
+  public get bitValue():boolean {
+    // handle animation
+    if (this._rv !== 0.0) return(this._rv > 0);
+    // handle static position
+    return(this.rotation >= 0.5);
+  }
+
   // whether the part is flipped to its left/right variant
   public get isFlipped():boolean { return(this._isFlipped); }
   public set isFlipped(v:boolean) {
@@ -57,10 +66,10 @@ export abstract class Part {
   private _isFlipped:boolean = false;
 
   // flip the part if it can be flipped
-  public flip():void {
+  public flip(time:number=0.0):void {
     if (this.canFlip) this.isFlipped = ! this.isFlipped;
     else if (this.canRotate) {
-      this.rotation = (this.rotation >= 0.5) ? 0.0 : 1.0; 
+      this.animateRotation((this.bitValue) ? 0.0 : 1.0, time);
     }
   }
 
@@ -105,8 +114,40 @@ export abstract class Part {
     return((part) &&
            (this.type === part.type) &&
            (this.isFlipped === part.isFlipped) &&
-           ((this.rotation >= 0.5) === (part.rotation >= 0.5)));
+           (this.bitValue === part.bitValue));
   }
+
+  // ANIMATION ****************************************************************
+
+  public animateRotation(target:number, time:number):void {
+    if (time == 0.0) {
+      this.rotation = target;
+      return;
+    }
+    this._rv = (target - this.rotation) / (time * 60.0);
+    PIXI.ticker.shared.add(this.tickRotation);
+  }
+  private _rv:number = 0.0;
+  public cancelRotationAnimation():void {
+    if (this._rv !== 0) {
+      this._rv = 0.0;
+      PIXI.ticker.shared.remove(this.tickRotation);
+    }
+  }
+  protected _tickRotation(delta:number):void {
+    if (this._rv == 0.0) {
+      this.cancelRotationAnimation();
+      return;
+    }
+    this.rotation += this._rv * delta;
+    if (((this._rv > 0) && (this.rotation >= 1.0)) ||
+        ((this._rv < 0) && (this.rotation <= 0))) {
+      this.cancelRotationAnimation();
+    }
+  }
+  protected tickRotation = this._tickRotation.bind(this);
+
+  // SPRITES ******************************************************************
 
   // the prefix to append before texture names for this part
   public abstract get texturePrefix():string;
@@ -167,10 +208,10 @@ export abstract class Part {
       //  less distortion from the rotation transform
       if ((this.canMirror) && (this.rotation > 0.5)) {
         xScale = -xScale;
-        sprite.rotation = (1.0 - this.rotation) * (Math.PI / 2);
+        sprite.rotation = this._angleForRotation(this.rotation - 1.0);
       }
       else {
-        sprite.rotation = this.rotation * (Math.PI / 2);
+        sprite.rotation = this._angleForRotation(this.rotation);
       }
     }
     // apply any scale changes
@@ -180,6 +221,11 @@ export abstract class Part {
     // apply opacity and visibility
     sprite.visible = this.visible;
     sprite.alpha = sprite.visible ? this.alpha : 0;
+  }
+
+  // get the angle for the given rotation value
+  protected _angleForRotation(r:number):number {
+    return(r * (Math.PI / 2));
   }
 
 }

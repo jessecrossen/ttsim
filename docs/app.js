@@ -119,7 +119,7 @@ System.register("parts/bit", ["parts/part"], function (exports_5, context_5) {
 System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6) {
     "use strict";
     var __moduleName = context_6 && context_6.id;
-    var part_6, Gearbit, Gear;
+    var part_6, GearBase, Gearbit, Gear;
     return {
         setters: [
             function (part_6_1) {
@@ -127,7 +127,35 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
             }
         ],
         execute: function () {
-            Gearbit = class Gearbit extends part_6.Part {
+            GearBase = class GearBase extends part_6.Part {
+                constructor() {
+                    super(...arguments);
+                    // a set of connected gears that should have the same rotation
+                    this.connected = null;
+                    // a label used in the connection-finding algorithm
+                    this._connectionLabel = -1;
+                }
+                // transfer rotation to connected elements
+                get rotation() { return (super.rotation); }
+                set rotation(v) {
+                    if ((!GearBase._settingConnectedRotation) && (this.connected)) {
+                        GearBase._settingConnectedRotation = this;
+                        for (const part of this.connected) {
+                            if (part !== this)
+                                part.rotation = v;
+                        }
+                        GearBase._settingConnectedRotation = null;
+                    }
+                    if ((GearBase._settingConnectedRotation) &&
+                        (GearBase._settingConnectedRotation !== this)) {
+                        this.cancelRotationAnimation();
+                    }
+                    super.rotation = v;
+                }
+            };
+            GearBase._settingConnectedRotation = null;
+            exports_6("GearBase", GearBase);
+            Gearbit = class Gearbit extends GearBase {
                 get canRotate() { return (true); }
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
@@ -135,17 +163,16 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
                 get texturePrefix() { return ('gearbit'); }
             };
             exports_6("Gearbit", Gearbit);
-            Gear = class Gear extends part_6.Part {
+            Gear = class Gear extends GearBase {
                 get canRotate() { return (true); }
-                get canMirror() { return (true); }
+                get canMirror() { return (false); } // (the cross is not mirrored)
                 get canFlip() { return (false); }
                 get type() { return (7 /* GEAR */); }
                 get texturePrefix() { return ('gear'); }
                 // gears rotate in the reverse direction from their gearbits, but making
                 //  them have the same rotation value is convenient
-                get rotation() { return (1.0 - super.rotation); }
-                set rotation(v) {
-                    super.rotation = 1.0 - Math.min(Math.max(0.0, v), 1.0);
+                _angleForRotation(r) {
+                    return (-super._angleForRotation(r));
                 }
             };
             exports_6("Gear", Gear);
@@ -202,7 +229,7 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
                         return (null);
                     const newPart = this.make(part.type);
                     if (newPart) {
-                        newPart.rotation = part.rotation;
+                        newPart.rotation = part.bitValue ? 1.0 : 0.0;
                         newPart.isFlipped = part.isFlipped;
                     }
                     return (newPart);
@@ -232,6 +259,8 @@ System.register("parts/part", [], function (exports_8, context_8) {
                     this._y = 0;
                     this._alpha = 1;
                     this._visible = true;
+                    this._rv = 0.0;
+                    this.tickRotation = this._tickRotation.bind(this);
                     this._sprites = new Map();
                 }
                 // the unit-size of the part
@@ -253,6 +282,14 @@ System.register("parts/part", [], function (exports_8, context_8) {
                     this._rotation = r;
                     this._updateSprites();
                 }
+                // whether the part is pointing right (or will be when animations finish)
+                get bitValue() {
+                    // handle animation
+                    if (this._rv !== 0.0)
+                        return (this._rv > 0);
+                    // handle static position
+                    return (this.rotation >= 0.5);
+                }
                 // whether the part is flipped to its left/right variant
                 get isFlipped() { return (this._isFlipped); }
                 set isFlipped(v) {
@@ -262,11 +299,11 @@ System.register("parts/part", [], function (exports_8, context_8) {
                     this._updateSprites();
                 }
                 // flip the part if it can be flipped
-                flip() {
+                flip(time = 0.0) {
                     if (this.canFlip)
                         this.isFlipped = !this.isFlipped;
                     else if (this.canRotate) {
-                        this.rotation = (this.rotation >= 0.5) ? 0.0 : 1.0;
+                        this.animateRotation((this.bitValue) ? 0.0 : 1.0, time);
                     }
                 }
                 // the part's horizontal position in the parent
@@ -306,7 +343,33 @@ System.register("parts/part", [], function (exports_8, context_8) {
                     return ((part) &&
                         (this.type === part.type) &&
                         (this.isFlipped === part.isFlipped) &&
-                        ((this.rotation >= 0.5) === (part.rotation >= 0.5)));
+                        (this.bitValue === part.bitValue));
+                }
+                // ANIMATION ****************************************************************
+                animateRotation(target, time) {
+                    if (time == 0.0) {
+                        this.rotation = target;
+                        return;
+                    }
+                    this._rv = (target - this.rotation) / (time * 60.0);
+                    PIXI.ticker.shared.add(this.tickRotation);
+                }
+                cancelRotationAnimation() {
+                    if (this._rv !== 0) {
+                        this._rv = 0.0;
+                        PIXI.ticker.shared.remove(this.tickRotation);
+                    }
+                }
+                _tickRotation(delta) {
+                    if (this._rv == 0.0) {
+                        this.cancelRotationAnimation();
+                        return;
+                    }
+                    this.rotation += this._rv * delta;
+                    if (((this._rv > 0) && (this.rotation >= 1.0)) ||
+                        ((this._rv < 0) && (this.rotation <= 0))) {
+                        this.cancelRotationAnimation();
+                    }
                 }
                 // get texture names for the various layers
                 getTextureNameForLayer(layer) {
@@ -367,10 +430,10 @@ System.register("parts/part", [], function (exports_8, context_8) {
                         //  less distortion from the rotation transform
                         if ((this.canMirror) && (this.rotation > 0.5)) {
                             xScale = -xScale;
-                            sprite.rotation = (1.0 - this.rotation) * (Math.PI / 2);
+                            sprite.rotation = this._angleForRotation(this.rotation - 1.0);
                         }
                         else {
-                            sprite.rotation = this.rotation * (Math.PI / 2);
+                            sprite.rotation = this._angleForRotation(this.rotation);
                         }
                     }
                     // apply any scale changes
@@ -381,12 +444,16 @@ System.register("parts/part", [], function (exports_8, context_8) {
                     sprite.visible = this.visible;
                     sprite.alpha = sprite.visible ? this.alpha : 0;
                 }
+                // get the angle for the given rotation value
+                _angleForRotation(r) {
+                    return (r * (Math.PI / 2));
+                }
             };
             exports_8("Part", Part);
         }
     };
 });
-System.register("ui/colors", [], function (exports_9, context_9) {
+System.register("ui/config", [], function (exports_9, context_9) {
     "use strict";
     var __moduleName = context_9 && context_9.id;
     return {
@@ -395,13 +462,139 @@ System.register("ui/colors", [], function (exports_9, context_9) {
         }
     };
 });
-/// <reference types="pixi.js" />
-System.register("board/board", [], function (exports_10, context_10) {
+/*
+ * Disjoint-set data structure - Library (TypeScript)
+ *
+ * Copyright (c) 2018 Project Nayuki. (MIT License)
+ * https://www.nayuki.io/page/disjoint-set-data-structure
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ * - The above copyright notice and this permission notice shall be included in
+ *   all copies or substantial portions of the Software.
+ * - The Software is provided "as is", without warranty of any kind, express or
+ *   implied, including but not limited to the warranties of merchantability,
+ *   fitness for a particular purpose and noninfringement. In no event shall the
+ *   authors or copyright holders be liable for any claim, damages or other
+ *   liability, whether in an action of contract, tort or otherwise, arising from,
+ *   out of or in connection with the Software or the use or other dealings in the
+ *   Software.
+ */
+System.register("util/disjoint", [], function (exports_10, context_10) {
     "use strict";
     var __moduleName = context_10 && context_10.id;
-    var Board;
+    var DisjointSet;
     return {
         setters: [],
+        execute: function () {
+            /*
+             * Represents a set of disjoint sets. Also known as the union-find data structure.
+             * Main operations are querying if two elements are in the same set, and merging two sets together.
+             * Useful for testing graph connectivity, and is used in Kruskal's algorithm.
+             */
+            DisjointSet = class DisjointSet {
+                // Constructs a new set containing the given number of singleton sets.
+                // For example, new DisjointSet(3) --> {{0}, {1}, {2}}.
+                constructor(numElems) {
+                    // Per-node property arrays. This representation is more space-efficient than creating one node object per element.
+                    this.parents = []; // The index of the parent element. An element is a representative iff its parent is itself.
+                    this.ranks = []; // Always in the range [0, floor(log2(numElems))].
+                    this.sizes = []; // Positive number if the element is a representative, otherwise zero.
+                    if (numElems < 0)
+                        throw "Number of elements must be non-negative";
+                    this.numSets = numElems;
+                    for (let i = 0; i < numElems; i++) {
+                        this.parents.push(i);
+                        this.ranks.push(0);
+                        this.sizes.push(1);
+                    }
+                }
+                // Returns the number of elements among the set of disjoint sets; this was the number passed
+                // into the constructor and is constant for the lifetime of the object. All the other methods
+                // require the argument elemIndex to satisfy 0 <= elemIndex < getNumberOfElements().
+                getNumberOfElements() {
+                    return this.parents.length;
+                }
+                // Returns the number of disjoint sets overall. This number decreases monotonically as time progresses;
+                // each call to mergeSets() either decrements the number by one or leaves it unchanged. 0 <= result <= getNumberOfElements().
+                getNumberOfSets() {
+                    return this.numSets;
+                }
+                // Returns the size of the set that the given element is a member of. 1 <= result <= getNumberOfElements().
+                getSizeOfSet(elemIndex) {
+                    return this.sizes[this.getRepr(elemIndex)];
+                }
+                // Tests whether the given two elements are members of the same set. Note that the arguments are orderless.
+                areInSameSet(elemIndex0, elemIndex1) {
+                    return this.getRepr(elemIndex0) == this.getRepr(elemIndex1);
+                }
+                // Merges together the sets that the given two elements belong to. This method is also known as "union" in the literature.
+                // If the two elements belong to different sets, then the two sets are merged and the method returns true.
+                // Otherwise they belong in the same set, nothing is changed and the method returns false. Note that the arguments are orderless.
+                mergeSets(elemIndex0, elemIndex1) {
+                    // Get representatives
+                    let repr0 = this.getRepr(elemIndex0);
+                    let repr1 = this.getRepr(elemIndex1);
+                    if (repr0 == repr1)
+                        return false;
+                    // Compare ranks
+                    let cmp = this.ranks[repr0] - this.ranks[repr1];
+                    if (cmp == 0)
+                        this.ranks[repr0]++;
+                    else if (cmp < 0) {
+                        let temp = repr0;
+                        repr0 = repr1;
+                        repr1 = temp;
+                    }
+                    // Graft repr1's subtree onto node repr0
+                    this.parents[repr1] = repr0;
+                    this.sizes[repr0] += this.sizes[repr1];
+                    this.sizes[repr1] = 0;
+                    this.numSets--;
+                    return true;
+                }
+                // Returns the representative element for the set containing the given element. This method is also
+                // known as "find" in the literature. Also performs path compression, which alters the internal state to
+                // improve the speed of future queries, but has no externally visible effect on the values returned.
+                getRepr(elemIndex) {
+                    if (elemIndex < 0 || elemIndex >= this.parents.length)
+                        throw "Element index out of bounds";
+                    // Follow parent pointers until we reach a representative
+                    let parent = this.parents[elemIndex];
+                    if (parent == elemIndex)
+                        return elemIndex;
+                    while (true) {
+                        let grandparent = this.parents[parent];
+                        if (grandparent == parent)
+                            return parent;
+                        this.parents[elemIndex] = grandparent; // Partial path compression
+                        elemIndex = parent;
+                        parent = grandparent;
+                    }
+                }
+            };
+            exports_10("DisjointSet", DisjointSet);
+        }
+    };
+});
+/// <reference types="pixi.js" />
+System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exports_11, context_11) {
+    "use strict";
+    var __moduleName = context_11 && context_11.id;
+    var gearbit_2, disjoint_1, Board;
+    return {
+        setters: [
+            function (gearbit_2_1) {
+                gearbit_2 = gearbit_2_1;
+            },
+            function (disjoint_1_1) {
+                disjoint_1 = disjoint_1_1;
+            }
+        ],
         execute: function () {
             Board = class Board {
                 constructor(partFactory) {
@@ -529,13 +722,8 @@ System.register("board/board", [], function (exports_10, context_10) {
                     if (v === this._tool)
                         return;
                     this._tool = v;
-                    if (this.tool == 3 /* FLIPPER */)
-                        this.view.cursor = 'ew-resize';
-                    else if ((this.tool == 1 /* PART */) ||
-                        (this.tool == 2 /* ERASER */))
-                        this.view.cursor = 'pointer';
-                    else
-                        this.view.cursor = 'auto';
+                    this.view.cursor = (this.tool != 0 /* NONE */) ?
+                        'pointer' : 'auto';
                 }
                 // set the part used as a prototype for adding parts
                 get partPrototype() { return (this._partPrototype); }
@@ -564,6 +752,8 @@ System.register("board/board", [], function (exports_10, context_10) {
                         (row < 0) || (row >= this._rowCount))
                         return;
                     const oldPart = this.getPart(column, row);
+                    if (oldPart === newPart)
+                        return;
                     if (oldPart)
                         this.removePart(oldPart);
                     if (newPart)
@@ -571,6 +761,22 @@ System.register("board/board", [], function (exports_10, context_10) {
                     this._grid[row][column] = newPart;
                     if (newPart)
                         this.layoutPart(newPart, column, row);
+                    // update gear connections
+                    if ((oldPart instanceof gearbit_2.GearBase) || (newPart instanceof gearbit_2.GearBase)) {
+                        // disconnect the old part
+                        if (oldPart instanceof gearbit_2.GearBase)
+                            oldPart.connected = null;
+                        // rebuild connections between gears and gearbits
+                        this._connectGears();
+                        // merge the new part's rotation with the connected set
+                        if ((newPart instanceof gearbit_2.GearBase) && (newPart.connected)) {
+                            let sum = 0.0;
+                            for (const part of newPart.connected) {
+                                sum += part.rotation;
+                            }
+                            newPart.rotation = ((sum / newPart.connected.size) >= 0.5) ? 1.0 : 0.0;
+                        }
+                    }
                 }
                 // clear parts from the given coordinates
                 clearPart(column, row) {
@@ -634,6 +840,70 @@ System.register("board/board", [], function (exports_10, context_10) {
                 yForRow(row) {
                     return (this.margin + Math.round(row * this.partSize * 1.0625));
                 }
+                // connect adjacent sets of gears
+                //  see: https://en.wikipedia.org/wiki/Connected-component_labeling
+                _connectGears() {
+                    let r;
+                    let c;
+                    let label = 0;
+                    let min, max;
+                    let westPart, westLabel;
+                    let northPart, northLabel;
+                    let allGears = new Set();
+                    for (const row of this._grid) {
+                        for (const part of row) {
+                            if (part instanceof gearbit_2.GearBase)
+                                allGears.add(part);
+                        }
+                    }
+                    let equivalence = new disjoint_1.DisjointSet(allGears.size);
+                    r = 0;
+                    for (const row of this._grid) {
+                        c = 0;
+                        westPart = null;
+                        for (const part of row) {
+                            northPart = r > 0 ? this.getPart(c, r - 1) : null;
+                            if (part instanceof gearbit_2.GearBase) {
+                                northLabel = (northPart instanceof gearbit_2.GearBase) ?
+                                    northPart._connectionLabel : -1;
+                                westLabel = (westPart instanceof gearbit_2.GearBase) ?
+                                    westPart._connectionLabel : -1;
+                                if ((northLabel >= 0) && (westLabel >= 0)) {
+                                    if (northLabel === westLabel) {
+                                        part._connectionLabel = northLabel;
+                                    }
+                                    else {
+                                        min = Math.min(northLabel, westLabel);
+                                        max = Math.max(northLabel, westLabel);
+                                        part._connectionLabel = min;
+                                        equivalence.mergeSets(min, max);
+                                    }
+                                }
+                                else if (northLabel >= 0) {
+                                    part._connectionLabel = northLabel;
+                                }
+                                else if (westLabel >= 0) {
+                                    part._connectionLabel = westLabel;
+                                }
+                                else
+                                    part._connectionLabel = label++;
+                            }
+                            westPart = part;
+                            c++;
+                        }
+                        r++;
+                    }
+                    // group labeled gears into sets
+                    const sets = new Map();
+                    for (const part of allGears) {
+                        label = equivalence.getRepr(part._connectionLabel);
+                        if (!sets.has(label))
+                            sets.set(label, new Set());
+                        const set = sets.get(label);
+                        set.add(part);
+                        part.connected = set;
+                    }
+                }
                 // INTERACTION **************************************************************
                 _bindMouseEvents() {
                     this.view.interactive = true;
@@ -671,7 +941,7 @@ System.register("board/board", [], function (exports_10, context_10) {
                     else if (this.tool == 3 /* FLIPPER */) {
                         const part = this.getPart(column, row);
                         if (part)
-                            part.flip();
+                            part.flip(0.25 /* FLIP */);
                     }
                 }
                 _placePartPrototype(column, row) {
@@ -688,14 +958,14 @@ System.register("board/board", [], function (exports_10, context_10) {
                     }
                 }
             };
-            exports_10("Board", Board);
+            exports_11("Board", Board);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("ui/button", [], function (exports_11, context_11) {
+System.register("ui/button", [], function (exports_12, context_12) {
     "use strict";
-    var __moduleName = context_11 && context_11.id;
+    var __moduleName = context_12 && context_12.id;
     var Button, PartButton, SpriteButton;
     return {
         setters: [],
@@ -781,7 +1051,7 @@ System.register("ui/button", [], function (exports_11, context_11) {
                     }
                 }
             };
-            exports_11("Button", Button);
+            exports_12("Button", Button);
             PartButton = class PartButton extends Button {
                 constructor(part) {
                     super();
@@ -799,7 +1069,7 @@ System.register("ui/button", [], function (exports_11, context_11) {
                         this.part.size = Math.floor(this.size * 0.5);
                 }
             };
-            exports_11("PartButton", PartButton);
+            exports_12("PartButton", PartButton);
             SpriteButton = class SpriteButton extends Button {
                 constructor(sprite) {
                     super();
@@ -819,14 +1089,14 @@ System.register("ui/button", [], function (exports_11, context_11) {
                     }
                 }
             };
-            exports_11("SpriteButton", SpriteButton);
+            exports_12("SpriteButton", SpriteButton);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("ui/toolbox", ["ui/button"], function (exports_12, context_12) {
+System.register("ui/toolbox", ["ui/button"], function (exports_13, context_13) {
     "use strict";
-    var __moduleName = context_12 && context_12.id;
+    var __moduleName = context_13 && context_13.id;
     var button_1, Toolbox;
     return {
         setters: [
@@ -909,7 +1179,7 @@ System.register("ui/toolbox", ["ui/button"], function (exports_12, context_12) {
                         const newPart = e.target.part;
                         if (newPart === this._partPrototype) {
                             // toggle direction if the selected part is clicked again
-                            this._partPrototype.flip();
+                            this._partPrototype.flip(0.25 /* FLIP */);
                         }
                         else {
                             this._partPrototype = newPart;
@@ -949,14 +1219,14 @@ System.register("ui/toolbox", ["ui/button"], function (exports_12, context_12) {
                     }
                 }
             };
-            exports_12("Toolbox", Toolbox);
+            exports_13("Toolbox", Toolbox);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("app", ["board/board", "parts/factory", "ui/toolbox"], function (exports_13, context_13) {
+System.register("app", ["board/board", "parts/factory", "ui/toolbox"], function (exports_14, context_14) {
     "use strict";
-    var __moduleName = context_13 && context_13.id;
+    var __moduleName = context_14 && context_14.id;
     var board_1, factory_1, toolbox_1, SimulatorApp;
     return {
         setters: [
@@ -1011,14 +1281,14 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox"], function 
                     this.board.height = this.height;
                 }
             };
-            exports_13("SimulatorApp", SimulatorApp);
+            exports_14("SimulatorApp", SimulatorApp);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("index", ["app"], function (exports_14, context_14) {
+System.register("index", ["app"], function (exports_15, context_15) {
     "use strict";
-    var __moduleName = context_14 && context_14.id;
+    var __moduleName = context_15 && context_15.id;
     var app_1, app, container, view, sim, resizeApp, loader;
     return {
         setters: [
@@ -1028,12 +1298,12 @@ System.register("index", ["app"], function (exports_14, context_14) {
         ],
         execute: function () {
             // create the application
-            app = new PIXI.Application({
+            exports_15("app", app = new PIXI.Application({
                 width: 256,
                 height: 256,
                 antialias: true,
                 backgroundColor: 0xFFFFFF
-            });
+            }));
             container = document.getElementById('container');
             view = app.renderer.view;
             container.appendChild(app.renderer.view);

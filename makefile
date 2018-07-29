@@ -7,28 +7,28 @@ dist: app graphics
 
 server:
 	python -m webbrowser "http://localhost:8080/"
-	cd dist && python -m SimpleHTTPServer 8080
+	cd docs && python -m SimpleHTTPServer 8080
 
 # APP
 
-app: dist/index.html dist/pixi.min.js dist/system.js \
-		 dist/app.js
+app: docs/index.html docs/pixi.min.js docs/system.js \
+		 docs/app.js
 
-dist/index.html: src/index.html
-	mkdir -p dist
-	cp src/index.html dist/index.html
+docs/index.html: src/index.html
+	mkdir -p docs
+	cp src/index.html docs/index.html
 
-dist/app.js: node_modules $(shell find src -name '*.ts')
-	mkdir -p dist
+docs/app.js: node_modules $(shell find src -name '*.ts')
+	mkdir -p docs
 	node_modules/typescript/bin/tsc
 
-dist/system.js: node_modules
-	mkdir -p dist
-	cp node_modules/systemjs/dist/system.js dist/
+docs/system.js: node_modules
+	mkdir -p docs
+	cp node_modules/systemjs/docs/system.js docs/
 
-dist/pixi.min.js: node_modules
-	mkdir -p dist
-	cp node_modules/pixi.js/dist/pixi.min.js dist/
+docs/pixi.min.js: node_modules
+	mkdir -p docs
+	cp node_modules/pixi.js/docs/pixi.min.js docs/
 
 # DEPENDENCIES
 
@@ -38,20 +38,20 @@ node_modules: package.json
 
 # GRAPHICS
 
-graphics: dist/images/parts.png dist/images/parts.json
+graphics: docs/images/parts.png docs/images/parts.json
 
-dist/images/parts.png: src/svg/parts.svg
-	mkdir -p dist/images
-	inkscape --export-png=dist/images/parts.png \
+docs/images/parts.png: src/svg/parts.svg
+	mkdir -p docs/images
+	inkscape --export-png=docs/images/parts.png \
 					 --export-area-page src/svg/parts.svg
 
-dist/images/parts.json: src/svg/parts.svg src/svg/spritesheet.py
-	mkdir -p dist/images
-	src/svg/spritesheet.py src/svg/parts.svg dist/images/parts.json
+docs/images/parts.json: src/svg/parts.svg src/svg/spritesheet.py
+	mkdir -p docs/images
+	src/svg/spritesheet.py src/svg/parts.svg docs/images/parts.json
 
 # CLEANUP
 
 clean:
 	-rm -rf node_modules
-	-rm -rf dist
+	-rm -rf docs/*
 	-rm -rf build

@@ -19,26 +19,78 @@ type LayerToContainerMap = Map<Layer,PIXI.Container>;
 export class Board {
 
   constructor(public readonly partFactory:PartFactory) {
-    // initialize layers
-    for (let i:number = Layer.BACK; i < Layer.COUNT; i++) {
-      // const c = new PIXI.particles.ParticleContainer(1500, 
-      //   {
-      //     vertices: true,
-      //     position: true, 
-      //     rotation: true,
-      //     tint: true,
-      //     alpha: true
-      //   }, 100, true);
-      const c = new PIXI.Container();
-      this.view.addChild(c);
-      this._containers.set(i, c);
-    }
-    this._updateDropShadows();
     this._bindMouseEvents();
-    
+    this.view.addChild(this._layers);
+    this._initContainers();
+    this._updateDropShadows();
   }
   public readonly view:PIXI.Sprite = new PIXI.Sprite();
+  private _layers:PIXI.Container = new PIXI.Container();
+  
+  // LAYERS *******************************************************************
+
+  protected _initContainers():void {
+    this._setContainer(Layer.BACK, false);
+    this._setContainer(Layer.MID, false);
+    this._setContainer(Layer.FRONT, false);
+  }
   private _containers:LayerToContainerMap = new Map();
+
+  protected _setContainer(layer:Layer, highPerformance:boolean = false):void {
+    const newContainer = this._makeContainer(highPerformance);
+    if (this._containers.has(layer)) {
+      const oldContainer = this._containers.get(layer);
+      this._layers.removeChild(oldContainer);
+      for (const child of oldContainer.children) {
+        newContainer.addChild(child);
+      }
+    }
+    this._containers.set(layer, newContainer);
+    this._layers.addChild(newContainer);
+  }
+
+  protected _makeContainer(highPerformance:boolean=false):PIXI.Container {
+    if (highPerformance) return(new PIXI.particles.ParticleContainer(1500, 
+      {
+        vertices: true,
+        position: true, 
+        rotation: true,
+        tint: true,
+        alpha: true
+      }, 100, true));
+    else return(new PIXI.Container());
+  }
+
+  protected _updateDropShadows():void {
+    this._containers.get(Layer.BACK).filters = [
+      this._makeShadow(this.partSize / 32.0) ];
+    this._containers.get(Layer.MID).filters = [
+      this._makeShadow(this.partSize / 16.0) ];
+    this._containers.get(Layer.FRONT).filters = [
+      this._makeShadow(this.partSize / 8.0) ];
+  }
+
+  protected _makeShadow(size:number):PIXI.filters.DropShadowFilter {
+    return(new PIXI.filters.DropShadowFilter({
+      alpha: 0.35,
+      blur: size * 0.25,
+      color: 0x000000,
+      distance: size,
+      kernels: null,
+      pixelSize: 1,
+      quality: 3,
+      resolution: PIXI.settings.RESOLUTION,
+      rotation: 45,
+      shadowOnly: false
+    }));
+  }
+
+  protected _updateFilterAreas():void {
+    const area = new PIXI.Rectangle(0, 0, this.width, this.height);
+    this._containers.get(Layer.BACK).filterArea = area;
+    this._containers.get(Layer.MID).filterArea = area;
+    this._containers.get(Layer.FRONT).filterArea = area;
+  }
 
   // LAYOUT *******************************************************************
 
@@ -47,6 +99,7 @@ export class Board {
     if (v === this._width) return;
     this._width = v;
     this.view.hitArea = new PIXI.Rectangle(0, 0, this._width, this._height);
+    this._updateFilterAreas();
   }
   private _width:number = 0;
 
@@ -55,6 +108,7 @@ export class Board {
     if (v === this._height) return;
     this._height = v;
     this.view.hitArea = new PIXI.Rectangle(0, 0, this._width, this._height);
+    this._updateFilterAreas();
   }
   private _height:number = 0;
 
@@ -328,32 +382,6 @@ export class Board {
       set.add(part);
       part.connected = set;
     }
-  }
-
-  // EFFECTS ******************************************************************
-
-  protected _updateDropShadows():void {
-    this._containers.get(Layer.BACK).filters = [
-      this._makeShadow(this.partSize / 32.0) ];
-    this._containers.get(Layer.MID).filters = [
-      this._makeShadow(this.partSize / 16.0) ];
-    this._containers.get(Layer.FRONT).filters = [
-      this._makeShadow(this.partSize / 8.0) ];
-  }
-
-  protected _makeShadow(size:number):PIXI.filters.DropShadowFilter {
-    return(new PIXI.filters.DropShadowFilter({
-      alpha: 0.35,
-      blur: size * 0.25,
-      color: 0x000000,
-      distance: size,
-      kernels: null,
-      pixelSize: 1,
-      quality: 3,
-      resolution: PIXI.settings.RESOLUTION,
-      rotation: 45,
-      shadowOnly: false
-    }));
   }
 
   // INTERACTION **************************************************************

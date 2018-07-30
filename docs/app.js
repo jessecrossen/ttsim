@@ -240,12 +240,49 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
     };
 });
 /// <reference types="pixi.js" />
-System.register("parts/part", [], function (exports_8, context_8) {
+System.register("renderer", [], function (exports_8, context_8) {
     "use strict";
     var __moduleName = context_8 && context_8.id;
-    var Part;
+    var Renderer;
     return {
         setters: [],
+        execute: function () {
+            Renderer = class Renderer {
+                static needsUpdate() {
+                    Renderer._needsUpdate = true;
+                }
+                static start() {
+                    PIXI.ticker.shared.add(Renderer.render, Renderer, PIXI.UPDATE_PRIORITY.LOW);
+                }
+                static render() {
+                    if (Renderer._needsUpdate) {
+                        Renderer.instance.render(Renderer.stage);
+                        Renderer._needsUpdate = false;
+                    }
+                }
+            };
+            Renderer._needsUpdate = false;
+            Renderer.instance = PIXI.autoDetectRenderer({
+                antialias: false,
+                backgroundColor: 0xFFFFFF,
+                roundPixels: true
+            });
+            Renderer.stage = new PIXI.Container();
+            exports_8("Renderer", Renderer);
+        }
+    };
+});
+/// <reference types="pixi.js" />
+System.register("parts/part", ["renderer"], function (exports_9, context_9) {
+    "use strict";
+    var __moduleName = context_9 && context_9.id;
+    var renderer_1, Part;
+    return {
+        setters: [
+            function (renderer_1_1) {
+                renderer_1 = renderer_1_1;
+            }
+        ],
         execute: function () {
             ;
             // base class for all parts
@@ -443,19 +480,21 @@ System.register("parts/part", [], function (exports_8, context_8) {
                     // apply opacity and visibility
                     sprite.visible = this.visible;
                     sprite.alpha = sprite.visible ? this.alpha : 0;
+                    // schedule rendering
+                    renderer_1.Renderer.needsUpdate();
                 }
                 // get the angle for the given rotation value
                 _angleForRotation(r) {
                     return (r * (Math.PI / 2));
                 }
             };
-            exports_8("Part", Part);
+            exports_9("Part", Part);
         }
     };
 });
-System.register("ui/config", [], function (exports_9, context_9) {
+System.register("ui/config", [], function (exports_10, context_10) {
     "use strict";
-    var __moduleName = context_9 && context_9.id;
+    var __moduleName = context_10 && context_10.id;
     return {
         setters: [],
         execute: function () {
@@ -484,9 +523,9 @@ System.register("ui/config", [], function (exports_9, context_9) {
  *   out of or in connection with the Software or the use or other dealings in the
  *   Software.
  */
-System.register("util/disjoint", [], function (exports_10, context_10) {
+System.register("util/disjoint", [], function (exports_11, context_11) {
     "use strict";
-    var __moduleName = context_10 && context_10.id;
+    var __moduleName = context_11 && context_11.id;
     var DisjointSet;
     return {
         setters: [],
@@ -577,15 +616,15 @@ System.register("util/disjoint", [], function (exports_10, context_10) {
                     }
                 }
             };
-            exports_10("DisjointSet", DisjointSet);
+            exports_11("DisjointSet", DisjointSet);
         }
     };
 });
 /// <reference types="pixi.js" />
 /// <reference types="pixi-filters" />
-System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exports_11, context_11) {
+System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exports_12, context_12) {
     "use strict";
-    var __moduleName = context_11 && context_11.id;
+    var __moduleName = context_12 && context_12.id;
     var gearbit_2, disjoint_1, Board;
     return {
         setters: [
@@ -601,6 +640,7 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                 constructor(partFactory) {
                     this.partFactory = partFactory;
                     this.view = new PIXI.Sprite();
+                    this._layers = new PIXI.Container();
                     this._containers = new Map();
                     this._width = 0;
                     this._height = 0;
@@ -610,22 +650,71 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                     this._grid = [];
                     this._tool = 0 /* NONE */;
                     this._partPrototype = null;
-                    // initialize layers
-                    for (let i = 0 /* BACK */; i < 3 /* COUNT */; i++) {
-                        // const c = new PIXI.particles.ParticleContainer(1500, 
-                        //   {
-                        //     vertices: true,
-                        //     position: true, 
-                        //     rotation: true,
-                        //     tint: true,
-                        //     alpha: true
-                        //   }, 100, true);
-                        const c = new PIXI.Container();
-                        this.view.addChild(c);
-                        this._containers.set(i, c);
-                    }
-                    this._updateDropShadows();
                     this._bindMouseEvents();
+                    this.view.addChild(this._layers);
+                    this._initContainers();
+                    this._updateDropShadows();
+                }
+                // LAYERS *******************************************************************
+                _initContainers() {
+                    this._setContainer(0 /* BACK */, false);
+                    this._setContainer(1 /* MID */, false);
+                    this._setContainer(2 /* FRONT */, false);
+                }
+                _setContainer(layer, highPerformance = false) {
+                    const newContainer = this._makeContainer(highPerformance);
+                    if (this._containers.has(layer)) {
+                        const oldContainer = this._containers.get(layer);
+                        this._layers.removeChild(oldContainer);
+                        for (const child of oldContainer.children) {
+                            newContainer.addChild(child);
+                        }
+                    }
+                    this._containers.set(layer, newContainer);
+                    this._layers.addChild(newContainer);
+                }
+                _makeContainer(highPerformance = false) {
+                    if (highPerformance)
+                        return (new PIXI.particles.ParticleContainer(1500, {
+                            vertices: true,
+                            position: true,
+                            rotation: true,
+                            tint: true,
+                            alpha: true
+                        }, 100, true));
+                    else
+                        return (new PIXI.Container());
+                }
+                _updateDropShadows() {
+                    this._containers.get(0 /* BACK */).filters = [
+                        this._makeShadow(this.partSize / 32.0)
+                    ];
+                    this._containers.get(1 /* MID */).filters = [
+                        this._makeShadow(this.partSize / 16.0)
+                    ];
+                    this._containers.get(2 /* FRONT */).filters = [
+                        this._makeShadow(this.partSize / 8.0)
+                    ];
+                }
+                _makeShadow(size) {
+                    return (new PIXI.filters.DropShadowFilter({
+                        alpha: 0.35,
+                        blur: size * 0.25,
+                        color: 0x000000,
+                        distance: size,
+                        kernels: null,
+                        pixelSize: 1,
+                        quality: 3,
+                        resolution: PIXI.settings.RESOLUTION,
+                        rotation: 45,
+                        shadowOnly: false
+                    }));
+                }
+                _updateFilterAreas() {
+                    const area = new PIXI.Rectangle(0, 0, this.width, this.height);
+                    this._containers.get(0 /* BACK */).filterArea = area;
+                    this._containers.get(1 /* MID */).filterArea = area;
+                    this._containers.get(2 /* FRONT */).filterArea = area;
                 }
                 // LAYOUT *******************************************************************
                 get width() { return (this._width); }
@@ -634,6 +723,7 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                         return;
                     this._width = v;
                     this.view.hitArea = new PIXI.Rectangle(0, 0, this._width, this._height);
+                    this._updateFilterAreas();
                 }
                 get height() { return (this._height); }
                 set height(v) {
@@ -641,6 +731,7 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                         return;
                     this._height = v;
                     this.view.hitArea = new PIXI.Rectangle(0, 0, this._width, this._height);
+                    this._updateFilterAreas();
                 }
                 // GRID MANAGEMENT **********************************************************
                 // change the size to draw parts at
@@ -909,32 +1000,6 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                         part.connected = set;
                     }
                 }
-                // EFFECTS ******************************************************************
-                _updateDropShadows() {
-                    this._containers.get(0 /* BACK */).filters = [
-                        this._makeShadow(this.partSize / 32.0)
-                    ];
-                    this._containers.get(1 /* MID */).filters = [
-                        this._makeShadow(this.partSize / 16.0)
-                    ];
-                    this._containers.get(2 /* FRONT */).filters = [
-                        this._makeShadow(this.partSize / 8.0)
-                    ];
-                }
-                _makeShadow(size) {
-                    return (new PIXI.filters.DropShadowFilter({
-                        alpha: 0.35,
-                        blur: size * 0.25,
-                        color: 0x000000,
-                        distance: size,
-                        kernels: null,
-                        pixelSize: 1,
-                        quality: 3,
-                        resolution: PIXI.settings.RESOLUTION,
-                        rotation: 45,
-                        shadowOnly: false
-                    }));
-                }
                 // INTERACTION **************************************************************
                 _bindMouseEvents() {
                     this.view.interactive = true;
@@ -989,17 +1054,21 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                     }
                 }
             };
-            exports_11("Board", Board);
+            exports_12("Board", Board);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("ui/button", [], function (exports_12, context_12) {
+System.register("ui/button", ["renderer"], function (exports_13, context_13) {
     "use strict";
-    var __moduleName = context_12 && context_12.id;
-    var Button, PartButton, SpriteButton;
+    var __moduleName = context_13 && context_13.id;
+    var renderer_2, Button, PartButton, SpriteButton;
     return {
-        setters: [],
+        setters: [
+            function (renderer_2_1) {
+                renderer_2 = renderer_2_1;
+            }
+        ],
         execute: function () {
             Button = class Button extends PIXI.Sprite {
                 constructor() {
@@ -1012,9 +1081,7 @@ System.register("ui/button", [], function (exports_12, context_12) {
                     this.interactive = true;
                     this.anchor.set(0.5, 0.5);
                     this._background = new PIXI.Graphics();
-                    this._border = new PIXI.Graphics();
                     this.addChild(this._background);
-                    this.addChild(this._border);
                     this._updateState();
                     this.onSizeChanged();
                     this._bindHover();
@@ -1025,12 +1092,14 @@ System.register("ui/button", [], function (exports_12, context_12) {
                         return;
                     this._size = v;
                     this.onSizeChanged();
+                    renderer_2.Renderer.needsUpdate();
                 }
                 get isToggled() { return (this._isToggled); }
                 set isToggled(v) {
                     if (v === this._isToggled)
                         return;
                     this._isToggled = v;
+                    this._drawDecorations();
                     this._updateState();
                 }
                 onSizeChanged() {
@@ -1056,14 +1125,14 @@ System.register("ui/button", [], function (exports_12, context_12) {
                 }
                 _updateState() {
                     if ((this._mouseOver) && (this._mouseDown)) {
-                        this._background.alpha = 0.4 /* BUTTON_DOWN */;
+                        this._background.alpha = 0.3 /* BUTTON_DOWN */;
                     }
                     else if (this._mouseOver) {
-                        this._background.alpha = 0.3 /* BUTTON_OVER */;
+                        this._background.alpha = 0.15 /* BUTTON_OVER */;
                     }
                     else
-                        this._background.alpha = 0.25 /* BUTTON_NORMAL */;
-                    this._border.visible = this.isToggled;
+                        this._background.alpha = 0.1 /* BUTTON_NORMAL */;
+                    renderer_2.Renderer.needsUpdate();
                 }
                 _drawDecorations() {
                     const radius = 8; // pixels
@@ -1071,25 +1140,19 @@ System.register("ui/button", [], function (exports_12, context_12) {
                     const hs = Math.round(s * 0.5);
                     if (this._background) {
                         this._background.clear();
-                        this._background.beginFill(0 /* BUTTON_BACK */, 1);
+                        this._background.beginFill(this.isToggled ? 16711680 /* HIGHLIGHT */ : 0 /* BUTTON_BACK */);
                         this._background.drawRoundedRect(-hs, -hs, s, s, radius);
                         this._background.endFill();
                     }
-                    if (this._border) {
-                        this._border.clear();
-                        this._border.lineStyle(2, 16711680 /* HIGHLIGHT */, 0.5);
-                        this._border.drawRoundedRect(-hs, -hs, s, s, radius);
-                    }
+                    renderer_2.Renderer.needsUpdate();
                 }
             };
-            exports_12("Button", Button);
+            exports_13("Button", Button);
             PartButton = class PartButton extends Button {
                 constructor(part) {
                     super();
                     this.part = part;
-                    const firstLayer = (part.type == 3 /* CROSSOVER */) ?
-                        0 /* BACK */ : 0 /* BACK */ + 1;
-                    for (let i = firstLayer; i < 3 /* COUNT */; i++) {
+                    for (let i = 0 /* BACK */; i < 3 /* COUNT */; i++) {
                         const sprite = part.getSpriteForLayer(i);
                         if (sprite)
                             this.addChild(sprite);
@@ -1102,7 +1165,7 @@ System.register("ui/button", [], function (exports_12, context_12) {
                         this.part.size = Math.floor(this.size * 0.5);
                 }
             };
-            exports_12("PartButton", PartButton);
+            exports_13("PartButton", PartButton);
             SpriteButton = class SpriteButton extends Button {
                 constructor(sprite) {
                     super();
@@ -1122,14 +1185,14 @@ System.register("ui/button", [], function (exports_12, context_12) {
                     }
                 }
             };
-            exports_12("SpriteButton", SpriteButton);
+            exports_13("SpriteButton", SpriteButton);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("ui/toolbox", ["ui/button"], function (exports_13, context_13) {
+System.register("ui/toolbox", ["ui/button"], function (exports_14, context_14) {
     "use strict";
-    var __moduleName = context_13 && context_13.id;
+    var __moduleName = context_14 && context_14.id;
     var button_1, Toolbox;
     return {
         setters: [
@@ -1139,23 +1202,21 @@ System.register("ui/toolbox", ["ui/button"], function (exports_13, context_13) {
         ],
         execute: function () {
             Toolbox = class Toolbox extends PIXI.Container {
-                constructor(partFactory) {
+                constructor(board) {
                     super();
-                    this.partFactory = partFactory;
-                    this._tool = 0 /* NONE */;
+                    this.board = board;
                     this._width = 96;
                     this._margin = 4;
-                    this._partPrototype = null;
                     this._buttons = [];
                     // add a button to change the position of parts
-                    this._flipperButton = new button_1.SpriteButton(new PIXI.Sprite(partFactory.textures['flipper']));
+                    this._flipperButton = new button_1.SpriteButton(new PIXI.Sprite(board.partFactory.textures['flipper']));
                     this._buttons.push(this._flipperButton);
                     // add a button to remove parts
-                    this._eraserButton = new button_1.SpriteButton(new PIXI.Sprite(partFactory.textures['partloc-back']));
+                    this._eraserButton = new button_1.PartButton(this.board.partFactory.make(0 /* PARTLOC */));
                     this._buttons.push(this._eraserButton);
                     // add buttons for parts
                     for (let i = 2 /* TOOLBOX_MIN */; i <= 7 /* TOOLBOX_MAX */; i++) {
-                        const part = partFactory.make(i);
+                        const part = board.partFactory.make(i);
                         if (!part)
                             continue;
                         const button = new button_1.PartButton(part);
@@ -1166,17 +1227,6 @@ System.register("ui/toolbox", ["ui/button"], function (exports_13, context_13) {
                         button.addListener('click', this._onButtonClick.bind(this));
                     }
                     this._layout();
-                }
-                get tool() { return (this._tool); }
-                set tool(v) {
-                    if (v === this._tool)
-                        return;
-                    this._tool = v;
-                    if (this.tool !== 1 /* PART */)
-                        this._partPrototype = null;
-                    this._updateToggled();
-                    if (this.onChange)
-                        this.onChange();
                 }
                 get width() { return (this._width); }
                 set width(v) {
@@ -1199,42 +1249,40 @@ System.register("ui/toolbox", ["ui/button"], function (exports_13, context_13) {
                     return ((this.width * this._buttons.length) +
                         (this.margin * (this._buttons.length + 1)));
                 }
-                // the current part type to add
-                get partPrototype() { return (this._partPrototype); }
                 _onButtonClick(e) {
                     if (e.target === this._flipperButton) {
-                        this.tool = 3 /* FLIPPER */;
+                        this.board.tool = 3 /* FLIPPER */;
+                        this.board.partPrototype = null;
                     }
                     else if (e.target === this._eraserButton) {
-                        this.tool = 2 /* ERASER */;
+                        this.board.tool = 2 /* ERASER */;
+                        this.board.partPrototype = null;
                     }
                     else if (e.target instanceof button_1.PartButton) {
                         const newPart = e.target.part;
-                        if (newPart === this._partPrototype) {
+                        if ((this.board.partPrototype) &&
+                            (newPart.type === this.board.partPrototype.type)) {
                             // toggle direction if the selected part is clicked again
-                            this._partPrototype.flip(0.25 /* FLIP */);
+                            newPart.flip(0.25 /* FLIP */);
                         }
-                        else {
-                            this._partPrototype = newPart;
-                        }
-                        this.tool = 1 /* PART */;
-                        this._updateToggled();
-                        if (this.onChange)
-                            this.onChange();
+                        this.board.tool = 1 /* PART */;
+                        this.board.partPrototype = this.board.partFactory.copy(newPart);
                     }
+                    this._updateToggled();
                 }
                 _updateToggled() {
                     // update button toggle states
                     for (const button of this._buttons) {
                         if (button === this._flipperButton) {
-                            button.isToggled = (this.tool === 3 /* FLIPPER */);
+                            button.isToggled = (this.board.tool === 3 /* FLIPPER */);
                         }
                         else if (button === this._eraserButton) {
-                            button.isToggled = (this.tool === 2 /* ERASER */);
+                            button.isToggled = (this.board.tool === 2 /* ERASER */);
                         }
-                        if (button instanceof button_1.PartButton) {
-                            button.isToggled = ((this.tool === 1 /* PART */) &&
-                                (button.part.type === this.partPrototype.type));
+                        else if (button instanceof button_1.PartButton) {
+                            button.isToggled = ((this.board.tool === 1 /* PART */) &&
+                                (this.board.partPrototype) &&
+                                (button.part.type === this.board.partPrototype.type));
                         }
                     }
                 }
@@ -1252,15 +1300,15 @@ System.register("ui/toolbox", ["ui/button"], function (exports_13, context_13) {
                     }
                 }
             };
-            exports_13("Toolbox", Toolbox);
+            exports_14("Toolbox", Toolbox);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("app", ["board/board", "parts/factory", "ui/toolbox"], function (exports_14, context_14) {
+System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer"], function (exports_15, context_15) {
     "use strict";
-    var __moduleName = context_14 && context_14.id;
-    var board_1, factory_1, toolbox_1, SimulatorApp;
+    var __moduleName = context_15 && context_15.id;
+    var board_1, factory_1, toolbox_1, renderer_3, SimulatorApp;
     return {
         setters: [
             function (board_1_1) {
@@ -1271,6 +1319,9 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox"], function 
             },
             function (toolbox_1_1) {
                 toolbox_1 = toolbox_1_1;
+            },
+            function (renderer_3_1) {
+                renderer_3 = renderer_3_1;
             }
         ],
         execute: function () {
@@ -1281,19 +1332,13 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox"], function 
                     this._width = 0;
                     this._height = 0;
                     this.partFactory = new factory_1.PartFactory(textures);
-                    this.toolbox = new toolbox_1.Toolbox(this.partFactory);
-                    this.toolbox.width = 64;
                     this.board = new board_1.Board(this.partFactory);
+                    this.toolbox = new toolbox_1.Toolbox(this.board);
+                    this.toolbox.width = 64;
                     this.board.setSize(11, 9);
                     this.addChild(this.toolbox);
                     this.board.view.x = this.toolbox.width;
                     this.addChild(this.board.view);
-                    // hook the toolbox to the board
-                    this.toolbox.onChange = () => {
-                        this.board.partPrototype = this.toolbox.partPrototype ?
-                            this.partFactory.copy(this.toolbox.partPrototype) : null;
-                        this.board.tool = this.toolbox.tool;
-                    };
                 }
                 get width() { return (this._width); }
                 set width(v) {
@@ -1312,40 +1357,35 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox"], function 
                 _layout() {
                     this.board.width = Math.max(0, this.width - this.toolbox.width);
                     this.board.height = this.height;
+                    renderer_3.Renderer.needsUpdate();
                 }
             };
-            exports_14("SimulatorApp", SimulatorApp);
+            exports_15("SimulatorApp", SimulatorApp);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("index", ["app"], function (exports_15, context_15) {
+System.register("index", ["app", "renderer"], function (exports_16, context_16) {
     "use strict";
-    var __moduleName = context_15 && context_15.id;
-    var app_1, app, container, view, sim, resizeApp, loader;
+    var __moduleName = context_16 && context_16.id;
+    var app_1, renderer_4, container, sim, resizeApp, loader;
     return {
         setters: [
             function (app_1_1) {
                 app_1 = app_1_1;
+            },
+            function (renderer_4_1) {
+                renderer_4 = renderer_4_1;
             }
         ],
         execute: function () {
-            // create the application
-            exports_15("app", app = new PIXI.Application({
-                width: 256,
-                height: 256,
-                antialias: true,
-                backgroundColor: 0xFFFFFF
-            }));
             container = document.getElementById('container');
-            view = app.renderer.view;
-            container.appendChild(app.renderer.view);
+            container.appendChild(renderer_4.Renderer.instance.view);
             // dynamically resize the app to track the size of the browser window
             container.style.overflow = 'hidden';
             resizeApp = () => {
                 const r = container.getBoundingClientRect();
-                app.renderer.autoResize = true;
-                app.renderer.resize(r.width, r.height);
+                renderer_4.Renderer.instance.resize(r.width, r.height);
                 if (sim) {
                     sim.width = r.width;
                     sim.height = r.height;
@@ -1353,13 +1393,14 @@ System.register("index", ["app"], function (exports_15, context_15) {
             };
             resizeApp();
             window.addEventListener('resize', resizeApp);
+            renderer_4.Renderer.start();
             // load sprites
             loader = PIXI.loader;
             loader.add('images/parts.json').load(() => {
                 sim = new app_1.SimulatorApp(PIXI.loader.resources["images/parts.json"].textures);
-                sim.width = app.renderer.width;
-                sim.height = app.renderer.height;
-                app.stage.addChild(sim);
+                sim.width = renderer_4.Renderer.instance.width;
+                sim.height = renderer_4.Renderer.instance.height;
+                renderer_4.Renderer.stage.addChild(sim);
             });
         }
     };

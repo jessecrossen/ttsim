@@ -72,6 +72,30 @@
       }, 
       "trimmed": false
     }, 
+    "bit-s": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 316, 
+        "y": 420
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
     "cross-back": {
       "frame": {
         "h": 96, 
@@ -125,6 +149,30 @@
         "h": 96, 
         "w": 96, 
         "x": 108, 
+        "y": 628
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "cross-s": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 316, 
         "y": 628
       }, 
       "pivot": {
@@ -240,6 +288,30 @@
       }, 
       "trimmed": false
     }, 
+    "gear-s": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 316, 
+        "y": 212
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
     "gearbit-back": {
       "frame": {
         "h": 96, 
@@ -293,6 +365,30 @@
         "h": 96, 
         "w": 96, 
         "x": 108, 
+        "y": 316
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "gearbit-s": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 316, 
         "y": 316
       }, 
       "pivot": {
@@ -384,6 +480,30 @@
       }, 
       "trimmed": false
     }, 
+    "gearloc-s": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 316, 
+        "y": 836
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
     "intercept-back": {
       "frame": {
         "h": 96, 
@@ -437,6 +557,30 @@
         "h": 96, 
         "w": 96, 
         "x": 108, 
+        "y": 524
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "intercept-s": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 316, 
         "y": 524
       }, 
       "pivot": {
@@ -528,6 +672,30 @@
       }, 
       "trimmed": false
     }, 
+    "partloc-s": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 316, 
+        "y": 940
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
     "ramp-back": {
       "frame": {
         "h": 96, 
@@ -581,6 +749,30 @@
         "h": 96, 
         "w": 96, 
         "x": 108, 
+        "y": 732
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "ramp-s": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 316, 
         "y": 732
       }, 
       "pivot": {

@@ -1,27 +1,27 @@
 /// <reference types="pixi.js" />
 
 import { Part } from '../parts/part';
-import { ToolType } from '../board/board';
-import { PartFactory, PartType } from '../parts/factory';
+import { Board, ToolType } from '../board/board';
+import { PartType } from '../parts/factory';
 import { Button, PartButton, SpriteButton } from './button';
 import { Delays } from './config';
 
 export class Toolbox extends PIXI.Container {
 
-  constructor(public readonly partFactory:PartFactory) {
+  constructor(public readonly board:Board) {
     super();
     this._buttons = [ ];
     // add a button to change the position of parts
     this._flipperButton = new SpriteButton(
-      new PIXI.Sprite(partFactory.textures['flipper']));
+      new PIXI.Sprite(board.partFactory.textures['flipper']));
     this._buttons.push(this._flipperButton);
     // add a button to remove parts
-    this._eraserButton = new SpriteButton(
-      new PIXI.Sprite(partFactory.textures['partloc-back']));
+    this._eraserButton = new PartButton(
+      this.board.partFactory.make(PartType.PARTLOC));
     this._buttons.push(this._eraserButton);
     // add buttons for parts
     for (let i:number = PartType.TOOLBOX_MIN; i <= PartType.TOOLBOX_MAX; i++) {
-      const part = partFactory.make(i);
+      const part = board.partFactory.make(i);
       if (! part) continue;
       const button = new PartButton(part);
       this._buttons.push(button);
@@ -35,18 +35,6 @@ export class Toolbox extends PIXI.Container {
   private _buttons:Button[];
   private _eraserButton:Button;
   private _flipperButton:Button;
-
-  public onChange:() => void;
-
-  public get tool():ToolType { return(this._tool); }
-  public set tool(v:ToolType) {
-    if (v === this._tool) return;
-    this._tool = v;
-    if (this.tool !== ToolType.PART) this._partPrototype = null;
-    this._updateToggled();
-    if (this.onChange) this.onChange();
-  }
-  private _tool:ToolType = ToolType.NONE;
 
   public get width():number { return(this._width); }
   public set width(v:number) {
@@ -72,44 +60,41 @@ export class Toolbox extends PIXI.Container {
            (this.margin * (this._buttons.length + 1)));
   }
 
-  // the current part type to add
-  public get partPrototype():Part { return(this._partPrototype); }
-  private _partPrototype:Part = null;
-
   protected _onButtonClick(e:PIXI.interaction.InteractionEvent):void {
     if (e.target === this._flipperButton) {
-      this.tool = ToolType.FLIPPER;
+      this.board.tool = ToolType.FLIPPER;
+      this.board.partPrototype = null;
     }
     else if (e.target === this._eraserButton) {
-      this.tool = ToolType.ERASER;
+      this.board.tool = ToolType.ERASER;
+      this.board.partPrototype = null;
     }
     else if (e.target instanceof PartButton) {
       const newPart:Part = e.target.part;
-      if (newPart === this._partPrototype) {
+      if ((this.board.partPrototype) &&
+          (newPart.type === this.board.partPrototype.type)) {
         // toggle direction if the selected part is clicked again
-        this._partPrototype.flip(Delays.FLIP);
+        newPart.flip(Delays.FLIP);
       }
-      else {
-        this._partPrototype = newPart;
-      }
-      this.tool = ToolType.PART;
-      this._updateToggled();
-      if (this.onChange) this.onChange();
+      this.board.tool = ToolType.PART;
+      this.board.partPrototype = this.board.partFactory.copy(newPart);
     }
+    this._updateToggled();
   }
 
   protected _updateToggled():void {
     // update button toggle states
     for (const button of this._buttons) {
       if (button === this._flipperButton) {
-        button.isToggled = (this.tool === ToolType.FLIPPER);
+        button.isToggled = (this.board.tool === ToolType.FLIPPER);
       }
       else if (button === this._eraserButton) {
-        button.isToggled = (this.tool === ToolType.ERASER);
+        button.isToggled = (this.board.tool === ToolType.ERASER);
       }
-      if (button instanceof PartButton) {
-        button.isToggled = ((this.tool === ToolType.PART) && 
-                            (button.part.type === this.partPrototype.type));
+      else if (button instanceof PartButton) {
+        button.isToggled = ((this.board.tool === ToolType.PART) && 
+                            (this.board.partPrototype) &&
+                            (button.part.type === this.board.partPrototype.type));
       }
     }
   }

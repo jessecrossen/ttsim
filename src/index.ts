@@ -1,17 +1,10 @@
 /// <reference types="pixi.js" />
 
-import { SimulatorApp } from './app'
+import { SimulatorApp } from 'app';
+import { Renderer } from 'renderer';
 
-// create the application
-export const app = new PIXI.Application({
-  width: 256,
-  height: 256,
-  antialias: true,
-  backgroundColor: 0xFFFFFF
-});
 const container = document.getElementById('container');
-const view = app.renderer.view;
-container.appendChild(app.renderer.view);
+container.appendChild(Renderer.instance.view);
 
 // the simulator, which will be initialized once resources have loaded
 let sim:SimulatorApp;
@@ -20,8 +13,7 @@ let sim:SimulatorApp;
 container.style.overflow = 'hidden';
 const resizeApp = () => {
   const r = container.getBoundingClientRect();
-  app.renderer.autoResize = true;
-  app.renderer.resize(r.width, r.height);
+  Renderer.instance.resize(r.width, r.height);
   if (sim) {
     sim.width = r.width;
     sim.height = r.height;
@@ -30,12 +22,14 @@ const resizeApp = () => {
 resizeApp();
 window.addEventListener('resize', resizeApp);
 
+Renderer.start();
+
 // load sprites
 const loader = PIXI.loader;
 loader.add('images/parts.json').load(() => {
   sim = new SimulatorApp(
     PIXI.loader.resources["images/parts.json"].textures);
-  sim.width = app.renderer.width;
-  sim.height = app.renderer.height;
-  app.stage.addChild(sim);
+  sim.width = Renderer.instance.width;
+  sim.height = Renderer.instance.height;
+  Renderer.stage.addChild(sim);
 });

@@ -1,7 +1,7 @@
 /// <reference types="pixi.js" />
 
-import { app } from '../index';
 import { PartType } from './factory';
+import { Renderer } from 'renderer';
 
 export const enum Layer {
   BACK = 0, // keep this at the start to allow iteration through all layers
@@ -221,6 +221,8 @@ export abstract class Part {
     // apply opacity and visibility
     sprite.visible = this.visible;
     sprite.alpha = sprite.visible ? this.alpha : 0;
+    // schedule rendering
+    Renderer.needsUpdate();
   }
 
   // get the angle for the given rotation value

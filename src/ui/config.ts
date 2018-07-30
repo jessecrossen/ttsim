@@ -5,9 +5,9 @@ export const enum Colors {
 
 export const enum Alphas {
   // button states
-  BUTTON_NORMAL = 0.25,
-  BUTTON_OVER = 0.3,
-  BUTTON_DOWN = 0.4,
+  BUTTON_NORMAL = 0.1,
+  BUTTON_OVER = 0.15,
+  BUTTON_DOWN = 0.3,
   // preview parts
   PREVIEW_ALPHA = 0.5
 }

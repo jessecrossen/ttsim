@@ -1,27 +1,22 @@
 /// <reference types="pixi.js" />
 
-import { Board } from './board/board';
-import { PartFactory } from './parts/factory';
-import { Toolbox } from './ui/toolbox';
+import { Board } from 'board/board';
+import { PartFactory } from 'parts/factory';
+import { Toolbox } from 'ui/toolbox';
+import { Renderer } from 'renderer';
 
 export class SimulatorApp extends PIXI.Container {
 
   constructor(public readonly textures:PIXI.loaders.TextureDictionary) {
     super();
     this.partFactory = new PartFactory(textures);
-    this.toolbox = new Toolbox(this.partFactory);
-    this.toolbox.width = 64;
     this.board = new Board(this.partFactory);
+    this.toolbox = new Toolbox(this.board);
+    this.toolbox.width = 64;
     this.board.setSize(11, 9);
     this.addChild(this.toolbox);
     this.board.view.x = this.toolbox.width;
     this.addChild(this.board.view);
-    // hook the toolbox to the board
-    this.toolbox.onChange = () => {
-      this.board.partPrototype = this.toolbox.partPrototype ?
-        this.partFactory.copy(this.toolbox.partPrototype) : null;
-      this.board.tool = this.toolbox.tool;
-    };
   }
   public readonly partFactory:PartFactory;
   public readonly board:Board;
@@ -46,6 +41,7 @@ export class SimulatorApp extends PIXI.Container {
   protected _layout():void {
     this.board.width = Math.max(0, this.width - this.toolbox.width);
     this.board.height = this.height;
+    Renderer.needsUpdate();
   }
 
 }

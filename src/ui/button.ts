@@ -1,8 +1,8 @@
 /// <reference types="pixi.js" />
 
 import { Part, Layer } from 'parts/part';
-import { PartType } from 'parts/factory';
 import { Colors, Alphas } from './config';
+import { Renderer } from 'renderer';
 
 export abstract class Button extends PIXI.Sprite {
 
@@ -12,21 +12,19 @@ export abstract class Button extends PIXI.Sprite {
     this.interactive = true;
     this.anchor.set(0.5, 0.5);
     this._background = new PIXI.Graphics();
-    this._border = new PIXI.Graphics();
     this.addChild(this._background);
-    this.addChild(this._border);
     this._updateState();
     this.onSizeChanged();
     this._bindHover();
   }
   protected _background:PIXI.Graphics;
-  protected _border:PIXI.Graphics;
   
   public get size():number { return(this._size); }
   public set size(v:number) {
     if (v === this._size) return;
     this._size = v;
     this.onSizeChanged();
+    Renderer.needsUpdate();
   }
   private _size:number = 96;
 
@@ -34,6 +32,7 @@ export abstract class Button extends PIXI.Sprite {
   public set isToggled(v:boolean) {
     if (v === this._isToggled) return;
     this._isToggled = v;
+    this._drawDecorations();
     this._updateState();
   }
   private _isToggled:boolean = false;
@@ -69,7 +68,7 @@ export abstract class Button extends PIXI.Sprite {
       this._background.alpha = Alphas.BUTTON_OVER;
     }
     else this._background.alpha = Alphas.BUTTON_NORMAL;
-    this._border.visible = this.isToggled;
+    Renderer.needsUpdate();
   }
   private _mouseOver:boolean = false;
   private _mouseDown:boolean = false;
@@ -80,15 +79,12 @@ export abstract class Button extends PIXI.Sprite {
     const hs = Math.round(s * 0.5);
     if (this._background) {
       this._background.clear();
-      this._background.beginFill(Colors.BUTTON_BACK, 1);
+      this._background.beginFill(
+        this.isToggled ? Colors.HIGHLIGHT : Colors.BUTTON_BACK);
       this._background.drawRoundedRect(- hs, - hs, s, s, radius);
       this._background.endFill();
     }
-    if (this._border) {
-      this._border.clear();
-      this._border.lineStyle(2, Colors.HIGHLIGHT, 0.5);
-      this._border.drawRoundedRect(- hs, - hs, s, s, radius);
-    }
+    Renderer.needsUpdate();
   }
 
 }
@@ -97,9 +93,7 @@ export class PartButton extends Button {
 
   constructor(public readonly part:Part) {
     super();
-    const firstLayer:number = (part.type == PartType.CROSSOVER) ?
-      Layer.BACK : Layer.BACK + 1;
-    for (let i:number = firstLayer; i < Layer.COUNT; i++) {
+    for (let i:number = Layer.BACK; i < Layer.COUNT; i++) {
       const sprite = part.getSpriteForLayer(i);
       if (sprite) this.addChild(sprite);
     }

@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "pixi-filters": "^2.6.0",
     "pixi.js": "^4.8.0"
   },
   "devDependencies": {

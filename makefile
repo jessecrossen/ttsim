@@ -11,8 +11,8 @@ server:
 
 # APP
 
-app: docs/index.html docs/pixi.min.js docs/system.js \
-		 docs/app.js
+app: docs/index.html docs/pixi.min.js docs/pixi-filters.js \
+		 docs/system.js docs/app.js
 
 docs/index.html: src/index.html
 	mkdir -p docs
@@ -24,11 +24,15 @@ docs/app.js: node_modules $(shell find src -name '*.ts')
 
 docs/system.js: node_modules
 	mkdir -p docs
-	cp node_modules/systemjs/docs/system.js docs/
+	cp node_modules/systemjs/dist/system.js docs/
+
+docs/pixi-filters.js: node_modules
+	mkdir -p docs
+	cp node_modules/pixi-filters/dist/pixi-filters.js docs/
 
 docs/pixi.min.js: node_modules
 	mkdir -p docs
-	cp node_modules/pixi.js/docs/pixi.min.js docs/
+	cp node_modules/pixi.js/dist/pixi.min.js docs/
 
 # DEPENDENCIES
 

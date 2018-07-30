@@ -582,6 +582,7 @@ System.register("util/disjoint", [], function (exports_10, context_10) {
     };
 });
 /// <reference types="pixi.js" />
+/// <reference types="pixi-filters" />
 System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exports_11, context_11) {
     "use strict";
     var __moduleName = context_11 && context_11.id;
@@ -611,16 +612,19 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                     this._partPrototype = null;
                     // initialize layers
                     for (let i = 0 /* BACK */; i < 3 /* COUNT */; i++) {
-                        const c = new PIXI.particles.ParticleContainer(1500, {
-                            vertices: true,
-                            position: true,
-                            rotation: true,
-                            tint: true,
-                            alpha: true
-                        });
+                        // const c = new PIXI.particles.ParticleContainer(1500, 
+                        //   {
+                        //     vertices: true,
+                        //     position: true, 
+                        //     rotation: true,
+                        //     tint: true,
+                        //     alpha: true
+                        //   }, 100, true);
+                        const c = new PIXI.Container();
                         this.view.addChild(c);
                         this._containers.set(i, c);
                     }
+                    this._updateDropShadows();
                     this._bindMouseEvents();
                 }
                 // LAYOUT *******************************************************************
@@ -646,6 +650,7 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                         return;
                     this._partSize = v;
                     this.layoutParts();
+                    this._updateDropShadows();
                 }
                 // get the size of the part grid
                 get columnCount() { return (this._columnCount); }
@@ -904,6 +909,32 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                         part.connected = set;
                     }
                 }
+                // EFFECTS ******************************************************************
+                _updateDropShadows() {
+                    this._containers.get(0 /* BACK */).filters = [
+                        this._makeShadow(this.partSize / 32.0)
+                    ];
+                    this._containers.get(1 /* MID */).filters = [
+                        this._makeShadow(this.partSize / 16.0)
+                    ];
+                    this._containers.get(2 /* FRONT */).filters = [
+                        this._makeShadow(this.partSize / 8.0)
+                    ];
+                }
+                _makeShadow(size) {
+                    return (new PIXI.filters.DropShadowFilter({
+                        alpha: 0.35,
+                        blur: size * 0.25,
+                        color: 0x000000,
+                        distance: size,
+                        kernels: null,
+                        pixelSize: 1,
+                        quality: 3,
+                        resolution: PIXI.settings.RESOLUTION,
+                        rotation: 90,
+                        shadowOnly: false
+                    }));
+                }
                 // INTERACTION **************************************************************
                 _bindMouseEvents() {
                     this.view.interactive = true;
@@ -1056,7 +1087,9 @@ System.register("ui/button", [], function (exports_12, context_12) {
                 constructor(part) {
                     super();
                     this.part = part;
-                    for (let i = 0 /* BACK */ + 1; i < 3 /* COUNT */; i++) {
+                    const firstLayer = (part.type == 3 /* CROSSOVER */) ?
+                        0 /* BACK */ : 0 /* BACK */ + 1;
+                    for (let i = firstLayer; i < 3 /* COUNT */; i++) {
                         const sprite = part.getSpriteForLayer(i);
                         if (sprite)
                             this.addChild(sprite);

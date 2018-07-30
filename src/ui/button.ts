@@ -1,6 +1,7 @@
 /// <reference types="pixi.js" />
 
-import { Part, Layer } from '../parts/part';
+import { Part, Layer } from 'parts/part';
+import { PartType } from 'parts/factory';
 import { Colors, Alphas } from './config';
 
 export abstract class Button extends PIXI.Sprite {
@@ -96,7 +97,9 @@ export class PartButton extends Button {
 
   constructor(public readonly part:Part) {
     super();
-    for (let i:number = Layer.BACK + 1; i < Layer.COUNT; i++) {
+    const firstLayer:number = (part.type == PartType.CROSSOVER) ?
+      Layer.BACK : Layer.BACK + 1;
+    for (let i:number = firstLayer; i < Layer.COUNT; i++) {
       const sprite = part.getSpriteForLayer(i);
       if (sprite) this.addChild(sprite);
     }

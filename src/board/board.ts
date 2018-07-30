@@ -1,4 +1,5 @@
 /// <reference types="pixi.js" />
+/// <reference types="pixi-filters" />
 
 import { Part, Layer } from '../parts/part';
 import { PartFactory, PartType } from '../parts/factory';
@@ -13,25 +14,28 @@ export const enum ToolType {
   FLIPPER
 }
 
-type LayerToContainerMap = Map<Layer,PIXI.particles.ParticleContainer>;
+type LayerToContainerMap = Map<Layer,PIXI.Container>;
 
 export class Board {
 
   constructor(public readonly partFactory:PartFactory) {
     // initialize layers
     for (let i:number = Layer.BACK; i < Layer.COUNT; i++) {
-      const c = new PIXI.particles.ParticleContainer(1500, 
-        {
-          vertices: true,
-          position: true, 
-          rotation: true,
-          tint: true,
-          alpha: true
-        });
+      // const c = new PIXI.particles.ParticleContainer(1500, 
+      //   {
+      //     vertices: true,
+      //     position: true, 
+      //     rotation: true,
+      //     tint: true,
+      //     alpha: true
+      //   }, 100, true);
+      const c = new PIXI.Container();
       this.view.addChild(c);
       this._containers.set(i, c);
     }
+    this._updateDropShadows();
     this._bindMouseEvents();
+    
   }
   public readonly view:PIXI.Sprite = new PIXI.Sprite();
   private _containers:LayerToContainerMap = new Map();
@@ -62,6 +66,7 @@ export class Board {
     if (v === this._partSize) return;
     this._partSize = v;
     this.layoutParts();
+    this._updateDropShadows();
   }
   private _partSize:number = 64;
 
@@ -323,6 +328,32 @@ export class Board {
       set.add(part);
       part.connected = set;
     }
+  }
+
+  // EFFECTS ******************************************************************
+
+  protected _updateDropShadows():void {
+    this._containers.get(Layer.BACK).filters = [
+      this._makeShadow(this.partSize / 32.0) ];
+    this._containers.get(Layer.MID).filters = [
+      this._makeShadow(this.partSize / 16.0) ];
+    this._containers.get(Layer.FRONT).filters = [
+      this._makeShadow(this.partSize / 8.0) ];
+  }
+
+  protected _makeShadow(size:number):PIXI.filters.DropShadowFilter {
+    return(new PIXI.filters.DropShadowFilter({
+      alpha: 0.35,
+      blur: size * 0.25,
+      color: 0x000000,
+      distance: size,
+      kernels: null,
+      pixelSize: 1,
+      quality: 3,
+      resolution: PIXI.settings.RESOLUTION,
+      rotation: 90,
+      shadowOnly: false
+    }));
   }
 
   // INTERACTION **************************************************************

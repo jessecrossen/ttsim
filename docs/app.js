@@ -739,7 +739,7 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                         this.removePart(this._partPrototype);
                     this._partPrototype = p;
                     if (this._partPrototype) {
-                        this._partPrototype.alpha = 0.25 /* PREVIEW_ALPHA */;
+                        this._partPrototype.alpha = 0.5 /* PREVIEW_ALPHA */;
                         this._partPrototype.visible = false;
                         this.addPart(this._partPrototype);
                     }
@@ -931,7 +931,7 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                         pixelSize: 1,
                         quality: 3,
                         resolution: PIXI.settings.RESOLUTION,
-                        rotation: 90,
+                        rotation: 45,
                         shadowOnly: false
                     }));
                 }

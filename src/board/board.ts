@@ -351,7 +351,7 @@ export class Board {
       pixelSize: 1,
       quality: 3,
       resolution: PIXI.settings.RESOLUTION,
-      rotation: 90,
+      rotation: 45,
       shadowOnly: false
     }));
   }

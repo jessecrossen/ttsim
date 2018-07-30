@@ -9,7 +9,7 @@ export const enum Alphas {
   BUTTON_OVER = 0.3,
   BUTTON_DOWN = 0.4,
   // preview parts
-  PREVIEW_ALPHA = 0.25
+  PREVIEW_ALPHA = 0.5
 }
 
 export const enum Delays {

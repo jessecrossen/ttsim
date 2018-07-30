@@ -7,6 +7,5 @@ export class Crossover extends Part {
   public get canMirror():boolean { return(true); }
   public get canFlip():boolean { return(false); }
   public get type():PartType { return(PartType.CROSSOVER); }
-  public get texturePrefix():string { return('cross'); }
 
 }

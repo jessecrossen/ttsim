@@ -6,6 +6,7 @@ import { PartFactory, PartType } from '../parts/factory';
 import { GearBase, Gear } from '../parts/gearbit';
 import { Alphas, Delays } from '../ui/config';
 import { DisjointSet } from '../util/disjoint';
+import { Renderer } from 'renderer';
 
 export const enum ToolType {
   NONE,
@@ -27,12 +28,23 @@ export class Board {
   public readonly view:PIXI.Sprite = new PIXI.Sprite();
   private _layers:PIXI.Container = new PIXI.Container();
   
+  // whether to show parts in schematic form
+  public get schematic():boolean { return(this._schematic); }
+  public set schematic(v:boolean) {
+    if (v === this._schematic) return;
+    this._schematic = v;
+    this._updateLayerVisibility();
+  }
+  protected _schematic:boolean = false;
+
   // LAYERS *******************************************************************
 
   protected _initContainers():void {
     this._setContainer(Layer.BACK, false);
     this._setContainer(Layer.MID, false);
     this._setContainer(Layer.FRONT, false);
+    this._setContainer(Layer.SCHEMATIC, true);
+    this._updateLayerVisibility();
   }
   private _containers:LayerToContainerMap = new Map();
 
@@ -90,6 +102,17 @@ export class Board {
     this._containers.get(Layer.BACK).filterArea = area;
     this._containers.get(Layer.MID).filterArea = area;
     this._containers.get(Layer.FRONT).filterArea = area;
+  }
+
+  protected _updateLayerVisibility():void {
+    const showContainer = (layer:Layer, show:boolean) => {
+      if (this._containers.has(layer)) this._containers.get(layer).visible = show;
+    };
+    showContainer(Layer.BACK, ! this.schematic);
+    showContainer(Layer.MID, ! this.schematic);
+    showContainer(Layer.FRONT, ! this.schematic);
+    showContainer(Layer.SCHEMATIC, this.schematic);
+    Renderer.needsUpdate();
   }
 
   // LAYOUT *******************************************************************
@@ -262,20 +285,19 @@ export class Board {
 
   // add a part to the board's layers
   public addPart(part:Part):void {
-    for (let i:number = Layer.BACK; i < Layer.COUNT; i++) {
-      const sprite = part.getSpriteForLayer(i);
+    for (let layer of this._containers.keys()) {
+      const sprite = part.getSpriteForLayer(layer);
       if (! sprite) continue;
-      const container = this._containers.get(i);
-      container.addChild(sprite);
+      this._containers.get(layer).addChild(sprite);
     }
   }
 
   // remove a part from the board's layers
   public removePart(part:Part):void {
-    for (let i:number = Layer.BACK; i < Layer.COUNT; i++) {
-      const sprite = part.getSpriteForLayer(i);
+    for (let layer of this._containers.keys()) {
+      const sprite = part.getSpriteForLayer(layer);
       if (! sprite) continue;
-      const container = this._containers.get(i);
+      const container = this._containers.get(layer);
       if (sprite.parent === container) container.removeChild(sprite);
     }
   }

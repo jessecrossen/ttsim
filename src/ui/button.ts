@@ -93,7 +93,7 @@ export class PartButton extends Button {
 
   constructor(public readonly part:Part) {
     super();
-    for (let i:number = Layer.BACK; i < Layer.COUNT; i++) {
+    for (let i:number = Layer.BACK; i <= Layer.FRONT; i++) {
       const sprite = part.getSpriteForLayer(i);
       if (sprite) this.addChild(sprite);
     }

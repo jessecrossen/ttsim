@@ -26,6 +26,11 @@ export class Toolbox extends PIXI.Container {
       const button = new PartButton(part);
       this._buttons.push(button);
     }
+    // add a button to toggle schematic view
+    this._schematicButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['schematic']));
+    this._buttons.push(this._schematicButton);
+    // do common setup for all buttons
     for (const button of this._buttons) {
       this.addChild(button);
       button.addListener('click', this._onButtonClick.bind(this));
@@ -35,6 +40,7 @@ export class Toolbox extends PIXI.Container {
   private _buttons:Button[];
   private _eraserButton:Button;
   private _flipperButton:Button;
+  private _schematicButton:Button;
 
   public get width():number { return(this._width); }
   public set width(v:number) {
@@ -69,6 +75,9 @@ export class Toolbox extends PIXI.Container {
       this.board.tool = ToolType.ERASER;
       this.board.partPrototype = null;
     }
+    else if (e.target === this._schematicButton) {
+      this.board.schematic = ! this.board.schematic;
+    }
     else if (e.target instanceof PartButton) {
       const newPart:Part = e.target.part;
       if ((this.board.partPrototype) &&
@@ -90,6 +99,9 @@ export class Toolbox extends PIXI.Container {
       }
       else if (button === this._eraserButton) {
         button.isToggled = (this.board.tool === ToolType.ERASER);
+      }
+      else if (button === this._schematicButton) {
+        button.isToggled = this.board.schematic;
       }
       else if (button instanceof PartButton) {
         button.isToggled = ((this.board.tool === ToolType.PART) && 

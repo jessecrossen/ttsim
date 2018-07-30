@@ -7,6 +7,7 @@ export const enum Layer {
   BACK = 0, // keep this at the start to allow iteration through all layers
   MID,
   FRONT,
+  SCHEMATIC,
   COUNT // keep this at the end to allow iteration through all layers
 };
 
@@ -150,12 +151,13 @@ export abstract class Part {
   // SPRITES ******************************************************************
 
   // the prefix to append before texture names for this part
-  public abstract get texturePrefix():string;
+  public get texturePrefix():string { return(this.constructor.name); };
   // get texture names for the various layers
   public getTextureNameForLayer(layer:Layer):string {
-    if (layer === Layer.BACK) return(this.texturePrefix+'-back');
-    if (layer === Layer.MID) return(this.texturePrefix+'-mid');
-    if (layer === Layer.FRONT) return(this.texturePrefix+'-front');
+    if (layer === Layer.BACK) return(this.texturePrefix+'-b');
+    if (layer === Layer.MID) return(this.texturePrefix+'-m');
+    if (layer === Layer.FRONT) return(this.texturePrefix+'-f');
+    if (layer === Layer.SCHEMATIC) return(this.texturePrefix+'-s');
     return('');
   }
   

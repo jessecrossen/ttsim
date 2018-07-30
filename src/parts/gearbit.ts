@@ -34,7 +34,6 @@ export class Gearbit extends GearBase {
   public get canMirror():boolean { return(true); }
   public get canFlip():boolean { return(false); }
   public get type():PartType { return(PartType.GEARBIT); }
-  public get texturePrefix():string { return('gearbit'); }
 
 }
 
@@ -44,7 +43,6 @@ export class Gear extends GearBase {
   public get canMirror():boolean { return(false); } // (the cross is not mirrored)
   public get canFlip():boolean { return(false); }
   public get type():PartType { return(PartType.GEAR); }
-  public get texturePrefix():string { return('gear'); }
 
   // gears rotate in the reverse direction from their gearbits, but making
   //  them have the same rotation value is convenient

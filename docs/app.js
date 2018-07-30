@@ -14,7 +14,6 @@ System.register("parts/location", ["parts/part"], function (exports_1, context_1
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
                 get type() { return (0 /* PARTLOC */); }
-                get texturePrefix() { return ('partloc'); }
             };
             exports_1("PartLocation", PartLocation);
             GearLocation = class GearLocation extends part_1.Part {
@@ -22,7 +21,6 @@ System.register("parts/location", ["parts/part"], function (exports_1, context_1
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
                 get type() { return (1 /* GEARLOC */); }
-                get texturePrefix() { return ('gearloc'); }
             };
             exports_1("GearLocation", GearLocation);
         }
@@ -44,7 +42,6 @@ System.register("parts/ramp", ["parts/part"], function (exports_2, context_2) {
                 get canMirror() { return (false); }
                 get canFlip() { return (true); }
                 get type() { return (2 /* RAMP */); }
-                get texturePrefix() { return ('ramp'); }
             };
             exports_2("Ramp", Ramp);
         }
@@ -66,7 +63,6 @@ System.register("parts/crossover", ["parts/part"], function (exports_3, context_
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
                 get type() { return (3 /* CROSSOVER */); }
-                get texturePrefix() { return ('cross'); }
             };
             exports_3("Crossover", Crossover);
         }
@@ -88,7 +84,6 @@ System.register("parts/interceptor", ["parts/part"], function (exports_4, contex
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
                 get type() { return (4 /* INTERCEPTOR */); }
-                get texturePrefix() { return ('intercept'); }
             };
             exports_4("Interceptor", Interceptor);
         }
@@ -110,7 +105,6 @@ System.register("parts/bit", ["parts/part"], function (exports_5, context_5) {
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
                 get type() { return (5 /* BIT */); }
-                get texturePrefix() { return ('bit'); }
             };
             exports_5("Bit", Bit);
         }
@@ -160,7 +154,6 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
                 get type() { return (6 /* GEARBIT */); }
-                get texturePrefix() { return ('gearbit'); }
             };
             exports_6("Gearbit", Gearbit);
             Gear = class Gear extends GearBase {
@@ -168,7 +161,6 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
                 get canMirror() { return (false); } // (the cross is not mirrored)
                 get canFlip() { return (false); }
                 get type() { return (7 /* GEAR */); }
-                get texturePrefix() { return ('gear'); }
                 // gears rotate in the reverse direction from their gearbits, but making
                 //  them have the same rotation value is convenient
                 _angleForRotation(r) {
@@ -408,14 +400,20 @@ System.register("parts/part", ["renderer"], function (exports_9, context_9) {
                         this.cancelRotationAnimation();
                     }
                 }
+                // SPRITES ******************************************************************
+                // the prefix to append before texture names for this part
+                get texturePrefix() { return (this.constructor.name); }
+                ;
                 // get texture names for the various layers
                 getTextureNameForLayer(layer) {
                     if (layer === 0 /* BACK */)
-                        return (this.texturePrefix + '-back');
+                        return (this.texturePrefix + '-b');
                     if (layer === 1 /* MID */)
-                        return (this.texturePrefix + '-mid');
+                        return (this.texturePrefix + '-m');
                     if (layer === 2 /* FRONT */)
-                        return (this.texturePrefix + '-front');
+                        return (this.texturePrefix + '-f');
+                    if (layer === 3 /* SCHEMATIC */)
+                        return (this.texturePrefix + '-s');
                     return ('');
                 }
                 // return a sprite for the given layer, or null if there is none
@@ -444,7 +442,7 @@ System.register("parts/part", ["renderer"], function (exports_9, context_9) {
                 }
                 // update all sprites to track the part's state
                 _updateSprites() {
-                    for (let i = 0 /* BACK */; i < 3 /* COUNT */; i++) {
+                    for (let i = 0 /* BACK */; i < 4 /* COUNT */; i++) {
                         if (this._sprites.has(i))
                             this._updateSprite(i);
                     }
@@ -622,10 +620,10 @@ System.register("util/disjoint", [], function (exports_11, context_11) {
 });
 /// <reference types="pixi.js" />
 /// <reference types="pixi-filters" />
-System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exports_12, context_12) {
+System.register("board/board", ["parts/gearbit", "util/disjoint", "renderer"], function (exports_12, context_12) {
     "use strict";
     var __moduleName = context_12 && context_12.id;
-    var gearbit_2, disjoint_1, Board;
+    var gearbit_2, disjoint_1, renderer_2, Board;
     return {
         setters: [
             function (gearbit_2_1) {
@@ -633,6 +631,9 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
             },
             function (disjoint_1_1) {
                 disjoint_1 = disjoint_1_1;
+            },
+            function (renderer_2_1) {
+                renderer_2 = renderer_2_1;
             }
         ],
         execute: function () {
@@ -641,6 +642,7 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                     this.partFactory = partFactory;
                     this.view = new PIXI.Sprite();
                     this._layers = new PIXI.Container();
+                    this._schematic = false;
                     this._containers = new Map();
                     this._width = 0;
                     this._height = 0;
@@ -655,11 +657,21 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                     this._initContainers();
                     this._updateDropShadows();
                 }
+                // whether to show parts in schematic form
+                get schematic() { return (this._schematic); }
+                set schematic(v) {
+                    if (v === this._schematic)
+                        return;
+                    this._schematic = v;
+                    this._updateLayerVisibility();
+                }
                 // LAYERS *******************************************************************
                 _initContainers() {
                     this._setContainer(0 /* BACK */, false);
                     this._setContainer(1 /* MID */, false);
                     this._setContainer(2 /* FRONT */, false);
+                    this._setContainer(3 /* SCHEMATIC */, true);
+                    this._updateLayerVisibility();
                 }
                 _setContainer(layer, highPerformance = false) {
                     const newContainer = this._makeContainer(highPerformance);
@@ -715,6 +727,17 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                     this._containers.get(0 /* BACK */).filterArea = area;
                     this._containers.get(1 /* MID */).filterArea = area;
                     this._containers.get(2 /* FRONT */).filterArea = area;
+                }
+                _updateLayerVisibility() {
+                    const showContainer = (layer, show) => {
+                        if (this._containers.has(layer))
+                            this._containers.get(layer).visible = show;
+                    };
+                    showContainer(0 /* BACK */, !this.schematic);
+                    showContainer(1 /* MID */, !this.schematic);
+                    showContainer(2 /* FRONT */, !this.schematic);
+                    showContainer(3 /* SCHEMATIC */, this.schematic);
+                    renderer_2.Renderer.needsUpdate();
                 }
                 // LAYOUT *******************************************************************
                 get width() { return (this._width); }
@@ -880,21 +903,20 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
                 }
                 // add a part to the board's layers
                 addPart(part) {
-                    for (let i = 0 /* BACK */; i < 3 /* COUNT */; i++) {
-                        const sprite = part.getSpriteForLayer(i);
+                    for (let layer of this._containers.keys()) {
+                        const sprite = part.getSpriteForLayer(layer);
                         if (!sprite)
                             continue;
-                        const container = this._containers.get(i);
-                        container.addChild(sprite);
+                        this._containers.get(layer).addChild(sprite);
                     }
                 }
                 // remove a part from the board's layers
                 removePart(part) {
-                    for (let i = 0 /* BACK */; i < 3 /* COUNT */; i++) {
-                        const sprite = part.getSpriteForLayer(i);
+                    for (let layer of this._containers.keys()) {
+                        const sprite = part.getSpriteForLayer(layer);
                         if (!sprite)
                             continue;
-                        const container = this._containers.get(i);
+                        const container = this._containers.get(layer);
                         if (sprite.parent === container)
                             container.removeChild(sprite);
                     }
@@ -1062,11 +1084,11 @@ System.register("board/board", ["parts/gearbit", "util/disjoint"], function (exp
 System.register("ui/button", ["renderer"], function (exports_13, context_13) {
     "use strict";
     var __moduleName = context_13 && context_13.id;
-    var renderer_2, Button, PartButton, SpriteButton;
+    var renderer_3, Button, PartButton, SpriteButton;
     return {
         setters: [
-            function (renderer_2_1) {
-                renderer_2 = renderer_2_1;
+            function (renderer_3_1) {
+                renderer_3 = renderer_3_1;
             }
         ],
         execute: function () {
@@ -1092,7 +1114,7 @@ System.register("ui/button", ["renderer"], function (exports_13, context_13) {
                         return;
                     this._size = v;
                     this.onSizeChanged();
-                    renderer_2.Renderer.needsUpdate();
+                    renderer_3.Renderer.needsUpdate();
                 }
                 get isToggled() { return (this._isToggled); }
                 set isToggled(v) {
@@ -1132,7 +1154,7 @@ System.register("ui/button", ["renderer"], function (exports_13, context_13) {
                     }
                     else
                         this._background.alpha = 0.1 /* BUTTON_NORMAL */;
-                    renderer_2.Renderer.needsUpdate();
+                    renderer_3.Renderer.needsUpdate();
                 }
                 _drawDecorations() {
                     const radius = 8; // pixels
@@ -1144,7 +1166,7 @@ System.register("ui/button", ["renderer"], function (exports_13, context_13) {
                         this._background.drawRoundedRect(-hs, -hs, s, s, radius);
                         this._background.endFill();
                     }
-                    renderer_2.Renderer.needsUpdate();
+                    renderer_3.Renderer.needsUpdate();
                 }
             };
             exports_13("Button", Button);
@@ -1152,7 +1174,7 @@ System.register("ui/button", ["renderer"], function (exports_13, context_13) {
                 constructor(part) {
                     super();
                     this.part = part;
-                    for (let i = 0 /* BACK */; i < 3 /* COUNT */; i++) {
+                    for (let i = 0 /* BACK */; i <= 2 /* FRONT */; i++) {
                         const sprite = part.getSpriteForLayer(i);
                         if (sprite)
                             this.addChild(sprite);
@@ -1222,6 +1244,10 @@ System.register("ui/toolbox", ["ui/button"], function (exports_14, context_14) {
                         const button = new button_1.PartButton(part);
                         this._buttons.push(button);
                     }
+                    // add a button to toggle schematic view
+                    this._schematicButton = new button_1.SpriteButton(new PIXI.Sprite(board.partFactory.textures['schematic']));
+                    this._buttons.push(this._schematicButton);
+                    // do common setup for all buttons
                     for (const button of this._buttons) {
                         this.addChild(button);
                         button.addListener('click', this._onButtonClick.bind(this));
@@ -1258,6 +1284,9 @@ System.register("ui/toolbox", ["ui/button"], function (exports_14, context_14) {
                         this.board.tool = 2 /* ERASER */;
                         this.board.partPrototype = null;
                     }
+                    else if (e.target === this._schematicButton) {
+                        this.board.schematic = !this.board.schematic;
+                    }
                     else if (e.target instanceof button_1.PartButton) {
                         const newPart = e.target.part;
                         if ((this.board.partPrototype) &&
@@ -1278,6 +1307,9 @@ System.register("ui/toolbox", ["ui/button"], function (exports_14, context_14) {
                         }
                         else if (button === this._eraserButton) {
                             button.isToggled = (this.board.tool === 2 /* ERASER */);
+                        }
+                        else if (button === this._schematicButton) {
+                            button.isToggled = this.board.schematic;
                         }
                         else if (button instanceof button_1.PartButton) {
                             button.isToggled = ((this.board.tool === 1 /* PART */) &&
@@ -1308,7 +1340,7 @@ System.register("ui/toolbox", ["ui/button"], function (exports_14, context_14) {
 System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer"], function (exports_15, context_15) {
     "use strict";
     var __moduleName = context_15 && context_15.id;
-    var board_1, factory_1, toolbox_1, renderer_3, SimulatorApp;
+    var board_1, factory_1, toolbox_1, renderer_4, SimulatorApp;
     return {
         setters: [
             function (board_1_1) {
@@ -1320,8 +1352,8 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer"
             function (toolbox_1_1) {
                 toolbox_1 = toolbox_1_1;
             },
-            function (renderer_3_1) {
-                renderer_3 = renderer_3_1;
+            function (renderer_4_1) {
+                renderer_4 = renderer_4_1;
             }
         ],
         execute: function () {
@@ -1357,7 +1389,7 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer"
                 _layout() {
                     this.board.width = Math.max(0, this.width - this.toolbox.width);
                     this.board.height = this.height;
-                    renderer_3.Renderer.needsUpdate();
+                    renderer_4.Renderer.needsUpdate();
                 }
             };
             exports_15("SimulatorApp", SimulatorApp);
@@ -1368,24 +1400,24 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer"
 System.register("index", ["app", "renderer"], function (exports_16, context_16) {
     "use strict";
     var __moduleName = context_16 && context_16.id;
-    var app_1, renderer_4, container, sim, resizeApp, loader;
+    var app_1, renderer_5, container, sim, resizeApp, loader;
     return {
         setters: [
             function (app_1_1) {
                 app_1 = app_1_1;
             },
-            function (renderer_4_1) {
-                renderer_4 = renderer_4_1;
+            function (renderer_5_1) {
+                renderer_5 = renderer_5_1;
             }
         ],
         execute: function () {
             container = document.getElementById('container');
-            container.appendChild(renderer_4.Renderer.instance.view);
+            container.appendChild(renderer_5.Renderer.instance.view);
             // dynamically resize the app to track the size of the browser window
             container.style.overflow = 'hidden';
             resizeApp = () => {
                 const r = container.getBoundingClientRect();
-                renderer_4.Renderer.instance.resize(r.width, r.height);
+                renderer_5.Renderer.instance.resize(r.width, r.height);
                 if (sim) {
                     sim.width = r.width;
                     sim.height = r.height;
@@ -1393,14 +1425,14 @@ System.register("index", ["app", "renderer"], function (exports_16, context_16) 
             };
             resizeApp();
             window.addEventListener('resize', resizeApp);
-            renderer_4.Renderer.start();
+            renderer_5.Renderer.start();
             // load sprites
             loader = PIXI.loader;
             loader.add('images/parts.json').load(() => {
                 sim = new app_1.SimulatorApp(PIXI.loader.resources["images/parts.json"].textures);
-                sim.width = renderer_4.Renderer.instance.width;
-                sim.height = renderer_4.Renderer.instance.height;
-                renderer_4.Renderer.stage.addChild(sim);
+                sim.width = renderer_5.Renderer.instance.width;
+                sim.height = renderer_5.Renderer.instance.height;
+                renderer_5.Renderer.stage.addChild(sim);
             });
         }
     };

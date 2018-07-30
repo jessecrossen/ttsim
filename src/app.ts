@@ -13,10 +13,12 @@ export class SimulatorApp extends PIXI.Container {
     this.board = new Board(this.partFactory);
     this.toolbox = new Toolbox(this.board);
     this.toolbox.width = 64;
-    this.board.setSize(11, 9);
-    this.addChild(this.toolbox);
+    this.board.setSize(11, 11);
+    this.board.centerColumn = 5;
+    this.board.centerRow = 5;
     this.board.view.x = this.toolbox.width;
     this.addChild(this.board.view);
+    this.addChild(this.toolbox);
   }
   public readonly partFactory:PartFactory;
   public readonly board:Board;

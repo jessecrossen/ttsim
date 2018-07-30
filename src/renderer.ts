@@ -1,5 +1,7 @@
 /// <reference types="pixi.js" />
 
+import { Colors } from 'ui/config';
+
 export class Renderer {
 
   public static needsUpdate():void {
@@ -9,8 +11,7 @@ export class Renderer {
 
   public static readonly instance = PIXI.autoDetectRenderer({
     antialias: false,
-    backgroundColor: 0xFFFFFF,
-    roundPixels: true
+    backgroundColor: Colors.BACKGROUND
   });
 
   public static readonly stage = new PIXI.Container();

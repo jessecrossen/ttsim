@@ -37,6 +37,16 @@ export abstract class Button extends PIXI.Sprite {
   }
   private _isToggled:boolean = false;
 
+  public get isEnabled():boolean { return(this._isEnabled); }
+  public set isEnabled(v:boolean) {
+    if (v === this._isEnabled) return;
+    this._isEnabled = v;
+    this.interactive = v;
+    this.cursor = v ? 'pointer' : 'auto';
+    this._updateState();
+  }
+  private _isEnabled:boolean = true;
+
   protected onSizeChanged():void {
     this._drawDecorations();
   }
@@ -61,13 +71,19 @@ export abstract class Button extends PIXI.Sprite {
   }
 
   protected _updateState():void {
-    if ((this._mouseOver) && (this._mouseDown)) {
-      this._background.alpha = Alphas.BUTTON_DOWN;
+    let alpha:number = Alphas.BUTTON_NORMAL;
+    if (this.isEnabled) {
+      if ((this._mouseOver) && (this._mouseDown)) {
+        alpha = Alphas.BUTTON_DOWN;
+      }
+      else if (this._mouseOver) {
+        alpha = Alphas.BUTTON_OVER;
+      }
+      else alpha = Alphas.BUTTON_NORMAL;
+      if (this.isToggled) alpha = Math.min(alpha * 2, 1.0);
     }
-    else if (this._mouseOver) {
-      this._background.alpha = Alphas.BUTTON_OVER;
-    }
-    else this._background.alpha = Alphas.BUTTON_NORMAL;
+    this._background.alpha = alpha;
+    this.alpha = this.isEnabled ? 1.0 : Alphas.BUTTON_DISABLED;
     Renderer.needsUpdate();
   }
   private _mouseOver:boolean = false;
@@ -79,6 +95,9 @@ export abstract class Button extends PIXI.Sprite {
     const hs = Math.round(s * 0.5);
     if (this._background) {
       this._background.clear();
+      if (this.isToggled) {
+        this._background.lineStyle(2, Colors.HIGHLIGHT);
+      }
       this._background.beginFill(
         this.isToggled ? Colors.HIGHLIGHT : Colors.BUTTON_BACK);
       this._background.drawRoundedRect(- hs, - hs, s, s, radius);
@@ -93,12 +112,36 @@ export class PartButton extends Button {
 
   constructor(public readonly part:Part) {
     super();
+    this._schematicView = part.getSpriteForLayer(Layer.SCHEMATIC);
+    if (! this._schematicView) {
+      this._schematicView = part.getSpriteForLayer(Layer.SCHEMATIC_BACK);
+    }
+    this._normalView = new PIXI.Container();
+    this.addChild(this._normalView);
     for (let i:number = Layer.BACK; i <= Layer.FRONT; i++) {
       const sprite = part.getSpriteForLayer(i);
-      if (sprite) this.addChild(sprite);
+      if (sprite) this._normalView.addChild(sprite);
     }
     this.onSizeChanged();
   }
+  private _normalView:PIXI.Container;
+  private _schematicView:PIXI.Sprite;
+
+  public get schematic():boolean { return(this._schematic); }
+  public set schematic(v:boolean) {
+    if (v === this._schematic) return;
+    this._schematic = v;
+    if (v) {
+      this.removeChild(this._normalView);
+      this.addChild(this._schematicView);
+    }
+    else {
+      this.addChild(this._normalView);
+      this.removeChild(this._schematicView);
+    }
+    Renderer.needsUpdate();
+  }
+  private _schematic:boolean = false;
 
   protected onSizeChanged():void {
     super.onSizeChanged();

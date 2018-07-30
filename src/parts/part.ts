@@ -7,7 +7,10 @@ export const enum Layer {
   BACK = 0, // keep this at the start to allow iteration through all layers
   MID,
   FRONT,
+  SCHEMATIC_BACK,
   SCHEMATIC,
+  SCHEMATIC_2,
+  SCHEMATIC_4,
   COUNT // keep this at the end to allow iteration through all layers
 };
 
@@ -151,14 +154,21 @@ export abstract class Part {
   // SPRITES ******************************************************************
 
   // the prefix to append before texture names for this part
-  public get texturePrefix():string { return(this.constructor.name); };
+  public get texturePrefix():string { return(this.constructor.name); }
+  // the suffix to append to select a specific layer
+  public textureSuffix(layer:Layer):string {
+    if (layer === Layer.BACK) return('-b');
+    if (layer === Layer.MID) return('-m');
+    if (layer === Layer.FRONT) return('-f');
+    if (layer === Layer.SCHEMATIC_BACK) return('-sb');
+    if (layer === Layer.SCHEMATIC) return('-s');
+    if (layer === Layer.SCHEMATIC_4) return('-s4');
+    if (layer === Layer.SCHEMATIC_2) return('-s2');
+    return('');
+  }
   // get texture names for the various layers
   public getTextureNameForLayer(layer:Layer):string {
-    if (layer === Layer.BACK) return(this.texturePrefix+'-b');
-    if (layer === Layer.MID) return(this.texturePrefix+'-m');
-    if (layer === Layer.FRONT) return(this.texturePrefix+'-f');
-    if (layer === Layer.SCHEMATIC) return(this.texturePrefix+'-s');
-    return('');
+    return(this.texturePrefix+this.textureSuffix(layer));
   }
   
   // return a sprite for the given layer, or null if there is none
@@ -198,7 +208,7 @@ export abstract class Part {
     const sprite = this._sprites.get(layer);
     if (! sprite) return;
     // apply size
-    const size:number = this.size * 1.5;
+    const size:number = (this.size > 2) ? (this.size * 1.5) : this.size;
     sprite.width = size;
     sprite.height = size;
     // apply flipping

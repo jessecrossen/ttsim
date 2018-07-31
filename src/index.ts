@@ -32,4 +32,7 @@ loader.add('images/parts.json').load(() => {
   sim.width = Renderer.instance.width;
   sim.height = Renderer.instance.height;
   Renderer.stage.addChild(sim);
+  // set up the standard board
+  sim.initStandardBoard();
+  sim.actionbar.zoomToFit();
 });

@@ -2,7 +2,8 @@
 
 import { Board } from 'board/board';
 import { PartFactory, PartType } from 'parts/factory';
-import { Toolbox } from 'ui/toolbox';
+import { Toolbar } from 'ui/toolbar';
+import { Actionbar } from 'ui/actionbar';
 import { Renderer } from 'renderer';
 import { Fence } from 'parts/fence';
 
@@ -12,16 +13,19 @@ export class SimulatorApp extends PIXI.Container {
     super();
     this.partFactory = new PartFactory(textures);
     this.board = new Board(this.partFactory);
-    this.toolbox = new Toolbox(this.board);
-    this.toolbox.width = 64;
-    this.board.view.x = this.toolbox.width;
+    this.toolbar = new Toolbar(this.board);
+    this.toolbar.width = 64;
+    this.actionbar = new Actionbar(this.board);
+    this.actionbar.width = 64;
     this.addChild(this.board.view);
-    this.addChild(this.toolbox);
-    this.initStandardBoard();
+    this.addChild(this.toolbar);
+    this.addChild(this.actionbar);
+    this._layout();
   }
   public readonly partFactory:PartFactory;
   public readonly board:Board;
-  public readonly toolbox:Toolbox;
+  public readonly toolbar:Toolbar;
+  public readonly actionbar:Actionbar;
 
   public get width():number { return(this._width); }
   public set width(v:number) {
@@ -40,7 +44,12 @@ export class SimulatorApp extends PIXI.Container {
   private _height:number = 0;
 
   protected _layout():void {
-    this.board.width = Math.max(0, this.width - this.toolbox.width);
+    this.toolbar.height = this.height;
+    this.actionbar.height = this.height;
+    this.actionbar.x = this.width - this.actionbar.width;
+    this.board.view.x = this.toolbar.width;
+    this.board.width = Math.max(0, 
+      this.width - (this.toolbar.width + this.actionbar.width));
     this.board.height = this.height;
     Renderer.needsUpdate();
   }
@@ -106,9 +115,6 @@ export class SimulatorApp extends PIXI.Container {
         this.board.setPart(this.partFactory.copy(blank), c, r);
       }
     }
-    // center the board in the display
-    this.board.centerColumn = Math.floor(width / 2);
-    this.board.centerRow = Math.floor(height / 2);
   }
 
 }

@@ -1,6 +1,6 @@
 import { Part, Layer } from './part';
 import { PartType } from './factory';
-import { Renderer } from 'renderer';
+import { SPACING_FACTOR } from 'board/board';
 
 export const enum FenceVariant {
   PREVIEW,
@@ -57,7 +57,7 @@ export class Fence extends Part {
       }
       else if (this.variant === FenceVariant.SLOPE) {
         suffix += 's'+this.modulus;
-        this._yOffset = ((this.sequence % this.modulus) / this.modulus) * 1.0625;
+        this._yOffset = ((this.sequence % this.modulus) / this.modulus) * SPACING_FACTOR;
       }
       else {
         this._yOffset = 0.0;

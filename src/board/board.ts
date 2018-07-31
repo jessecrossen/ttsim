@@ -24,6 +24,7 @@ export const enum ActionType {
 }
 
 export const PartSizes:number[] = [ 2, 4, 6, 8, 12, 16, 24, 32, 48, 64 ];
+export const SPACING_FACTOR:number = 1.0625;
 
 type LayerToContainerMap = Map<Layer,PIXI.Container>;
 
@@ -173,6 +174,7 @@ export class Board {
   // the fractional column and row to keep in the center
   public get centerColumn():number { return(this._centerColumn); }
   public set centerColumn(v:number) {
+    v = Math.min(Math.max(0, v), this.columnCount - 1);
     if (v === this.centerColumn) return;
     this._centerColumn = v;
     this._updatePan();
@@ -180,6 +182,7 @@ export class Board {
   private _centerColumn:number = 0.0;
   public get centerRow():number { return(this._centerRow); }
   public set centerRow(v:number) {
+    v = Math.min(Math.max(0, v), this.rowCount - 1);
     if (v === this.centerRow) return;
     this._centerRow = v;
     this._updatePan();
@@ -217,7 +220,7 @@ export class Board {
   }
 
   // get the spacing between part centers
-  public get spacing():number { return(Math.floor(this.partSize * 1.0625)); }
+  public get spacing():number { return(Math.floor(this.partSize * SPACING_FACTOR)); }
   
   // get the column for the given X coordinate
   public columnForX(x:number):number {
@@ -389,6 +392,15 @@ export class Board {
     if ((oldPart instanceof Fence) || (newPart instanceof Fence)) {
       this._updateFences();
     }
+  }
+  
+  // flip the part at the given coordinates
+  public flipPart(column:number, row:number):void {
+    const part = this.getPart(column, row);
+    if (part instanceof Fence) {
+      this._flipFence(column, row);
+    }
+    else if (part) part.flip(Delays.FLIP);
   }
 
   // clear parts from the given coordinates
@@ -569,12 +581,16 @@ export class Board {
   private _onMouseMove(e:PIXI.interaction.InteractionEvent):void {
     // start dragging if the mouse moves more than the threshold
     const p = e.data.getLocalPosition(this.view);
-    let dragStarted:boolean = false;
+    // cancel dragging if the button has been released elsewhere
+    if ((this._isMouseDown) && (e.data.buttons === 0)) {
+      this._onMouseUp(e);
+    }
     if ((this._isMouseDown) && (! this._dragging) && 
         ((Math.abs(p.x - this._mouseDownPoint.x) >= Sizes.DRAG_THRESHOLD) ||
          (Math.abs(p.y - this._mouseDownPoint.y) >= Sizes.DRAG_THRESHOLD))) {
       this._dragging = true;
       this._lastMousePoint = this._mouseDownPoint;
+      this._onDragStart(this._mouseDownPoint.x, this._mouseDownPoint.y);
     }
     // handle dragging
     if (this._dragging) {
@@ -592,15 +608,62 @@ export class Board {
   private _onMouseUp(e:PIXI.interaction.InteractionEvent):void {
     this._updateAction(e);
     this._isMouseDown = false;
-    this._dragging = false;
+    if (this._dragging) {
+      this._dragging = false;
+      this._onDragFinish();
+      // don't trigger a click
+      e.stopPropagation();
+    }
   }
+
+  private _onDragStart(x:number, y:number):void {
+    this._panStartColumn = this.centerColumn;
+    this._panStartRow = this.centerRow;
+  }
+  private _panStartColumn:number;
+  private _panStartRow:number;
 
   private _onDrag(startX:number, startY:number, lastX:number, lastY:number, 
                   currentX:number, currentY:number):void {
+    const deltaColumn = this.columnForX(currentX) - this.columnForX(startX);
+    const deltaRow = this.rowForY(currentY) - this.rowForY(startY);
+    const column = Math.round(this._actionColumn + deltaColumn);
+    const row = Math.round(this._actionRow + deltaRow);
     if (this._action === ActionType.PAN) {
-      this.centerColumn -= this.columnForX(currentX) - this.columnForX(lastX);
-      this.centerRow -= this.rowForY(currentY) - this.rowForY(lastY);
+      this.centerColumn = this._panStartColumn - deltaColumn;
+      this.centerRow = this._panStartRow - deltaRow;
     }
+    else if ((this._action === ActionType.PLACE_PART) &&
+             (this.partPrototype)) {
+      if (this.canPlacePart(this.partPrototype.type, column, row)) {
+        const oldPart = this.getPart(column, row);
+        if (! (oldPart.hasSameStateAs(this.partPrototype))) {
+          this.setPart(this.partFactory.copy(this.partPrototype), 
+              column, row);
+        }
+      }
+    }
+    else if (this._action === ActionType.CLEAR_PART) {
+      if (! this.isBackgroundPart(column, row)) {
+        // don't clear locked parts when dragging, as it's less likely
+        //  to be intentional than with a click
+        const oldPart = this.getPart(column, row);
+        if (! oldPart.isLocked) this.clearPart(column, row);
+      }
+    }
+    else if (this._action === ActionType.FLIP_PART) {
+      const part = this.getPart(column, row);
+      if ((part) && (! part.isLocked) && 
+          (! this._dragFlippedParts.has(part))) {
+        this.flipPart(column, row);
+        this._dragFlippedParts.add(part);
+      }
+    }
+  }
+  private _dragFlippedParts:Set<Part> = new Set();
+
+  private _onDragFinish():void {
+    this._dragFlippedParts.clear();
   }
 
   private _updateAction(e:PIXI.interaction.InteractionEvent):void {
@@ -661,11 +724,7 @@ export class Board {
     }
     // flip parts
     else if (this._action === ActionType.FLIP_PART) {
-      const part = this.getPart(this._actionColumn, this._actionRow);
-      if (part instanceof Fence) {
-        this._flipFence(this._actionColumn, this._actionRow);
-      }
-      else if (part) part.flip(Delays.FLIP);
+      this.flipPart(this._actionColumn, this._actionRow);
     }
   }
 

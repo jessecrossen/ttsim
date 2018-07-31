@@ -171,55 +171,17 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
         }
     };
 });
-System.register("ui/config", [], function (exports_7, context_7) {
+System.register("parts/fence", ["parts/part", "board/board"], function (exports_7, context_7) {
     "use strict";
     var __moduleName = context_7 && context_7.id;
-    return {
-        setters: [],
-        execute: function () {
-        }
-    };
-});
-/// <reference types="pixi.js" />
-System.register("renderer", [], function (exports_8, context_8) {
-    "use strict";
-    var __moduleName = context_8 && context_8.id;
-    var Renderer;
-    return {
-        setters: [],
-        execute: function () {
-            Renderer = class Renderer {
-                static needsUpdate() {
-                    Renderer._needsUpdate = true;
-                }
-                static start() {
-                    PIXI.ticker.shared.add(Renderer.render, Renderer, PIXI.UPDATE_PRIORITY.LOW);
-                }
-                static render() {
-                    if (Renderer._needsUpdate) {
-                        Renderer.instance.render(Renderer.stage);
-                        Renderer._needsUpdate = false;
-                    }
-                }
-            };
-            Renderer._needsUpdate = false;
-            Renderer.instance = PIXI.autoDetectRenderer({
-                antialias: false,
-                backgroundColor: 16777215 /* BACKGROUND */
-            });
-            Renderer.stage = new PIXI.Container();
-            exports_8("Renderer", Renderer);
-        }
-    };
-});
-System.register("parts/fence", ["parts/part"], function (exports_9, context_9) {
-    "use strict";
-    var __moduleName = context_9 && context_9.id;
-    var part_7, Fence;
+    var part_7, board_1, Fence;
     return {
         setters: [
             function (part_7_1) {
                 part_7 = part_7_1;
+            },
+            function (board_1_1) {
+                board_1 = board_1_1;
             }
         ],
         execute: function () {
@@ -273,7 +235,7 @@ System.register("parts/fence", ["parts/part"], function (exports_9, context_9) {
                         }
                         else if (this.variant === 2 /* SLOPE */) {
                             suffix += 's' + this.modulus;
-                            this._yOffset = ((this.sequence % this.modulus) / this.modulus) * 1.0625;
+                            this._yOffset = ((this.sequence % this.modulus) / this.modulus) * board_1.SPACING_FACTOR;
                         }
                         else {
                             this._yOffset = 0.0;
@@ -286,13 +248,13 @@ System.register("parts/fence", ["parts/part"], function (exports_9, context_9) {
                     this._updateSprites();
                 }
             };
-            exports_9("Fence", Fence);
+            exports_7("Fence", Fence);
         }
     };
 });
-System.register("parts/blank", ["parts/part"], function (exports_10, context_10) {
+System.register("parts/blank", ["parts/part"], function (exports_8, context_8) {
     "use strict";
-    var __moduleName = context_10 && context_10.id;
+    var __moduleName = context_8 && context_8.id;
     var part_8, Blank;
     return {
         setters: [
@@ -307,13 +269,13 @@ System.register("parts/blank", ["parts/part"], function (exports_10, context_10)
                 get canFlip() { return (false); }
                 get type() { return (0 /* BLANK */); }
             };
-            exports_10("Blank", Blank);
+            exports_8("Blank", Blank);
         }
     };
 });
-System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit", "parts/fence", "parts/blank"], function (exports_11, context_11) {
+System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit", "parts/fence", "parts/blank"], function (exports_9, context_9) {
     "use strict";
-    var __moduleName = context_11 && context_11.id;
+    var __moduleName = context_9 && context_9.id;
     var location_1, ramp_1, crossover_1, interceptor_1, bit_1, gearbit_1, fence_1, blank_1, PartFactory;
     return {
         setters: [
@@ -376,7 +338,48 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
                     return (newPart);
                 }
             };
-            exports_11("PartFactory", PartFactory);
+            exports_9("PartFactory", PartFactory);
+        }
+    };
+});
+System.register("ui/config", [], function (exports_10, context_10) {
+    "use strict";
+    var __moduleName = context_10 && context_10.id;
+    return {
+        setters: [],
+        execute: function () {
+        }
+    };
+});
+/// <reference types="pixi.js" />
+System.register("renderer", [], function (exports_11, context_11) {
+    "use strict";
+    var __moduleName = context_11 && context_11.id;
+    var Renderer;
+    return {
+        setters: [],
+        execute: function () {
+            Renderer = class Renderer {
+                static needsUpdate() {
+                    Renderer._needsUpdate = true;
+                }
+                static start() {
+                    PIXI.ticker.shared.add(Renderer.render, Renderer, PIXI.UPDATE_PRIORITY.LOW);
+                }
+                static render() {
+                    if (Renderer._needsUpdate) {
+                        Renderer.instance.render(Renderer.stage);
+                        Renderer._needsUpdate = false;
+                    }
+                }
+            };
+            Renderer._needsUpdate = false;
+            Renderer.instance = PIXI.autoDetectRenderer({
+                antialias: false,
+                backgroundColor: 16777215 /* BACKGROUND */
+            });
+            Renderer.stage = new PIXI.Container();
+            exports_11("Renderer", Renderer);
         }
     };
 });
@@ -748,7 +751,7 @@ System.register("util/disjoint", [], function (exports_13, context_13) {
 System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint", "renderer"], function (exports_14, context_14) {
     "use strict";
     var __moduleName = context_14 && context_14.id;
-    var fence_2, gearbit_2, disjoint_1, renderer_2, PartSizes, Board;
+    var fence_2, gearbit_2, disjoint_1, renderer_2, PartSizes, SPACING_FACTOR, Board;
     return {
         setters: [
             function (fence_2_1) {
@@ -766,6 +769,7 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
         ],
         execute: function () {
             exports_14("PartSizes", PartSizes = [2, 4, 6, 8, 12, 16, 24, 32, 48, 64]);
+            exports_14("SPACING_FACTOR", SPACING_FACTOR = 1.0625);
             Board = class Board {
                 constructor(partFactory) {
                     this.partFactory = partFactory;
@@ -785,6 +789,7 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                     this._partPrototype = null;
                     this._isMouseDown = false;
                     this._dragging = false;
+                    this._dragFlippedParts = new Set();
                     this._action = 0 /* PAN */;
                     this._bindMouseEvents();
                     this.view.addChild(this._layers);
@@ -916,6 +921,7 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                 // the fractional column and row to keep in the center
                 get centerColumn() { return (this._centerColumn); }
                 set centerColumn(v) {
+                    v = Math.min(Math.max(0, v), this.columnCount - 1);
                     if (v === this.centerColumn)
                         return;
                     this._centerColumn = v;
@@ -923,6 +929,7 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                 }
                 get centerRow() { return (this._centerRow); }
                 set centerRow(v) {
+                    v = Math.min(Math.max(0, v), this.rowCount - 1);
                     if (v === this.centerRow)
                         return;
                     this._centerRow = v;
@@ -957,7 +964,7 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                     }
                 }
                 // get the spacing between part centers
-                get spacing() { return (Math.floor(this.partSize * 1.0625)); }
+                get spacing() { return (Math.floor(this.partSize * SPACING_FACTOR)); }
                 // get the column for the given X coordinate
                 columnForX(x) {
                     return (x / this.spacing);
@@ -1126,6 +1133,15 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                     if ((oldPart instanceof fence_2.Fence) || (newPart instanceof fence_2.Fence)) {
                         this._updateFences();
                     }
+                }
+                // flip the part at the given coordinates
+                flipPart(column, row) {
+                    const part = this.getPart(column, row);
+                    if (part instanceof fence_2.Fence) {
+                        this._flipFence(column, row);
+                    }
+                    else if (part)
+                        part.flip(0.25 /* FLIP */);
                 }
                 // clear parts from the given coordinates
                 clearPart(column, row) {
@@ -1309,12 +1325,16 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                 _onMouseMove(e) {
                     // start dragging if the mouse moves more than the threshold
                     const p = e.data.getLocalPosition(this.view);
-                    let dragStarted = false;
+                    // cancel dragging if the button has been released elsewhere
+                    if ((this._isMouseDown) && (e.data.buttons === 0)) {
+                        this._onMouseUp(e);
+                    }
                     if ((this._isMouseDown) && (!this._dragging) &&
                         ((Math.abs(p.x - this._mouseDownPoint.x) >= 5 /* DRAG_THRESHOLD */) ||
                             (Math.abs(p.y - this._mouseDownPoint.y) >= 5 /* DRAG_THRESHOLD */))) {
                         this._dragging = true;
                         this._lastMousePoint = this._mouseDownPoint;
+                        this._onDragStart(this._mouseDownPoint.x, this._mouseDownPoint.y);
                     }
                     // handle dragging
                     if (this._dragging) {
@@ -1328,13 +1348,55 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                 _onMouseUp(e) {
                     this._updateAction(e);
                     this._isMouseDown = false;
-                    this._dragging = false;
+                    if (this._dragging) {
+                        this._dragging = false;
+                        this._onDragFinish();
+                        // don't trigger a click
+                        e.stopPropagation();
+                    }
+                }
+                _onDragStart(x, y) {
+                    this._panStartColumn = this.centerColumn;
+                    this._panStartRow = this.centerRow;
                 }
                 _onDrag(startX, startY, lastX, lastY, currentX, currentY) {
+                    const deltaColumn = this.columnForX(currentX) - this.columnForX(startX);
+                    const deltaRow = this.rowForY(currentY) - this.rowForY(startY);
+                    const column = Math.round(this._actionColumn + deltaColumn);
+                    const row = Math.round(this._actionRow + deltaRow);
                     if (this._action === 0 /* PAN */) {
-                        this.centerColumn -= this.columnForX(currentX) - this.columnForX(lastX);
-                        this.centerRow -= this.rowForY(currentY) - this.rowForY(lastY);
+                        this.centerColumn = this._panStartColumn - deltaColumn;
+                        this.centerRow = this._panStartRow - deltaRow;
                     }
+                    else if ((this._action === 1 /* PLACE_PART */) &&
+                        (this.partPrototype)) {
+                        if (this.canPlacePart(this.partPrototype.type, column, row)) {
+                            const oldPart = this.getPart(column, row);
+                            if (!(oldPart.hasSameStateAs(this.partPrototype))) {
+                                this.setPart(this.partFactory.copy(this.partPrototype), column, row);
+                            }
+                        }
+                    }
+                    else if (this._action === 2 /* CLEAR_PART */) {
+                        if (!this.isBackgroundPart(column, row)) {
+                            // don't clear locked parts when dragging, as it's less likely
+                            //  to be intentional than with a click
+                            const oldPart = this.getPart(column, row);
+                            if (!oldPart.isLocked)
+                                this.clearPart(column, row);
+                        }
+                    }
+                    else if (this._action === 3 /* FLIP_PART */) {
+                        const part = this.getPart(column, row);
+                        if ((part) && (!part.isLocked) &&
+                            (!this._dragFlippedParts.has(part))) {
+                            this.flipPart(column, row);
+                            this._dragFlippedParts.add(part);
+                        }
+                    }
+                }
+                _onDragFinish() {
+                    this._dragFlippedParts.clear();
                 }
                 _updateAction(e) {
                     const p = e.data.getLocalPosition(this._layers);
@@ -1385,12 +1447,7 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                         this.clearPart(this._actionColumn, this._actionRow);
                     }
                     else if (this._action === 3 /* FLIP_PART */) {
-                        const part = this.getPart(this._actionColumn, this._actionRow);
-                        if (part instanceof fence_2.Fence) {
-                            this._flipFence(this._actionColumn, this._actionRow);
-                        }
-                        else if (part)
-                            part.flip(0.25 /* FLIP */);
+                        this.flipPart(this._actionColumn, this._actionRow);
                     }
                 }
             };
@@ -1402,7 +1459,7 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
 System.register("ui/button", ["renderer"], function (exports_15, context_15) {
     "use strict";
     var __moduleName = context_15 && context_15.id;
-    var renderer_3, Button, PartButton, SpriteButton;
+    var renderer_3, Button, PartButton, SpriteButton, ButtonBar;
     return {
         setters: [
             function (renderer_3_1) {
@@ -1568,68 +1625,25 @@ System.register("ui/button", ["renderer"], function (exports_15, context_15) {
                 }
             };
             exports_15("SpriteButton", SpriteButton);
-        }
-    };
-});
-/// <reference types="pixi.js" />
-System.register("ui/toolbox", ["board/board", "ui/button", "renderer"], function (exports_16, context_16) {
-    "use strict";
-    var __moduleName = context_16 && context_16.id;
-    var board_1, button_1, renderer_4, Toolbox;
-    return {
-        setters: [
-            function (board_1_1) {
-                board_1 = board_1_1;
-            },
-            function (button_1_1) {
-                button_1 = button_1_1;
-            },
-            function (renderer_4_1) {
-                renderer_4 = renderer_4_1;
-            }
-        ],
-        execute: function () {
-            Toolbox = class Toolbox extends PIXI.Container {
-                constructor(board) {
+            ButtonBar = class ButtonBar extends PIXI.Container {
+                constructor() {
                     super();
-                    this.board = board;
                     this._background = new PIXI.Graphics();
-                    this._width = 96;
-                    this._margin = 4;
-                    // ZOOMING ******************************************************************
-                    // the user's desired shematic setting
-                    this._desiredSchematic = false;
-                    this.addChild(this._background);
                     this._buttons = [];
-                    // add a button to change the position of parts
-                    this._handButton = new button_1.SpriteButton(new PIXI.Sprite(board.partFactory.textures['hand']));
-                    this._buttons.push(this._handButton);
-                    // add a button to remove parts
-                    this._eraserButton = new button_1.PartButton(this.board.partFactory.make(1 /* PARTLOC */));
-                    this._buttons.push(this._eraserButton);
-                    // add buttons for parts
-                    for (let i = 3 /* TOOLBOX_MIN */; i <= 9 /* TOOLBOX_MAX */; i++) {
-                        const part = board.partFactory.make(i);
-                        if (!part)
-                            continue;
-                        const button = new button_1.PartButton(part);
-                        this._buttons.push(button);
-                    }
-                    // add a button to toggle schematic view
-                    this._schematicButton = new button_1.SpriteButton(new PIXI.Sprite(board.partFactory.textures['schematic']));
-                    this._buttons.push(this._schematicButton);
-                    // add zoom controls
-                    this._zoomInButton = new button_1.SpriteButton(new PIXI.Sprite(board.partFactory.textures['zoomin']));
-                    this._buttons.push(this._zoomInButton);
-                    this._zoomOutButton = new button_1.SpriteButton(new PIXI.Sprite(board.partFactory.textures['zoomout']));
-                    this._buttons.push(this._zoomOutButton);
-                    // do common setup for all buttons
-                    for (const button of this._buttons) {
-                        this.addChild(button);
-                        button.addListener('click', this._onButtonClick.bind(this));
-                    }
+                    this._bottomCount = 0;
+                    this._width = 96;
+                    this._height = 96;
+                    this._margin = 4;
+                    this.addChild(this._background);
                     this._layout();
-                    this._updateToggled();
+                }
+                // the number of buttons to push to the bottom of the bar
+                get bottomCount() { return (this._bottomCount); }
+                set bottomCount(v) {
+                    if (v === this.bottomCount)
+                        return;
+                    this._bottomCount = v;
+                    this._layout();
                 }
                 get width() { return (this._width); }
                 set width(v) {
@@ -1641,6 +1655,13 @@ System.register("ui/toolbox", ["board/board", "ui/button", "renderer"], function
                     }
                     this._layout();
                 }
+                get height() { return (this._height); }
+                set height(v) {
+                    if (v === this._height)
+                        return;
+                    this._height = v;
+                    this._layout();
+                }
                 get margin() { return (this._margin); }
                 set margin(v) {
                     if (v === this._margin)
@@ -1648,31 +1669,99 @@ System.register("ui/toolbox", ["board/board", "ui/button", "renderer"], function
                     this._margin = v;
                     this._layout();
                 }
-                get height() {
-                    return ((this.width * this._buttons.length) +
-                        (this.margin * (this._buttons.length + 1)));
+                addButton(button) {
+                    this._buttons.push(button);
+                    this.addChild(button);
+                    button.addListener('click', this._onButtonClick.bind(this));
+                    this._layout();
                 }
+                // handle buttons being clicked
                 _onButtonClick(e) {
-                    if (e.target === this._handButton) {
+                    if (!(e.target instanceof Button))
+                        return;
+                    this.onButtonClick(e.target);
+                }
+                // lay out buttons in a vertical strip
+                _layout() {
+                    const m = this.margin;
+                    const w = this.width - (2 * m);
+                    const hw = Math.floor(w / 2);
+                    const x = m + hw;
+                    let y = m + hw;
+                    // lay out top buttons
+                    for (let i = 0; i < this._buttons.length - this.bottomCount; i++) {
+                        const button = this._buttons[i];
+                        button.size = w;
+                        button.x = x;
+                        button.y = y;
+                        y += w + m;
+                    }
+                    // lay out bottom buttons
+                    y = this.height - (m + hw);
+                    for (let i = 0; i < this.bottomCount; i++) {
+                        const button = this._buttons[(this._buttons.length - 1) - i];
+                        button.size = w;
+                        button.x = x;
+                        button.y = y;
+                        y -= w + m;
+                    }
+                    this._background.clear();
+                    this._background.beginFill(16777215 /* BACKGROUND */, 1.0);
+                    this._background.drawRect(0, 0, this.width, this.height);
+                    this._background.endFill();
+                    renderer_3.Renderer.needsUpdate();
+                }
+            };
+            exports_15("ButtonBar", ButtonBar);
+        }
+    };
+});
+/// <reference types="pixi.js" />
+System.register("ui/toolbar", ["ui/button", "renderer"], function (exports_16, context_16) {
+    "use strict";
+    var __moduleName = context_16 && context_16.id;
+    var button_1, renderer_4, Toolbar;
+    return {
+        setters: [
+            function (button_1_1) {
+                button_1 = button_1_1;
+            },
+            function (renderer_4_1) {
+                renderer_4 = renderer_4_1;
+            }
+        ],
+        execute: function () {
+            Toolbar = class Toolbar extends button_1.ButtonBar {
+                constructor(board) {
+                    super();
+                    this.board = board;
+                    // add a button to change the position of parts
+                    this._handButton = new button_1.SpriteButton(new PIXI.Sprite(board.partFactory.textures['hand']));
+                    this.addButton(this._handButton);
+                    // add a button to remove parts
+                    this._eraserButton = new button_1.PartButton(this.board.partFactory.make(1 /* PARTLOC */));
+                    this.addButton(this._eraserButton);
+                    // add buttons for parts
+                    for (let i = 3 /* TOOLBOX_MIN */; i <= 9 /* TOOLBOX_MAX */; i++) {
+                        const part = board.partFactory.make(i);
+                        if (!part)
+                            continue;
+                        const button = new button_1.PartButton(part);
+                        this.addButton(button);
+                    }
+                    this._updateToggled();
+                }
+                onButtonClick(button) {
+                    if (button === this._handButton) {
                         this.board.tool = 3 /* HAND */;
                         this.board.partPrototype = null;
                     }
-                    else if (e.target === this._eraserButton) {
+                    else if (button === this._eraserButton) {
                         this.board.tool = 2 /* ERASER */;
                         this.board.partPrototype = null;
                     }
-                    else if (e.target === this._schematicButton) {
-                        this.board.schematic = !this.board.schematic;
-                        this._desiredSchematic = this.board.schematic;
-                    }
-                    else if (e.target === this._zoomInButton) {
-                        this.zoomIn();
-                    }
-                    else if (e.target === this._zoomOutButton) {
-                        this.zoomOut();
-                    }
-                    else if (e.target instanceof button_1.PartButton) {
-                        const newPart = e.target.part;
+                    else if (button instanceof button_1.PartButton) {
+                        const newPart = button.part;
                         if ((this.board.partPrototype) &&
                             (newPart.type === this.board.partPrototype.type)) {
                             // toggle direction if the selected part is clicked again
@@ -1693,16 +1782,6 @@ System.register("ui/toolbox", ["board/board", "ui/button", "renderer"], function
                             button.isToggled = (this.board.tool === 2 /* ERASER */);
                             this._eraserButton.schematic = this.board.schematic;
                         }
-                        else if (button === this._schematicButton) {
-                            button.isEnabled = !this.forceSchematic;
-                            button.isToggled = this.board.schematic;
-                        }
-                        else if (button == this._zoomInButton) {
-                            button.isEnabled = this.canZoomIn;
-                        }
-                        else if (button == this._zoomOutButton) {
-                            button.isEnabled = this.canZoomOut;
-                        }
                         else if (button instanceof button_1.PartButton) {
                             button.isToggled = ((this.board.tool === 1 /* PART */) &&
                                 (this.board.partPrototype) &&
@@ -1712,30 +1791,110 @@ System.register("ui/toolbox", ["board/board", "ui/button", "renderer"], function
                     }
                     renderer_4.Renderer.needsUpdate();
                 }
-                // lay out buttons in a vertical strip
-                _layout() {
-                    const m = this.margin;
-                    const w = this.width - (2 * m);
-                    const hw = Math.floor(w / 2);
-                    const x = m + hw;
-                    let y = m + hw;
-                    for (const button of this._buttons) {
-                        button.size = w;
-                        button.x = x;
-                        button.y = y;
-                        y += w + m;
+            };
+            exports_16("Toolbar", Toolbar);
+        }
+    };
+});
+/// <reference types="pixi.js" />
+System.register("ui/actionbar", ["board/board", "ui/button", "renderer"], function (exports_17, context_17) {
+    "use strict";
+    var __moduleName = context_17 && context_17.id;
+    var board_2, button_2, renderer_5, Actionbar;
+    return {
+        setters: [
+            function (board_2_1) {
+                board_2 = board_2_1;
+            },
+            function (button_2_1) {
+                button_2 = button_2_1;
+            },
+            function (renderer_5_1) {
+                renderer_5 = renderer_5_1;
+            }
+        ],
+        execute: function () {
+            Actionbar = class Actionbar extends button_2.ButtonBar {
+                constructor(board) {
+                    super();
+                    this.board = board;
+                    // ZOOMING ******************************************************************
+                    // the user's desired shematic setting
+                    this._desiredSchematic = false;
+                    // add a button to toggle schematic view
+                    this._schematicButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['schematic']));
+                    this.addButton(this._schematicButton);
+                    // add zoom controls
+                    this._zoomInButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['zoomin']));
+                    this.addButton(this._zoomInButton);
+                    this._zoomOutButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['zoomout']));
+                    this.addButton(this._zoomOutButton);
+                    this._zoomToFitButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['zoomtofit']));
+                    this.addButton(this._zoomToFitButton);
+                    // add more top buttons here...
+                    // add a link to the Turing Tumble website
+                    this._heartButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['heart']));
+                    this.addButton(this._heartButton);
+                    this.bottomCount = 1;
+                    this._updateToggled();
+                }
+                onButtonClick(button) {
+                    if (button === this._schematicButton) {
+                        this.board.schematic = !this.board.schematic;
+                        this._desiredSchematic = this.board.schematic;
+                        this._updateToggled();
                     }
-                    this._background.clear();
-                    this._background.beginFill(16777215 /* BACKGROUND */, 1.0);
-                    this._background.drawRect(0, 0, this.width, renderer_4.Renderer.instance.height);
-                    this._background.endFill();
+                    else if (button === this._zoomInButton) {
+                        this.zoomIn();
+                    }
+                    else if (button === this._zoomOutButton) {
+                        this.zoomOut();
+                    }
+                    else if (button === this._zoomToFitButton) {
+                        this.zoomToFit();
+                    }
+                    else if (button === this._heartButton) {
+                        window.open('https://www.turingtumble.com/', '_blank');
+                    }
+                }
+                _updateToggled() {
+                    // update button toggle states
+                    for (const button of this._buttons) {
+                        if (button === this._schematicButton) {
+                            button.isEnabled = !this.forceSchematic;
+                            button.isToggled = this.board.schematic;
+                        }
+                        else if (button == this._zoomInButton) {
+                            button.isEnabled = this.canZoomIn;
+                        }
+                        else if (button == this._zoomOutButton) {
+                            button.isEnabled = this.canZoomOut;
+                        }
+                        else if (button instanceof button_2.PartButton) {
+                            button.isToggled = ((this.board.tool === 1 /* PART */) &&
+                                (this.board.partPrototype) &&
+                                (button.part.type === this.board.partPrototype.type));
+                            button.schematic = this.board.schematic;
+                        }
+                    }
+                    renderer_5.Renderer.needsUpdate();
                 }
                 // force schematic mode when parts are very small
                 get forceSchematic() {
                     return (this.board.spacing <= this.board.partSize);
                 }
+                // when the board gets too small to see parts clearly, 
+                //  switch to schematic mode
+                _updateAutoSchematic() {
+                    if (this.forceSchematic) {
+                        this.board.schematic = true;
+                    }
+                    else {
+                        this.board.schematic = this._desiredSchematic;
+                    }
+                }
                 get canZoomIn() {
-                    return (this.zoomIndex < board_1.PartSizes.length - 1);
+                    return (this.zoomIndex < board_2.PartSizes.length - 1);
                 }
                 get canZoomOut() {
                     return (this.zoomIndex > 0);
@@ -1743,47 +1902,62 @@ System.register("ui/toolbox", ["board/board", "ui/button", "renderer"], function
                 zoomIn() {
                     if (!this.canZoomIn)
                         return;
-                    this.board.partSize = board_1.PartSizes[this.zoomIndex + 1];
-                    if (!this.forceSchematic) {
-                        this.board.schematic = this._desiredSchematic;
-                    }
+                    this.board.partSize = board_2.PartSizes[this.zoomIndex + 1];
+                    this._updateAutoSchematic();
+                    this._updateToggled();
                 }
                 zoomOut() {
                     if (!this.canZoomOut)
                         return;
-                    this.board.partSize = board_1.PartSizes[this.zoomIndex - 1];
-                    // when the board gets too small to see parts clearly, 
-                    //  switch to schematic mode
-                    if (this.forceSchematic) {
-                        this.board.schematic = true;
+                    this.board.partSize = board_2.PartSizes[this.zoomIndex - 1];
+                    this._updateAutoSchematic();
+                    this._updateToggled();
+                }
+                // zoom to fit the board
+                zoomToFit() {
+                    this.board.centerColumn = (this.board.columnCount - 1) / 2;
+                    this.board.centerRow = (this.board.rowCount - 1) / 2;
+                    let s = board_2.PartSizes[0];
+                    for (let i = board_2.PartSizes.length - 1; i >= 0; i--) {
+                        s = board_2.PartSizes[i];
+                        const w = this.board.columnCount * Math.floor(s * board_2.SPACING_FACTOR);
+                        const h = this.board.rowCount * Math.floor(s * board_2.SPACING_FACTOR);
+                        if ((w <= this.board.width) && (h <= this.board.height))
+                            break;
                     }
+                    this.board.partSize = s;
+                    this._updateAutoSchematic();
+                    this._updateToggled();
                 }
                 get zoomIndex() {
-                    return (board_1.PartSizes.indexOf(this.board.partSize));
+                    return (board_2.PartSizes.indexOf(this.board.partSize));
                 }
             };
-            exports_16("Toolbox", Toolbox);
+            exports_17("Actionbar", Actionbar);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer", "parts/fence"], function (exports_17, context_17) {
+System.register("app", ["board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "parts/fence"], function (exports_18, context_18) {
     "use strict";
-    var __moduleName = context_17 && context_17.id;
-    var board_2, factory_1, toolbox_1, renderer_5, fence_3, SimulatorApp;
+    var __moduleName = context_18 && context_18.id;
+    var board_3, factory_1, toolbar_1, actionbar_1, renderer_6, fence_3, SimulatorApp;
     return {
         setters: [
-            function (board_2_1) {
-                board_2 = board_2_1;
+            function (board_3_1) {
+                board_3 = board_3_1;
             },
             function (factory_1_1) {
                 factory_1 = factory_1_1;
             },
-            function (toolbox_1_1) {
-                toolbox_1 = toolbox_1_1;
+            function (toolbar_1_1) {
+                toolbar_1 = toolbar_1_1;
             },
-            function (renderer_5_1) {
-                renderer_5 = renderer_5_1;
+            function (actionbar_1_1) {
+                actionbar_1 = actionbar_1_1;
+            },
+            function (renderer_6_1) {
+                renderer_6 = renderer_6_1;
             },
             function (fence_3_1) {
                 fence_3 = fence_3_1;
@@ -1797,13 +1971,15 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer"
                     this._width = 0;
                     this._height = 0;
                     this.partFactory = new factory_1.PartFactory(textures);
-                    this.board = new board_2.Board(this.partFactory);
-                    this.toolbox = new toolbox_1.Toolbox(this.board);
-                    this.toolbox.width = 64;
-                    this.board.view.x = this.toolbox.width;
+                    this.board = new board_3.Board(this.partFactory);
+                    this.toolbar = new toolbar_1.Toolbar(this.board);
+                    this.toolbar.width = 64;
+                    this.actionbar = new actionbar_1.Actionbar(this.board);
+                    this.actionbar.width = 64;
                     this.addChild(this.board.view);
-                    this.addChild(this.toolbox);
-                    this.initStandardBoard();
+                    this.addChild(this.toolbar);
+                    this.addChild(this.actionbar);
+                    this._layout();
                 }
                 get width() { return (this._width); }
                 set width(v) {
@@ -1820,9 +1996,13 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer"
                     this._layout();
                 }
                 _layout() {
-                    this.board.width = Math.max(0, this.width - this.toolbox.width);
+                    this.toolbar.height = this.height;
+                    this.actionbar.height = this.height;
+                    this.actionbar.x = this.width - this.actionbar.width;
+                    this.board.view.x = this.toolbar.width;
+                    this.board.width = Math.max(0, this.width - (this.toolbar.width + this.actionbar.width));
                     this.board.height = this.height;
-                    renderer_5.Renderer.needsUpdate();
+                    renderer_6.Renderer.needsUpdate();
                 }
                 initStandardBoard(redBlueDistance = 5, verticalDrop = 11) {
                     let r, c, run;
@@ -1891,37 +2071,34 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer"
                             this.board.setPart(this.partFactory.copy(blank), c, r);
                         }
                     }
-                    // center the board in the display
-                    this.board.centerColumn = Math.floor(width / 2);
-                    this.board.centerRow = Math.floor(height / 2);
                 }
             };
-            exports_17("SimulatorApp", SimulatorApp);
+            exports_18("SimulatorApp", SimulatorApp);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("index", ["app", "renderer"], function (exports_18, context_18) {
+System.register("index", ["app", "renderer"], function (exports_19, context_19) {
     "use strict";
-    var __moduleName = context_18 && context_18.id;
-    var app_1, renderer_6, container, sim, resizeApp, loader;
+    var __moduleName = context_19 && context_19.id;
+    var app_1, renderer_7, container, sim, resizeApp, loader;
     return {
         setters: [
             function (app_1_1) {
                 app_1 = app_1_1;
             },
-            function (renderer_6_1) {
-                renderer_6 = renderer_6_1;
+            function (renderer_7_1) {
+                renderer_7 = renderer_7_1;
             }
         ],
         execute: function () {
             container = document.getElementById('container');
-            container.appendChild(renderer_6.Renderer.instance.view);
+            container.appendChild(renderer_7.Renderer.instance.view);
             // dynamically resize the app to track the size of the browser window
             container.style.overflow = 'hidden';
             resizeApp = () => {
                 const r = container.getBoundingClientRect();
-                renderer_6.Renderer.instance.resize(r.width, r.height);
+                renderer_7.Renderer.instance.resize(r.width, r.height);
                 if (sim) {
                     sim.width = r.width;
                     sim.height = r.height;
@@ -1929,14 +2106,17 @@ System.register("index", ["app", "renderer"], function (exports_18, context_18) 
             };
             resizeApp();
             window.addEventListener('resize', resizeApp);
-            renderer_6.Renderer.start();
+            renderer_7.Renderer.start();
             // load sprites
             loader = PIXI.loader;
             loader.add('images/parts.json').load(() => {
                 sim = new app_1.SimulatorApp(PIXI.loader.resources["images/parts.json"].textures);
-                sim.width = renderer_6.Renderer.instance.width;
-                sim.height = renderer_6.Renderer.instance.height;
-                renderer_6.Renderer.stage.addChild(sim);
+                sim.width = renderer_7.Renderer.instance.width;
+                sim.height = renderer_7.Renderer.instance.height;
+                renderer_7.Renderer.stage.addChild(sim);
+                // set up the standard board
+                sim.initStandardBoard();
+                sim.actionbar.zoomToFit();
             });
         }
     };

@@ -171,3 +171,96 @@ export class SpriteButton extends Button {
   }
 
 }
+
+export abstract class ButtonBar extends PIXI.Container {
+
+  constructor() {
+    super();
+    this.addChild(this._background);
+    this._layout();
+  }
+  private _background:PIXI.Graphics = new PIXI.Graphics();
+  protected _buttons:Button[] = [ ];
+
+  // the number of buttons to push to the bottom of the bar
+  public get bottomCount():number { return(this._bottomCount); }
+  public set bottomCount(v:number) {
+    if (v === this.bottomCount) return;
+    this._bottomCount = v;
+    this._layout();
+  }
+  private _bottomCount:number = 0;
+
+  public get width():number { return(this._width); }
+  public set width(v:number) {
+    if (v === this._width) return;
+    this._width = v;
+    for (const button of this._buttons) {
+      button.size = this.width;
+    }
+    this._layout();
+  }
+  private _width:number = 96;
+
+  public get height():number { return(this._height); }
+  public set height(v:number) {
+    if (v === this._height) return;
+    this._height = v;
+    this._layout();
+  }
+  private _height:number = 96;
+
+  public get margin():number { return(this._margin); }
+  public set margin(v:number) {
+    if (v === this._margin) return;
+    this._margin = v;
+    this._layout();
+  }
+  private _margin:number = 4;
+
+  public addButton(button:Button):void {
+    this._buttons.push(button);
+    this.addChild(button);
+    button.addListener('click', this._onButtonClick.bind(this));
+    this._layout();
+  }
+
+  // handle buttons being clicked
+  private _onButtonClick(e:PIXI.interaction.InteractionEvent):void {
+    if (! (e.target instanceof Button)) return;
+    this.onButtonClick(e.target);
+  }
+  protected abstract onButtonClick(button:Button):void;
+
+  // lay out buttons in a vertical strip
+  protected _layout():void {
+    const m:number = this.margin;
+    const w:number = this.width - (2 * m);
+    const hw:number = Math.floor(w / 2);
+    const x:number = m + hw;
+    let y:number = m + hw;
+    // lay out top buttons
+    for (let i:number = 0; i < this._buttons.length - this.bottomCount; i++) {
+      const button = this._buttons[i];
+      button.size = w;
+      button.x = x;
+      button.y = y;
+      y += w + m;
+    }
+    // lay out bottom buttons
+    y = this.height - (m + hw);
+    for (let i:number = 0; i < this.bottomCount; i++) {
+      const button = this._buttons[(this._buttons.length - 1) - i];
+      button.size = w;
+      button.x = x;
+      button.y = y;
+      y -= w + m;
+    }
+    this._background.clear();
+    this._background.beginFill(Colors.BACKGROUND, 1.0);
+    this._background.drawRect(0, 0, this.width, this.height);
+    this._background.endFill();
+    Renderer.needsUpdate();
+  }
+
+}

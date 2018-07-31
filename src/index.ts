@@ -1,4 +1,4 @@
-/// <reference types="pixi.js" />
+import * as PIXI from 'pixi.js';
 
 import { SimulatorApp } from 'app';
 import { Renderer } from 'renderer';

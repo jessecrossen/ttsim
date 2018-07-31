@@ -1,4 +1,4 @@
-/// <reference types="pixi.js" />
+import * as PIXI from 'pixi.js';
 
 import { Part, Layer } from 'parts/part';
 import { Colors, Alphas } from './config';

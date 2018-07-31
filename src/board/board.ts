@@ -1,5 +1,4 @@
-/// <reference types="pixi.js" />
-/// <reference types="pixi-filters" />
+import * as filter from 'pixi-filters';
 
 import { Part, Layer } from 'parts/part';
 import { Fence, FenceVariant } from 'parts/fence';
@@ -8,6 +7,8 @@ import { GearBase, Gear } from 'parts/gearbit';
 import { Alphas, Delays, Sizes } from 'ui/config';
 import { DisjointSet } from 'util/disjoint';
 import { Renderer } from 'renderer';
+import { Ball } from 'parts/ball';
+import { IBallRouter } from './router';
 
 export const enum ToolType {
   NONE,
@@ -19,6 +20,7 @@ export const enum ToolType {
 export const enum ActionType {
   PAN,
   PLACE_PART,
+  PLACE_BALL,
   CLEAR_PART,
   FLIP_PART
 }
@@ -37,7 +39,12 @@ export class Board {
     this._updateDropShadows();
   }
   public readonly view:PIXI.Sprite = new PIXI.Sprite();
-  private _layers:PIXI.Container = new PIXI.Container();
+  public readonly _layers:PIXI.Container = new PIXI.Container();
+
+  // the set of balls currently on the board
+  public readonly balls:Set<Ball> = new Set();
+  // a router to manage the positions of the balls
+  public router:IBallRouter;
   
   // whether to show parts in schematic form
   public get schematic():boolean { return(this._schematic); }
@@ -96,8 +103,8 @@ export class Board {
       this._makeShadow(this.partSize / 8.0) ];
   }
 
-  protected _makeShadow(size:number):PIXI.filters.DropShadowFilter {
-    return(new PIXI.filters.DropShadowFilter({
+  protected _makeShadow(size:number):filter.DropShadowFilter {
+    return(new filter.DropShadowFilter({
       alpha: 0.35,
       blur: size * 0.25,
       color: 0x000000,
@@ -146,6 +153,7 @@ export class Board {
     this._updateDropShadows();
     this._updateLayerVisibility();
     this._updatePan();
+    if (this.router) this.router.onPartSizeChanged();
   }
   private _partSize:number = 64;
 
@@ -202,6 +210,8 @@ export class Board {
   public layoutPart(part:Part, column:number, row:number):void {
     if (! part) return;
     part.size = this.partSize;
+    part.column = column;
+    part.row = row;
     part.x = this.xForColumn(column);
     part.y = this.yForRow(row);
   }
@@ -216,6 +226,9 @@ export class Board {
         c++;
       }
       r++;
+    }
+    for (const ball of this.balls) {
+      this.layoutPart(ball, ball.column, ball.row);
     }
   }
 
@@ -301,6 +314,7 @@ export class Board {
 
   // whether a part can be placed at the given row and column
   public canPlacePart(type:PartType, column:number, row:number):boolean {
+    if (type == PartType.BALL) return(true);
     if ((column < 0) || (column >= this._columnCount) ||
         (row < 0) || (row >= this._rowCount)) return(false);
     const oldPart = this.getPart(column, row);
@@ -416,6 +430,25 @@ export class Board {
       if (! sprite) continue;
       this._containers.get(layer).addChild(sprite);
     }
+    if (this.router) this.router.onBoardChanged();
+  }
+
+  // add a ball to the board
+  public addBall(ball:Ball, x:number, y:number) {
+    if (! this.balls.has(ball)) {
+      this.balls.add(ball);
+      this.addPart(ball);
+      this.layoutPart(ball, this.columnForX(x), this.rowForY(y));
+    }
+  }
+
+  // remove a ball from the board
+  public removeBall(ball:Ball) {
+    if (! this.balls.has(ball)) {
+      this.balls.delete(ball);
+      this.removePart(ball);
+      Renderer.needsUpdate();
+    }
   }
 
   // remove a part from the board's layers
@@ -426,6 +459,7 @@ export class Board {
       const container = this._containers.get(layer);
       if (sprite.parent === container) container.removeChild(sprite);
     }
+    if (this.router) this.router.onBoardChanged();
   }
 
   // connect adjacent sets of gears
@@ -706,11 +740,14 @@ export class Board {
 
   private _updateAction(e:PIXI.interaction.InteractionEvent):void {
     const p = e.data.getLocalPosition(this._layers);
+    this._actionX = p.x;
+    this._actionY = p.y;
     const column = this._actionColumn = Math.round(this.columnForX(p.x));
     const row = this._actionRow = Math.round(this.rowForY(p.y));
     if ((this.tool == ToolType.PART) && (this.partPrototype) &&
         (this.canPlacePart(this.partPrototype.type, column, row))) {
-      this._action = ActionType.PLACE_PART;
+      this._action = this.partPrototype.type == PartType.BALL ?
+        ActionType.PLACE_BALL : ActionType.PLACE_PART;
       this.view.cursor = 'pointer';
     }
     else if ((this.tool == ToolType.ERASER) && 
@@ -732,6 +769,8 @@ export class Board {
   private _action:ActionType = ActionType.PAN;
   private _actionColumn:number;
   private _actionRow:number;
+  private _actionX:number;
+  private _actionY:number;
 
   private _updatePreview():void {
     if (this.partPrototype) {
@@ -739,6 +778,11 @@ export class Board {
         this.partPrototype.visible = true;
         this.layoutPart(this.partPrototype, 
           this._actionColumn, this._actionRow);
+      }
+      else if (this._action === ActionType.PLACE_BALL) {
+        this.partPrototype.visible = true;
+        this.partPrototype.x = Math.round(this._actionX);
+        this.partPrototype.y = Math.round(this._actionY);
       }
       else {
         this.partPrototype.visible = false;
@@ -759,6 +803,12 @@ export class Board {
         this.setPart(this.partFactory.copy(this.partPrototype), 
           this._actionColumn, this._actionRow);
       }
+    }
+    // place a ball
+    else if ((this._action === ActionType.PLACE_BALL) &&
+             (this.partPrototype)) {
+      this.addBall(this.partFactory.copy(this.partPrototype) as Ball, 
+        this._actionX, this._actionY);
     }
     // clear parts
     else if (this._action === ActionType.CLEAR_PART) {

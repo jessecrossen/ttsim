@@ -1,9 +1,16 @@
 {
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jessecrossen/ttsim.git"
+  },
+  "license": "Unlicense",
   "dependencies": {
+    "matter-js": "^0.14.2",
     "pixi-filters": "^2.6.0",
     "pixi.js": "^4.8.0"
   },
   "devDependencies": {
+    "@types/matter-js": "^0.10.1",
     "@types/pixi.js": "^4.8.0",
     "systemjs": "0.20",
     "typescript": "2.7.2"

@@ -1,7 +1,9 @@
-/// <reference types="pixi.js" />
+import * as PIXI from 'pixi.js';
+import { Body } from 'matter-js';
 
 import { PartType } from './factory';
 import { Renderer } from 'renderer';
+import { SPACING } from 'board/physics';
 
 export const enum Layer {
   BACK = 0, // keep this at the start to allow iteration through all layers
@@ -35,6 +37,22 @@ export abstract class Part {
   // whether the part can be replaced
   public isLocked:boolean = false;
 
+  // the current position of the ball in grid units
+  public get column():number { return(this._column); }
+  public set column(v:number) {
+    if (v === this._column) return;
+    this._column = v;
+    this._updateBody();
+  }
+  private _column:number = 0.0;
+  public get row():number { return(this._row); }
+  public set row(v:number) {
+    if (v === this._row) return;
+    this._row = v;
+    this._updateBody();
+  }
+  private _row:number = 0.0;
+
   // the unit-size of the part
   public get size():number { return(this._size); }
   public set size(s:number) {
@@ -52,6 +70,7 @@ export abstract class Part {
     if (r === this._rotation) return;
     this._rotation = r;
     this._updateSprites();
+    this._updateBody();
   }
   private _rotation:number = 0.0;
 
@@ -69,6 +88,7 @@ export abstract class Part {
     if ((! this.canFlip) || (v === this._isFlipped)) return;
     this._isFlipped = v;
     this._updateSprites();
+    this._updateBody();
   }
   private _isFlipped:boolean = false;
 
@@ -223,10 +243,10 @@ export abstract class Part {
       //  less distortion from the rotation transform
       if ((this.canMirror) && (this.rotation > 0.5)) {
         xScale = -xScale;
-        sprite.rotation = this._angleForRotation(this.rotation - 1.0);
+        sprite.rotation = this._angleForRotation(this.rotation - 1.0, layer);
       }
       else {
-        sprite.rotation = this._angleForRotation(this.rotation);
+        sprite.rotation = this._angleForRotation(this.rotation, layer);
       }
     }
     // apply any scale changes
@@ -245,12 +265,26 @@ export abstract class Part {
   protected _yOffset:number = 0.0;
 
   // get the angle for the given rotation value
-  protected _angleForRotation(r:number):number {
+  protected _angleForRotation(r:number, layer:Layer):number {
     return(r * (Math.PI / 2));
   }
   // get whether to flip the x axis
   protected get _flipX():boolean {
     return(this.isFlipped);
+  }
+
+  // PHYSICS ******************************************************************
+
+  // a body representing the physical form of the part
+  public getBody():Body {
+    return(null);
+  };
+  protected _body:Body;
+  // transfer relevant properties to the body
+  protected _updateBody():void {
+    if (! this._body) return;
+    this._body.position.x = this.column * SPACING;
+    this._body.position.y = this.row * SPACING;
   }
 
 }

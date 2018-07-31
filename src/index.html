@@ -1,9 +1,6 @@
 <html>
   <head>
     <title>Turing Tumble Simulator</title>
-    <script src="system.js" type="text/javascript"></script>
-    <script src="pixi.min.js" type="text/javascript"></script>
-    <script src="pixi-filters.js" type="text/javascript"></script>
     <style type="text/css">
       body {
         margin: 0;
@@ -17,8 +14,30 @@
   </head>
   <body>
     <div id="container" />
+    <script src="system.js" type="text/javascript"></script>
     <script src="app.js" type="text/javascript"></script>
     <script type="text/javascript">
+      SystemJS.config({
+        map: {
+          'matter-js': './matter.min.js',
+          'pixi.js': './pixi.min.js',
+          'pixi-filters': './pixi-filters.js'
+        },
+        meta: {
+          'matter-js': { esModule: true },
+          'pixi.js': {
+            format: 'global',
+            exports: 'PIXI',
+            esModule: true
+          },
+          'pixi-filters': {
+            deps: [ 'pixi.js' ],
+            format: 'global',
+            exports: 'PIXI.filters',
+            esModule: true
+          }
+        }
+      });
       SystemJS.import('index');
     </script>
   </body>

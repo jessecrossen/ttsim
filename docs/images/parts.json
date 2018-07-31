@@ -1,5 +1,77 @@
 {
   "frames": {
+    "Ball-f": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 108, 
+        "y": 108
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Ball-m": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 4, 
+        "y": 108
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Ball-s": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 212, 
+        "y": 108
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
     "Bit-b": {
       "frame": {
         "h": 96, 

@@ -11,8 +11,8 @@ server:
 
 # APP
 
-app: docs/index.html docs/pixi.min.js docs/pixi-filters.js \
-		 docs/system.js docs/app.js
+app: docs/pixi.min.js docs/pixi-filters.js docs/matter.min.js \
+		 docs/index.html docs/system.js docs/app.js
 
 docs/index.html: src/index.html
 	mkdir -p docs
@@ -33,6 +33,10 @@ docs/pixi-filters.js: node_modules
 docs/pixi.min.js: node_modules
 	mkdir -p docs
 	cp node_modules/pixi.js/dist/pixi.min.js docs/
+
+docs/matter.min.js: node_modules
+	mkdir -p docs
+	cp node_modules/matter-js/build/matter.min.js docs/
 
 # DEPENDENCIES
 

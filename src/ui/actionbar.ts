@@ -1,4 +1,4 @@
-/// <reference types="pixi.js" />
+import * as PIXI from 'pixi.js';
 
 import { Board, ToolType, PartSizes, SPACING_FACTOR } from 'board/board';
 import { Button, PartButton, SpriteButton, ButtonBar } from './button';

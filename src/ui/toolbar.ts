@@ -1,4 +1,4 @@
-/// <reference types="pixi.js" />
+import * as PIXI from 'pixi.js';
 
 import { Part } from 'parts/part';
 import { Board, ToolType, PartSizes } from 'board/board';

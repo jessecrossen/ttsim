@@ -1,4 +1,4 @@
-/// <reference types="pixi.js" />
+import * as PIXI from 'pixi.js';
 
 import { Board } from 'board/board';
 import { PartFactory, PartType } from 'parts/factory';
@@ -7,6 +7,7 @@ import { Actionbar } from 'ui/actionbar';
 import { Renderer } from 'renderer';
 import { Fence } from 'parts/fence';
 import { Drop } from 'parts/drop';
+import { PhysicalBallRouter } from 'board/physics';
 
 export class SimulatorApp extends PIXI.Container {
 
@@ -23,6 +24,12 @@ export class SimulatorApp extends PIXI.Container {
     this.addChild(this.board.view);
     this.addChild(this.toolbar);
     this.addChild(this.actionbar);
+
+    //!!!
+    const router = new PhysicalBallRouter(this.board);
+    this.board.router = router;
+    router.showWireframe = true;
+
     this._layout();
   }
   public readonly partFactory:PartFactory;

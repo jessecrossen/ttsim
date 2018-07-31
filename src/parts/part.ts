@@ -32,6 +32,9 @@ export abstract class Part {
   // the type of the part, for constructing a new one from the factory
   public abstract get type():PartType;
 
+  // whether the part can be replaced
+  public isLocked:boolean = false;
+
   // the unit-size of the part
   public get size():number { return(this._size); }
   public set size(s:number) {
@@ -212,7 +215,7 @@ export abstract class Part {
     sprite.width = size;
     sprite.height = size;
     // apply flipping
-    let xScale:number = this.isFlipped ? 
+    let xScale:number = this._flipX ? 
       - Math.abs(sprite.scale.x) : Math.abs(sprite.scale.x);
     // apply rotation on all layers but the background
     if (layer != Layer.BACK) {
@@ -229,17 +232,25 @@ export abstract class Part {
     // apply any scale changes
     sprite.scale.x = xScale;
     // position the part
-    sprite.position.set(this.x, this.y);
+    sprite.position.set(this.x + (this._xOffset * this.size), 
+                        this.y + (this._yOffset * this.size));
     // apply opacity and visibility
     sprite.visible = this.visible;
     sprite.alpha = sprite.visible ? this.alpha : 0;
     // schedule rendering
     Renderer.needsUpdate();
   }
+  // adjustable offsets for textures (as a fraction of the size)
+  protected _xOffset:number = 0.0;
+  protected _yOffset:number = 0.0;
 
   // get the angle for the given rotation value
   protected _angleForRotation(r:number):number {
     return(r * (Math.PI / 2));
+  }
+  // get whether to flip the x axis
+  protected get _flipX():boolean {
+    return(this.isFlipped);
   }
 
 }

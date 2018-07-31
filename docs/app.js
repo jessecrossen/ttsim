@@ -13,14 +13,14 @@ System.register("parts/location", ["parts/part"], function (exports_1, context_1
                 get canRotate() { return (false); }
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
-                get type() { return (0 /* PARTLOC */); }
+                get type() { return (1 /* PARTLOC */); }
             };
             exports_1("PartLocation", PartLocation);
             GearLocation = class GearLocation extends part_1.Part {
                 get canRotate() { return (false); }
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
-                get type() { return (1 /* GEARLOC */); }
+                get type() { return (2 /* GEARLOC */); }
             };
             exports_1("GearLocation", GearLocation);
         }
@@ -41,7 +41,7 @@ System.register("parts/ramp", ["parts/part"], function (exports_2, context_2) {
                 get canRotate() { return (true); }
                 get canMirror() { return (false); }
                 get canFlip() { return (true); }
-                get type() { return (2 /* RAMP */); }
+                get type() { return (3 /* RAMP */); }
             };
             exports_2("Ramp", Ramp);
         }
@@ -62,7 +62,7 @@ System.register("parts/crossover", ["parts/part"], function (exports_3, context_
                 get canRotate() { return (false); }
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
-                get type() { return (3 /* CROSSOVER */); }
+                get type() { return (4 /* CROSSOVER */); }
             };
             exports_3("Crossover", Crossover);
         }
@@ -83,7 +83,7 @@ System.register("parts/interceptor", ["parts/part"], function (exports_4, contex
                 get canRotate() { return (false); }
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
-                get type() { return (4 /* INTERCEPTOR */); }
+                get type() { return (5 /* INTERCEPTOR */); }
             };
             exports_4("Interceptor", Interceptor);
         }
@@ -104,7 +104,7 @@ System.register("parts/bit", ["parts/part"], function (exports_5, context_5) {
                 get canRotate() { return (true); }
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
-                get type() { return (5 /* BIT */); }
+                get type() { return (6 /* BIT */); }
             };
             exports_5("Bit", Bit);
         }
@@ -153,14 +153,14 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
                 get canRotate() { return (true); }
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
-                get type() { return (6 /* GEARBIT */); }
+                get type() { return (7 /* GEARBIT */); }
             };
             exports_6("Gearbit", Gearbit);
             Gear = class Gear extends GearBase {
                 get canRotate() { return (true); }
                 get canMirror() { return (false); } // (the cross is not mirrored)
                 get canFlip() { return (false); }
-                get type() { return (7 /* GEAR */); }
+                get type() { return (8 /* GEAR */); }
                 // gears rotate in the reverse direction from their gearbits, but making
                 //  them have the same rotation value is convenient
                 _angleForRotation(r) {
@@ -171,69 +171,9 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
         }
     };
 });
-System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit"], function (exports_7, context_7) {
+System.register("ui/config", [], function (exports_7, context_7) {
     "use strict";
     var __moduleName = context_7 && context_7.id;
-    var location_1, ramp_1, crossover_1, interceptor_1, bit_1, gearbit_1, PartFactory;
-    return {
-        setters: [
-            function (location_1_1) {
-                location_1 = location_1_1;
-            },
-            function (ramp_1_1) {
-                ramp_1 = ramp_1_1;
-            },
-            function (crossover_1_1) {
-                crossover_1 = crossover_1_1;
-            },
-            function (interceptor_1_1) {
-                interceptor_1 = interceptor_1_1;
-            },
-            function (bit_1_1) {
-                bit_1 = bit_1_1;
-            },
-            function (gearbit_1_1) {
-                gearbit_1 = gearbit_1_1;
-            }
-        ],
-        execute: function () {
-            PartFactory = class PartFactory {
-                constructor(textures) {
-                    this.textures = textures;
-                }
-                // make a new part of the given type
-                make(type) {
-                    switch (type) {
-                        case 0 /* PARTLOC */: return (new location_1.PartLocation(this.textures));
-                        case 1 /* GEARLOC */: return (new location_1.GearLocation(this.textures));
-                        case 2 /* RAMP */: return (new ramp_1.Ramp(this.textures));
-                        case 3 /* CROSSOVER */: return (new crossover_1.Crossover(this.textures));
-                        case 4 /* INTERCEPTOR */: return (new interceptor_1.Interceptor(this.textures));
-                        case 5 /* BIT */: return (new bit_1.Bit(this.textures));
-                        case 7 /* GEAR */: return (new gearbit_1.Gear(this.textures));
-                        case 6 /* GEARBIT */: return (new gearbit_1.Gearbit(this.textures));
-                        default: return (null);
-                    }
-                }
-                // make a copy of the given part with the same basic state
-                copy(part) {
-                    if (!part)
-                        return (null);
-                    const newPart = this.make(part.type);
-                    if (newPart) {
-                        newPart.rotation = part.bitValue ? 1.0 : 0.0;
-                        newPart.isFlipped = part.isFlipped;
-                    }
-                    return (newPart);
-                }
-            };
-            exports_7("PartFactory", PartFactory);
-        }
-    };
-});
-System.register("ui/config", [], function (exports_8, context_8) {
-    "use strict";
-    var __moduleName = context_8 && context_8.id;
     return {
         setters: [],
         execute: function () {
@@ -241,9 +181,9 @@ System.register("ui/config", [], function (exports_8, context_8) {
     };
 });
 /// <reference types="pixi.js" />
-System.register("renderer", [], function (exports_9, context_9) {
+System.register("renderer", [], function (exports_8, context_8) {
     "use strict";
-    var __moduleName = context_9 && context_9.id;
+    var __moduleName = context_8 && context_8.id;
     var Renderer;
     return {
         setters: [],
@@ -268,14 +208,182 @@ System.register("renderer", [], function (exports_9, context_9) {
                 backgroundColor: 16777215 /* BACKGROUND */
             });
             Renderer.stage = new PIXI.Container();
-            exports_9("Renderer", Renderer);
+            exports_8("Renderer", Renderer);
+        }
+    };
+});
+System.register("parts/fence", ["parts/part"], function (exports_9, context_9) {
+    "use strict";
+    var __moduleName = context_9 && context_9.id;
+    var part_7, Fence;
+    return {
+        setters: [
+            function (part_7_1) {
+                part_7 = part_7_1;
+            }
+        ],
+        execute: function () {
+            Fence = class Fence extends part_7.Part {
+                constructor() {
+                    super(...arguments);
+                    this._variant = 0 /* PREVIEW */;
+                    this._modulus = 1;
+                    this._sequence = 1;
+                }
+                get canRotate() { return (false); }
+                get canMirror() { return (false); }
+                get canFlip() { return (true); }
+                get type() { return (9 /* FENCE */); }
+                // the type of fence segment to display
+                get variant() { return (this._variant); }
+                set variant(v) {
+                    if (v === this.variant)
+                        return;
+                    this._variant = v;
+                    this._updateTexture();
+                }
+                static get maxModulus() { return (6); }
+                // for slopes, the number of part units in the slope
+                get modulus() { return (this._modulus); }
+                set modulus(v) {
+                    v = Math.min(Math.max(1, Math.round(v)), Fence.maxModulus);
+                    if (v === this.modulus)
+                        return;
+                    this._modulus = v;
+                    this._updateTexture();
+                }
+                // for slopes, the position of this part in the run of parts,
+                //  where 0 is at the highest point and (modulus - 1) is at the lowest
+                get sequence() { return (this._sequence); }
+                set sequence(v) {
+                    if (v === this.sequence)
+                        return;
+                    this._sequence = v;
+                    this._updateTexture();
+                }
+                _updateTexture() {
+                    for (let layer = 0 /* BACK */; layer < 7 /* COUNT */; layer++) {
+                        const sprite = this.getSpriteForLayer(layer);
+                        if (!sprite)
+                            continue;
+                        let suffix = this.textureSuffix(layer);
+                        if (this.variant === 1 /* SIDE */) {
+                            suffix += 'l';
+                            this._yOffset = 0.0;
+                        }
+                        else if (this.variant === 2 /* SLOPE */) {
+                            suffix += 's' + this.modulus;
+                            this._yOffset = ((this.sequence % this.modulus) / this.modulus) * 1.0625;
+                        }
+                        else {
+                            this._yOffset = 0.0;
+                        }
+                        const textureName = this.texturePrefix + suffix;
+                        if (textureName in this.textures) {
+                            sprite.texture = this.textures[textureName];
+                        }
+                    }
+                    this._updateSprites();
+                }
+            };
+            exports_9("Fence", Fence);
+        }
+    };
+});
+System.register("parts/blank", ["parts/part"], function (exports_10, context_10) {
+    "use strict";
+    var __moduleName = context_10 && context_10.id;
+    var part_8, Blank;
+    return {
+        setters: [
+            function (part_8_1) {
+                part_8 = part_8_1;
+            }
+        ],
+        execute: function () {
+            Blank = class Blank extends part_8.Part {
+                get canRotate() { return (false); }
+                get canMirror() { return (false); }
+                get canFlip() { return (false); }
+                get type() { return (0 /* BLANK */); }
+            };
+            exports_10("Blank", Blank);
+        }
+    };
+});
+System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit", "parts/fence", "parts/blank"], function (exports_11, context_11) {
+    "use strict";
+    var __moduleName = context_11 && context_11.id;
+    var location_1, ramp_1, crossover_1, interceptor_1, bit_1, gearbit_1, fence_1, blank_1, PartFactory;
+    return {
+        setters: [
+            function (location_1_1) {
+                location_1 = location_1_1;
+            },
+            function (ramp_1_1) {
+                ramp_1 = ramp_1_1;
+            },
+            function (crossover_1_1) {
+                crossover_1 = crossover_1_1;
+            },
+            function (interceptor_1_1) {
+                interceptor_1 = interceptor_1_1;
+            },
+            function (bit_1_1) {
+                bit_1 = bit_1_1;
+            },
+            function (gearbit_1_1) {
+                gearbit_1 = gearbit_1_1;
+            },
+            function (fence_1_1) {
+                fence_1 = fence_1_1;
+            },
+            function (blank_1_1) {
+                blank_1 = blank_1_1;
+            }
+        ],
+        execute: function () {
+            PartFactory = class PartFactory {
+                constructor(textures) {
+                    this.textures = textures;
+                }
+                // make a new part of the given type
+                make(type) {
+                    switch (type) {
+                        case 0 /* BLANK */: return (new blank_1.Blank(this.textures));
+                        case 1 /* PARTLOC */: return (new location_1.PartLocation(this.textures));
+                        case 2 /* GEARLOC */: return (new location_1.GearLocation(this.textures));
+                        case 3 /* RAMP */: return (new ramp_1.Ramp(this.textures));
+                        case 4 /* CROSSOVER */: return (new crossover_1.Crossover(this.textures));
+                        case 5 /* INTERCEPTOR */: return (new interceptor_1.Interceptor(this.textures));
+                        case 6 /* BIT */: return (new bit_1.Bit(this.textures));
+                        case 8 /* GEAR */: return (new gearbit_1.Gear(this.textures));
+                        case 7 /* GEARBIT */: return (new gearbit_1.Gearbit(this.textures));
+                        case 9 /* FENCE */: return (new fence_1.Fence(this.textures));
+                        default: return (null);
+                    }
+                }
+                // make a copy of the given part with the same basic state
+                copy(part) {
+                    if (!part)
+                        return (null);
+                    const newPart = this.make(part.type);
+                    if (newPart) {
+                        newPart.rotation = part.bitValue ? 1.0 : 0.0;
+                        newPart.isFlipped = part.isFlipped;
+                        newPart.isLocked = part.isLocked;
+                    }
+                    return (newPart);
+                }
+            };
+            exports_11("PartFactory", PartFactory);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("parts/part", ["renderer"], function (exports_10, context_10) {
+System.register("parts/part", ["renderer"], function (exports_12, context_12) {
     "use strict";
-    var __moduleName = context_10 && context_10.id;
+    var __moduleName = context_12 && context_12.id;
     var renderer_1, Part;
     return {
         setters: [
@@ -289,6 +397,8 @@ System.register("parts/part", ["renderer"], function (exports_10, context_10) {
             Part = class Part {
                 constructor(textures) {
                     this.textures = textures;
+                    // whether the part can be replaced
+                    this.isLocked = false;
                     this._size = 64;
                     this._rotation = 0.0;
                     this._isFlipped = false;
@@ -299,6 +409,9 @@ System.register("parts/part", ["renderer"], function (exports_10, context_10) {
                     this._rv = 0.0;
                     this.tickRotation = this._tickRotation.bind(this);
                     this._sprites = new Map();
+                    // adjustable offsets for textures (as a fraction of the size)
+                    this._xOffset = 0.0;
+                    this._yOffset = 0.0;
                 }
                 // the unit-size of the part
                 get size() { return (this._size); }
@@ -474,7 +587,7 @@ System.register("parts/part", ["renderer"], function (exports_10, context_10) {
                     sprite.width = size;
                     sprite.height = size;
                     // apply flipping
-                    let xScale = this.isFlipped ?
+                    let xScale = this._flipX ?
                         -Math.abs(sprite.scale.x) : Math.abs(sprite.scale.x);
                     // apply rotation on all layers but the background
                     if (layer != 0 /* BACK */) {
@@ -491,7 +604,7 @@ System.register("parts/part", ["renderer"], function (exports_10, context_10) {
                     // apply any scale changes
                     sprite.scale.x = xScale;
                     // position the part
-                    sprite.position.set(this.x, this.y);
+                    sprite.position.set(this.x + (this._xOffset * this.size), this.y + (this._yOffset * this.size));
                     // apply opacity and visibility
                     sprite.visible = this.visible;
                     sprite.alpha = sprite.visible ? this.alpha : 0;
@@ -502,8 +615,12 @@ System.register("parts/part", ["renderer"], function (exports_10, context_10) {
                 _angleForRotation(r) {
                     return (r * (Math.PI / 2));
                 }
+                // get whether to flip the x axis
+                get _flipX() {
+                    return (this.isFlipped);
+                }
             };
-            exports_10("Part", Part);
+            exports_12("Part", Part);
         }
     };
 });
@@ -529,9 +646,9 @@ System.register("parts/part", ["renderer"], function (exports_10, context_10) {
  *   out of or in connection with the Software or the use or other dealings in the
  *   Software.
  */
-System.register("util/disjoint", [], function (exports_11, context_11) {
+System.register("util/disjoint", [], function (exports_13, context_13) {
     "use strict";
-    var __moduleName = context_11 && context_11.id;
+    var __moduleName = context_13 && context_13.id;
     var DisjointSet;
     return {
         setters: [],
@@ -622,18 +739,21 @@ System.register("util/disjoint", [], function (exports_11, context_11) {
                     }
                 }
             };
-            exports_11("DisjointSet", DisjointSet);
+            exports_13("DisjointSet", DisjointSet);
         }
     };
 });
 /// <reference types="pixi.js" />
 /// <reference types="pixi-filters" />
-System.register("board/board", ["parts/gearbit", "util/disjoint", "renderer"], function (exports_12, context_12) {
+System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint", "renderer"], function (exports_14, context_14) {
     "use strict";
-    var __moduleName = context_12 && context_12.id;
-    var gearbit_2, disjoint_1, renderer_2, PartSizes, Board;
+    var __moduleName = context_14 && context_14.id;
+    var fence_2, gearbit_2, disjoint_1, renderer_2, PartSizes, Board;
     return {
         setters: [
+            function (fence_2_1) {
+                fence_2 = fence_2_1;
+            },
             function (gearbit_2_1) {
                 gearbit_2 = gearbit_2_1;
             },
@@ -645,7 +765,7 @@ System.register("board/board", ["parts/gearbit", "util/disjoint", "renderer"], f
             }
         ],
         execute: function () {
-            exports_12("PartSizes", PartSizes = [2, 4, 6, 8, 12, 16, 24, 32, 48, 64]);
+            exports_14("PartSizes", PartSizes = [2, 4, 6, 8, 12, 16, 24, 32, 48, 64]);
             Board = class Board {
                 constructor(partFactory) {
                     this.partFactory = partFactory;
@@ -818,6 +938,8 @@ System.register("board/board", ["parts/gearbit", "util/disjoint", "renderer"], f
                 }
                 // do layout for one part at the given location
                 layoutPart(part, column, row) {
+                    if (!part)
+                        return;
                     part.size = this.partSize;
                     part.x = this.xForColumn(column);
                     part.y = this.yForRow(row);
@@ -910,10 +1032,15 @@ System.register("board/board", ["parts/gearbit", "util/disjoint", "renderer"], f
                     if ((column < 0) || (column >= this._columnCount) ||
                         (row < 0) || (row >= this._rowCount))
                         return (false);
-                    if ((type == 0 /* PARTLOC */) || (type == 1 /* GEARLOC */))
+                    const oldPart = this.getPart(column, row);
+                    if ((oldPart) && (oldPart.isLocked))
+                        return (false);
+                    else if ((type == 1 /* PARTLOC */) || (type == 2 /* GEARLOC */))
                         return (true);
-                    else if (type == 7 /* GEAR */)
+                    else if (type == 8 /* GEAR */)
                         return ((row + column) % 2 != 0);
+                    else if (type == 9 /* FENCE */)
+                        return (true);
                     else
                         return ((row + column) % 2 == 0);
                 }
@@ -926,13 +1053,13 @@ System.register("board/board", ["parts/gearbit", "util/disjoint", "renderer"], f
                 isBackgroundPart(column, row) {
                     const part = this.getPart(column, row);
                     return ((!part) ||
-                        (part.type === 0 /* PARTLOC */) ||
-                        (part.type === 1 /* GEARLOC */));
+                        (part.type === 1 /* PARTLOC */) ||
+                        (part.type === 2 /* GEARLOC */));
                 }
                 // make a background part for the given row and column position
                 makeBackgroundPart(column, row) {
                     return (this.partFactory.make((row + column) % 2 == 0 ?
-                        0 /* PARTLOC */ : 1 /* GEARLOC */));
+                        1 /* PARTLOC */ : 2 /* GEARLOC */));
                 }
                 // set the tool to use when the user clicks
                 get tool() { return (this._tool); }
@@ -994,6 +1121,10 @@ System.register("board/board", ["parts/gearbit", "util/disjoint", "renderer"], f
                             }
                             newPart.rotation = ((sum / newPart.connected.size) >= 0.5) ? 1.0 : 0.0;
                         }
+                    }
+                    // update fences
+                    if ((oldPart instanceof fence_2.Fence) || (newPart instanceof fence_2.Fence)) {
+                        this._updateFences();
                     }
                 }
                 // clear parts from the given coordinates
@@ -1083,6 +1214,84 @@ System.register("board/board", ["parts/gearbit", "util/disjoint", "renderer"], f
                         set.add(part);
                         part.connected = set;
                     }
+                }
+                // configure fences
+                _updateFences() {
+                    let slopeParts = [];
+                    for (const row of this._grid) {
+                        for (const part of row) {
+                            if (part instanceof fence_2.Fence) {
+                                if ((slopeParts.length > 0) &&
+                                    (slopeParts[0].isFlipped !== part.isFlipped)) {
+                                    this._makeSlope(slopeParts);
+                                }
+                                slopeParts.push(part);
+                            }
+                            else
+                                this._makeSlope(slopeParts);
+                        }
+                        this._makeSlope(slopeParts);
+                    }
+                }
+                // configure a horizontal run of fence parts
+                _makeSlope(fences) {
+                    if (!(fences.length > 0))
+                        return;
+                    if (fences.length == 1)
+                        fences[0].variant = 1 /* SIDE */;
+                    else {
+                        for (let i = 0; i < fences.length; i++) {
+                            fences[i].variant = 2 /* SLOPE */;
+                            fences[i].modulus = fences.length;
+                            fences[i].sequence = fences[i].isFlipped ?
+                                ((fences.length - 1) - i) : i;
+                        }
+                    }
+                    fences.splice(0, fences.length);
+                }
+                // flip a fence part
+                _flipFence(column, row) {
+                    const fence = this.getPart(column, row);
+                    if (!(fence instanceof fence_2.Fence))
+                        return;
+                    const wasFlipped = fence.isFlipped;
+                    const variant = fence.variant;
+                    fence.flip();
+                    // make a test function to shorten the code below
+                    const shouldContinue = (part) => {
+                        if ((part instanceof fence_2.Fence) && (part.isFlipped == wasFlipped) &&
+                            (part.variant == variant)) {
+                            part.flip();
+                            return (true);
+                        }
+                        return (false);
+                    };
+                    if (variant == 2 /* SLOPE */) {
+                        // go right
+                        for (let c = column + 1; c < this._columnCount; c++) {
+                            if (!shouldContinue(this.getPart(c, row)))
+                                break;
+                        }
+                        // go left
+                        for (let c = column - 1; c >= 0; c--) {
+                            if (!shouldContinue(this.getPart(c, row)))
+                                break;
+                        }
+                    }
+                    else if (variant == 1 /* SIDE */) {
+                        // go down
+                        for (let r = row + 1; r < this._rowCount; r++) {
+                            if (!shouldContinue(this.getPart(column, r)))
+                                break;
+                        }
+                        // go up
+                        for (let r = row - 1; r >= 0; r--) {
+                            if (!shouldContinue(this.getPart(column, r)))
+                                break;
+                        }
+                    }
+                    // update sequence numbers for slopes
+                    this._updateFences();
                 }
                 // INTERACTION **************************************************************
                 _bindMouseEvents() {
@@ -1177,19 +1386,22 @@ System.register("board/board", ["parts/gearbit", "util/disjoint", "renderer"], f
                     }
                     else if (this._action === 3 /* FLIP_PART */) {
                         const part = this.getPart(this._actionColumn, this._actionRow);
-                        if (part)
+                        if (part instanceof fence_2.Fence) {
+                            this._flipFence(this._actionColumn, this._actionRow);
+                        }
+                        else if (part)
                             part.flip(0.25 /* FLIP */);
                     }
                 }
             };
-            exports_12("Board", Board);
+            exports_14("Board", Board);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("ui/button", ["renderer"], function (exports_13, context_13) {
+System.register("ui/button", ["renderer"], function (exports_15, context_15) {
     "use strict";
-    var __moduleName = context_13 && context_13.id;
+    var __moduleName = context_15 && context_15.id;
     var renderer_3, Button, PartButton, SpriteButton;
     return {
         setters: [
@@ -1295,7 +1507,7 @@ System.register("ui/button", ["renderer"], function (exports_13, context_13) {
                     renderer_3.Renderer.needsUpdate();
                 }
             };
-            exports_13("Button", Button);
+            exports_15("Button", Button);
             PartButton = class PartButton extends Button {
                 constructor(part) {
                     super();
@@ -1335,7 +1547,7 @@ System.register("ui/button", ["renderer"], function (exports_13, context_13) {
                         this.part.size = Math.floor(this.size * 0.5);
                 }
             };
-            exports_13("PartButton", PartButton);
+            exports_15("PartButton", PartButton);
             SpriteButton = class SpriteButton extends Button {
                 constructor(sprite) {
                     super();
@@ -1355,14 +1567,14 @@ System.register("ui/button", ["renderer"], function (exports_13, context_13) {
                     }
                 }
             };
-            exports_13("SpriteButton", SpriteButton);
+            exports_15("SpriteButton", SpriteButton);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("ui/toolbox", ["board/board", "ui/button", "renderer"], function (exports_14, context_14) {
+System.register("ui/toolbox", ["board/board", "ui/button", "renderer"], function (exports_16, context_16) {
     "use strict";
-    var __moduleName = context_14 && context_14.id;
+    var __moduleName = context_16 && context_16.id;
     var board_1, button_1, renderer_4, Toolbox;
     return {
         setters: [
@@ -1393,10 +1605,10 @@ System.register("ui/toolbox", ["board/board", "ui/button", "renderer"], function
                     this._handButton = new button_1.SpriteButton(new PIXI.Sprite(board.partFactory.textures['hand']));
                     this._buttons.push(this._handButton);
                     // add a button to remove parts
-                    this._eraserButton = new button_1.PartButton(this.board.partFactory.make(0 /* PARTLOC */));
+                    this._eraserButton = new button_1.PartButton(this.board.partFactory.make(1 /* PARTLOC */));
                     this._buttons.push(this._eraserButton);
                     // add buttons for parts
-                    for (let i = 2 /* TOOLBOX_MIN */; i <= 7 /* TOOLBOX_MAX */; i++) {
+                    for (let i = 3 /* TOOLBOX_MIN */; i <= 9 /* TOOLBOX_MAX */; i++) {
                         const part = board.partFactory.make(i);
                         if (!part)
                             continue;
@@ -1550,15 +1762,15 @@ System.register("ui/toolbox", ["board/board", "ui/button", "renderer"], function
                     return (board_1.PartSizes.indexOf(this.board.partSize));
                 }
             };
-            exports_14("Toolbox", Toolbox);
+            exports_16("Toolbox", Toolbox);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer"], function (exports_15, context_15) {
+System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer", "parts/fence"], function (exports_17, context_17) {
     "use strict";
-    var __moduleName = context_15 && context_15.id;
-    var board_2, factory_1, toolbox_1, renderer_5, SimulatorApp;
+    var __moduleName = context_17 && context_17.id;
+    var board_2, factory_1, toolbox_1, renderer_5, fence_3, SimulatorApp;
     return {
         setters: [
             function (board_2_1) {
@@ -1572,6 +1784,9 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer"
             },
             function (renderer_5_1) {
                 renderer_5 = renderer_5_1;
+            },
+            function (fence_3_1) {
+                fence_3 = fence_3_1;
             }
         ],
         execute: function () {
@@ -1585,12 +1800,10 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer"
                     this.board = new board_2.Board(this.partFactory);
                     this.toolbox = new toolbox_1.Toolbox(this.board);
                     this.toolbox.width = 64;
-                    this.board.setSize(11, 11);
-                    this.board.centerColumn = 5;
-                    this.board.centerRow = 5;
                     this.board.view.x = this.toolbox.width;
                     this.addChild(this.board.view);
                     this.addChild(this.toolbox);
+                    this.initStandardBoard();
                 }
                 get width() { return (this._width); }
                 set width(v) {
@@ -1611,15 +1824,86 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer"
                     this.board.height = this.height;
                     renderer_5.Renderer.needsUpdate();
                 }
+                initStandardBoard(redBlueDistance = 5, verticalDrop = 11) {
+                    let r, c, run;
+                    const width = (redBlueDistance * 2) + 3;
+                    const dropLevel = (width % 2 == 0) ? 1 : 0;
+                    const collectLevel = dropLevel + verticalDrop;
+                    const center = Math.floor(width / 2);
+                    const blueColumn = center - Math.floor(redBlueDistance / 2);
+                    const redColumn = center + Math.floor(redBlueDistance / 2);
+                    const steps = Math.ceil(center / fence_3.Fence.maxModulus);
+                    const maxModulus = Math.ceil(center / steps);
+                    const height = collectLevel + steps + 1;
+                    this.board.setSize(width, height);
+                    // block out unreachable locations at the top
+                    const blank = this.partFactory.make(0 /* BLANK */);
+                    blank.isLocked = true;
+                    for (r = 0; r < height; r++) {
+                        for (c = 0; c < width; c++) {
+                            const blueCantReach = ((r + c) < (blueColumn + dropLevel)) ||
+                                ((c - r) > (blueColumn - dropLevel));
+                            const redCantReach = ((r + c) < (redColumn + dropLevel)) ||
+                                ((c - r) > (redColumn - dropLevel));
+                            if (blueCantReach && redCantReach) {
+                                this.board.setPart(this.partFactory.copy(blank), c, r);
+                            }
+                        }
+                    }
+                    // add fences on the sides
+                    const fence = this.partFactory.make(9 /* FENCE */);
+                    fence.isLocked = true;
+                    const flippedFence = this.partFactory.copy(fence);
+                    flippedFence.flip();
+                    for (r = dropLevel; r < collectLevel; r++) {
+                        this.board.setPart(this.partFactory.copy(fence), 0, r);
+                        this.board.setPart(this.partFactory.copy(flippedFence), width - 1, r);
+                    }
+                    // add collection fences at the bottom
+                    r = collectLevel;
+                    run = 0;
+                    for (c = 0; c < center; c++, run++) {
+                        if (run >= maxModulus) {
+                            r++;
+                            run = 0;
+                        }
+                        this.board.setPart(this.partFactory.copy(fence), c, r);
+                    }
+                    r = collectLevel;
+                    run = 0;
+                    for (c = width - 1; c > center; c--, run++) {
+                        if (run >= maxModulus) {
+                            r++;
+                            run = 0;
+                        }
+                        this.board.setPart(this.partFactory.copy(flippedFence), c, r);
+                    }
+                    // block out the unreachable locations at the bottom
+                    for (r = collectLevel; r < height; r++) {
+                        for (c = 0; c < width; c++) {
+                            if (this.board.getPart(c, r) instanceof fence_3.Fence)
+                                break;
+                            this.board.setPart(this.partFactory.copy(blank), c, r);
+                        }
+                        for (c = width - 1; c >= 0; c--) {
+                            if (this.board.getPart(c, r) instanceof fence_3.Fence)
+                                break;
+                            this.board.setPart(this.partFactory.copy(blank), c, r);
+                        }
+                    }
+                    // center the board in the display
+                    this.board.centerColumn = Math.floor(width / 2);
+                    this.board.centerRow = Math.floor(height / 2);
+                }
             };
-            exports_15("SimulatorApp", SimulatorApp);
+            exports_17("SimulatorApp", SimulatorApp);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("index", ["app", "renderer"], function (exports_16, context_16) {
+System.register("index", ["app", "renderer"], function (exports_18, context_18) {
     "use strict";
-    var __moduleName = context_16 && context_16.id;
+    var __moduleName = context_18 && context_18.id;
     var app_1, renderer_6, container, sim, resizeApp, loader;
     return {
         setters: [

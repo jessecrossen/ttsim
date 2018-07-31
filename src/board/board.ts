@@ -1,11 +1,12 @@
 /// <reference types="pixi.js" />
 /// <reference types="pixi-filters" />
 
-import { Part, Layer } from '../parts/part';
-import { PartFactory, PartType } from '../parts/factory';
-import { GearBase } from '../parts/gearbit';
-import { Alphas, Delays, Sizes } from '../ui/config';
-import { DisjointSet } from '../util/disjoint';
+import { Part, Layer } from 'parts/part';
+import { Fence, FenceVariant } from 'parts/fence';
+import { PartFactory, PartType } from 'parts/factory';
+import { GearBase } from 'parts/gearbit';
+import { Alphas, Delays, Sizes } from 'ui/config';
+import { DisjointSet } from 'util/disjoint';
 import { Renderer } from 'renderer';
 
 export const enum ToolType {
@@ -196,6 +197,7 @@ export class Board {
 
   // do layout for one part at the given location
   public layoutPart(part:Part, column:number, row:number):void {
+    if (! part) return;
     part.size = this.partSize;
     part.x = this.xForColumn(column);
     part.y = this.yForRow(row);
@@ -298,8 +300,11 @@ export class Board {
   public canPlacePart(type:PartType, column:number, row:number):boolean {
     if ((column < 0) || (column >= this._columnCount) ||
         (row < 0) || (row >= this._rowCount)) return(false);
-    if ((type == PartType.PARTLOC) || (type == PartType.GEARLOC)) return(true);
+    const oldPart = this.getPart(column, row);
+    if ((oldPart) && (oldPart.isLocked)) return(false);
+    else if ((type == PartType.PARTLOC) || (type == PartType.GEARLOC)) return(true);
     else if (type == PartType.GEAR) return((row + column) % 2 != 0);
+    else if (type == PartType.FENCE) return(true);
     else return((row + column) % 2 == 0);
   }
 
@@ -379,6 +384,10 @@ export class Board {
         }
         newPart.rotation = ((sum / newPart.connected.size) >= 0.5) ? 1.0 : 0.0;
       }
+    }
+    // update fences
+    if ((oldPart instanceof Fence) || (newPart instanceof Fence)) {
+      this._updateFences();
     }
   }
 
@@ -466,6 +475,77 @@ export class Board {
       set.add(part);
       part.connected = set;
     }
+  }
+
+  // configure fences
+  protected _updateFences():void {
+    let slopeParts:Fence[] = [ ];
+    for (const row of this._grid) {
+      for (const part of row) {
+        if (part instanceof Fence) {
+          if ((slopeParts.length > 0) && 
+              (slopeParts[0].isFlipped !== part.isFlipped)) {
+            this._makeSlope(slopeParts);
+          }
+          slopeParts.push(part);
+        }
+        else this._makeSlope(slopeParts);
+      }
+      this._makeSlope(slopeParts);
+    }
+  }
+  // configure a horizontal run of fence parts
+  protected _makeSlope(fences:Fence[]):void {
+    if (! (fences.length > 0)) return;
+    if (fences.length == 1) fences[0].variant = FenceVariant.SIDE;
+    else {
+      for (let i:number = 0; i < fences.length; i++) {
+        fences[i].variant = FenceVariant.SLOPE;
+        fences[i].modulus = fences.length;
+        fences[i].sequence = fences[i].isFlipped ? 
+          ((fences.length - 1) - i) : i;
+      }
+    }
+    fences.splice(0, fences.length);
+  }
+  // flip a fence part
+  protected _flipFence(column:number, row:number) {
+    const fence:Part = this.getPart(column, row);
+    if (! (fence instanceof Fence)) return;
+    const wasFlipped:boolean = fence.isFlipped;
+    const variant:FenceVariant = fence.variant;
+    fence.flip();
+    // make a test function to shorten the code below
+    const shouldContinue = (part:Part):boolean => {
+      if ((part instanceof Fence) && (part.isFlipped == wasFlipped) &&
+          (part.variant == variant)) {
+        part.flip();
+        return(true);
+      }
+      return(false);
+    };
+    if (variant == FenceVariant.SLOPE) {
+      // go right
+      for (let c:number = column + 1; c < this._columnCount; c++) {
+        if (! shouldContinue(this.getPart(c, row))) break;
+      }
+      // go left
+      for (let c:number = column - 1; c >= 0; c--) {
+        if (! shouldContinue(this.getPart(c, row))) break;
+      }
+    }
+    else if (variant == FenceVariant.SIDE) {
+      // go down
+      for (let r:number = row + 1; r < this._rowCount; r++) {
+        if (! shouldContinue(this.getPart(column, r))) break;
+      }
+      // go up
+      for (let r:number = row - 1; r >= 0; r--) {
+        if (! shouldContinue(this.getPart(column, r))) break;
+      }
+    }
+    // update sequence numbers for slopes
+    this._updateFences();
   }
 
   // INTERACTION **************************************************************
@@ -582,7 +662,10 @@ export class Board {
     // flip parts
     else if (this._action === ActionType.FLIP_PART) {
       const part = this.getPart(this._actionColumn, this._actionRow);
-      if (part) part.flip(Delays.FLIP);
+      if (part instanceof Fence) {
+        this._flipFence(this._actionColumn, this._actionRow);
+      }
+      else if (part) part.flip(Delays.FLIP);
     }
   }
 

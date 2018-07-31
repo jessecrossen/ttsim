@@ -288,6 +288,582 @@
       }, 
       "trimmed": false
     }, 
+    "Fence-b": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 420, 
+        "y": 940
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-bl": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 420, 
+        "y": 836
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-bs1": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 420, 
+        "y": 732
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-bs2": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 420, 
+        "y": 628
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-bs3": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 420, 
+        "y": 524
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-bs4": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 420, 
+        "y": 420
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-bs5": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 420, 
+        "y": 316
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-bs6": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 420, 
+        "y": 212
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-m": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 524, 
+        "y": 940
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-ml": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 524, 
+        "y": 836
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-ms1": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 524, 
+        "y": 732
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-ms2": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 524, 
+        "y": 628
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-ms3": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 524, 
+        "y": 524
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-ms4": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 524, 
+        "y": 420
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-ms5": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 524, 
+        "y": 316
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-ms6": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 524, 
+        "y": 212
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-s": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 628, 
+        "y": 940
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-sl": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 628, 
+        "y": 836
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-ss1": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 628, 
+        "y": 732
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-ss2": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 628, 
+        "y": 628
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-ss3": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 628, 
+        "y": 524
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-ss4": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 628, 
+        "y": 420
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-ss5": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 628, 
+        "y": 316
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Fence-ss6": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 628, 
+        "y": 212
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
     "Gear-b": {
       "frame": {
         "h": 96, 

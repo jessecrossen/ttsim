@@ -44,10 +44,27 @@ export class Gear extends GearBase {
   public get canFlip():boolean { return(false); }
   public get type():PartType { return(PartType.GEAR); }
 
-  // gears rotate in the reverse direction from their gearbits, but making
-  //  them have the same rotation value is convenient
+  public get isOnPartLocation():boolean { return(this._isOnPartLocation); }
+  public set isOnPartLocation(v:boolean) {
+    if (v === this.isOnPartLocation) return;
+    this._isOnPartLocation = v;
+    this._updateSprites();
+  }
+  private _isOnPartLocation:boolean = false;
+
+  
   protected _angleForRotation(r:number):number {
-    return(- super._angleForRotation(r));
+    // gears on a regular-part location need to be rotated by 1/16 turn 
+    //  to mesh with neighbors
+    if (this.isOnPartLocation) {
+      return(super._angleForRotation(r) + (Math.PI * 0.125));
+    }
+    // gears rotate in the reverse direction from their gearbits when placed
+    //  on a gear-only location, but making them have the same rotation value 
+    //  is convenient
+    else {
+      return(- super._angleForRotation(r));
+    }
   }
 
 }

@@ -288,6 +288,78 @@
       }, 
       "trimmed": false
     }, 
+    "Drop-b": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 732, 
+        "y": 316
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Drop-m": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 732, 
+        "y": 212
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Drop-s": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 732, 
+        "y": 420
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
     "Fence-b": {
       "frame": {
         "h": 96, 

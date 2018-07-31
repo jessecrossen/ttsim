@@ -157,14 +157,30 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
             };
             exports_6("Gearbit", Gearbit);
             Gear = class Gear extends GearBase {
+                constructor() {
+                    super(...arguments);
+                    this._isOnPartLocation = false;
+                }
                 get canRotate() { return (true); }
                 get canMirror() { return (false); } // (the cross is not mirrored)
                 get canFlip() { return (false); }
                 get type() { return (8 /* GEAR */); }
-                // gears rotate in the reverse direction from their gearbits, but making
-                //  them have the same rotation value is convenient
+                get isOnPartLocation() { return (this._isOnPartLocation); }
+                set isOnPartLocation(v) {
+                    if (v === this.isOnPartLocation)
+                        return;
+                    this._isOnPartLocation = v;
+                    this._updateSprites();
+                }
                 _angleForRotation(r) {
-                    return (-super._angleForRotation(r));
+                    // gears on a regular-part location need to be rotated by 1/16 turn 
+                    //  to mesh with neighbors
+                    if (this.isOnPartLocation) {
+                        return (super._angleForRotation(r) + (Math.PI * 0.125));
+                    }
+                    else {
+                        return (-super._angleForRotation(r));
+                    }
                 }
             };
             exports_6("Gear", Gear);
@@ -195,7 +211,7 @@ System.register("parts/fence", ["parts/part", "board/board"], function (exports_
                 get canRotate() { return (false); }
                 get canMirror() { return (false); }
                 get canFlip() { return (true); }
-                get type() { return (9 /* FENCE */); }
+                get type() { return (10 /* FENCE */); }
                 // the type of fence segment to display
                 get variant() { return (this._variant); }
                 set variant(v) {
@@ -273,10 +289,31 @@ System.register("parts/blank", ["parts/part"], function (exports_8, context_8) {
         }
     };
 });
-System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit", "parts/fence", "parts/blank"], function (exports_9, context_9) {
+System.register("parts/drop", ["parts/part"], function (exports_9, context_9) {
     "use strict";
     var __moduleName = context_9 && context_9.id;
-    var location_1, ramp_1, crossover_1, interceptor_1, bit_1, gearbit_1, fence_1, blank_1, PartFactory;
+    var part_9, Drop;
+    return {
+        setters: [
+            function (part_9_1) {
+                part_9 = part_9_1;
+            }
+        ],
+        execute: function () {
+            Drop = class Drop extends part_9.Part {
+                get canRotate() { return (false); }
+                get canMirror() { return (false); }
+                get canFlip() { return (true); }
+                get type() { return (9 /* DROP */); }
+            };
+            exports_9("Drop", Drop);
+        }
+    };
+});
+System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit", "parts/fence", "parts/blank", "parts/drop"], function (exports_10, context_10) {
+    "use strict";
+    var __moduleName = context_10 && context_10.id;
+    var location_1, ramp_1, crossover_1, interceptor_1, bit_1, gearbit_1, fence_1, blank_1, drop_1, PartFactory;
     return {
         setters: [
             function (location_1_1) {
@@ -302,6 +339,9 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
             },
             function (blank_1_1) {
                 blank_1 = blank_1_1;
+            },
+            function (drop_1_1) {
+                drop_1 = drop_1_1;
             }
         ],
         execute: function () {
@@ -321,7 +361,8 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
                         case 6 /* BIT */: return (new bit_1.Bit(this.textures));
                         case 8 /* GEAR */: return (new gearbit_1.Gear(this.textures));
                         case 7 /* GEARBIT */: return (new gearbit_1.Gearbit(this.textures));
-                        case 9 /* FENCE */: return (new fence_1.Fence(this.textures));
+                        case 9 /* DROP */: return (new drop_1.Drop(this.textures));
+                        case 10 /* FENCE */: return (new fence_1.Fence(this.textures));
                         default: return (null);
                     }
                 }
@@ -338,13 +379,13 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
                     return (newPart);
                 }
             };
-            exports_9("PartFactory", PartFactory);
+            exports_10("PartFactory", PartFactory);
         }
     };
 });
-System.register("ui/config", [], function (exports_10, context_10) {
+System.register("ui/config", [], function (exports_11, context_11) {
     "use strict";
-    var __moduleName = context_10 && context_10.id;
+    var __moduleName = context_11 && context_11.id;
     return {
         setters: [],
         execute: function () {
@@ -352,9 +393,9 @@ System.register("ui/config", [], function (exports_10, context_10) {
     };
 });
 /// <reference types="pixi.js" />
-System.register("renderer", [], function (exports_11, context_11) {
+System.register("renderer", [], function (exports_12, context_12) {
     "use strict";
-    var __moduleName = context_11 && context_11.id;
+    var __moduleName = context_12 && context_12.id;
     var Renderer;
     return {
         setters: [],
@@ -379,14 +420,14 @@ System.register("renderer", [], function (exports_11, context_11) {
                 backgroundColor: 16777215 /* BACKGROUND */
             });
             Renderer.stage = new PIXI.Container();
-            exports_11("Renderer", Renderer);
+            exports_12("Renderer", Renderer);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("parts/part", ["renderer"], function (exports_12, context_12) {
+System.register("parts/part", ["renderer"], function (exports_13, context_13) {
     "use strict";
-    var __moduleName = context_12 && context_12.id;
+    var __moduleName = context_13 && context_13.id;
     var renderer_1, Part;
     return {
         setters: [
@@ -623,7 +664,7 @@ System.register("parts/part", ["renderer"], function (exports_12, context_12) {
                     return (this.isFlipped);
                 }
             };
-            exports_12("Part", Part);
+            exports_13("Part", Part);
         }
     };
 });
@@ -649,9 +690,9 @@ System.register("parts/part", ["renderer"], function (exports_12, context_12) {
  *   out of or in connection with the Software or the use or other dealings in the
  *   Software.
  */
-System.register("util/disjoint", [], function (exports_13, context_13) {
+System.register("util/disjoint", [], function (exports_14, context_14) {
     "use strict";
-    var __moduleName = context_13 && context_13.id;
+    var __moduleName = context_14 && context_14.id;
     var DisjointSet;
     return {
         setters: [],
@@ -742,15 +783,15 @@ System.register("util/disjoint", [], function (exports_13, context_13) {
                     }
                 }
             };
-            exports_13("DisjointSet", DisjointSet);
+            exports_14("DisjointSet", DisjointSet);
         }
     };
 });
 /// <reference types="pixi.js" />
 /// <reference types="pixi-filters" />
-System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint", "renderer"], function (exports_14, context_14) {
+System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint", "renderer"], function (exports_15, context_15) {
     "use strict";
-    var __moduleName = context_14 && context_14.id;
+    var __moduleName = context_15 && context_15.id;
     var fence_2, gearbit_2, disjoint_1, renderer_2, PartSizes, SPACING_FACTOR, Board;
     return {
         setters: [
@@ -768,8 +809,8 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
             }
         ],
         execute: function () {
-            exports_14("PartSizes", PartSizes = [2, 4, 6, 8, 12, 16, 24, 32, 48, 64]);
-            exports_14("SPACING_FACTOR", SPACING_FACTOR = 1.0625);
+            exports_15("PartSizes", PartSizes = [2, 4, 6, 8, 12, 16, 24, 32, 48, 64]);
+            exports_15("SPACING_FACTOR", SPACING_FACTOR = 1.0625);
             Board = class Board {
                 constructor(partFactory) {
                     this.partFactory = partFactory;
@@ -1042,11 +1083,8 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                     const oldPart = this.getPart(column, row);
                     if ((oldPart) && (oldPart.isLocked))
                         return (false);
-                    else if ((type == 1 /* PARTLOC */) || (type == 2 /* GEARLOC */))
-                        return (true);
-                    else if (type == 8 /* GEAR */)
-                        return ((row + column) % 2 != 0);
-                    else if (type == 9 /* FENCE */)
+                    else if ((type == 1 /* PARTLOC */) || (type == 2 /* GEARLOC */) ||
+                        (type == 8 /* GEAR */) || (type == 10 /* FENCE */))
                         return (true);
                     else
                         return ((row + column) % 2 == 0);
@@ -1074,8 +1112,6 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                     if (v === this._tool)
                         return;
                     this._tool = v;
-                    this.view.cursor = (this.tool != 0 /* NONE */) ?
-                        'pointer' : 'auto';
                 }
                 // set the part used as a prototype for adding parts
                 get partPrototype() { return (this._partPrototype); }
@@ -1113,6 +1149,10 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                     this._grid[row][column] = newPart;
                     if (newPart)
                         this.layoutPart(newPart, column, row);
+                    // tell gears what kind of location they're on
+                    if (newPart instanceof gearbit_2.Gear) {
+                        newPart.isOnPartLocation = ((column + row) % 2) == 0;
+                    }
                     // update gear connections
                     if ((oldPart instanceof gearbit_2.GearBase) || (newPart instanceof gearbit_2.GearBase)) {
                         // disconnect the old part
@@ -1234,25 +1274,63 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                 // configure fences
                 _updateFences() {
                     let slopeParts = [];
+                    let northPart;
+                    let leftNorthFence;
+                    let rightNorthFence;
+                    let r = 0;
+                    let c;
                     for (const row of this._grid) {
+                        c = 0;
                         for (const part of row) {
                             if (part instanceof fence_2.Fence) {
+                                northPart = this.getPart(c, r - 1);
+                                // track the parts above the ends of the slope
+                                if ((northPart instanceof fence_2.Fence) &&
+                                    (northPart.variant == 1 /* SIDE */)) {
+                                    if (slopeParts.length == 0)
+                                        leftNorthFence = northPart;
+                                    else
+                                        rightNorthFence = northPart;
+                                }
+                                else {
+                                    rightNorthFence = null;
+                                }
                                 if ((slopeParts.length > 0) &&
                                     (slopeParts[0].isFlipped !== part.isFlipped)) {
-                                    this._makeSlope(slopeParts);
+                                    this._makeSlope(slopeParts, leftNorthFence, rightNorthFence);
+                                    leftNorthFence = rightNorthFence = null;
                                 }
                                 slopeParts.push(part);
                             }
-                            else
-                                this._makeSlope(slopeParts);
+                            else if (slopeParts.length > 0) {
+                                this._makeSlope(slopeParts, leftNorthFence, rightNorthFence);
+                                leftNorthFence = rightNorthFence = null;
+                            }
+                            c++;
                         }
-                        this._makeSlope(slopeParts);
+                        if (slopeParts.length > 0) {
+                            this._makeSlope(slopeParts, leftNorthFence, rightNorthFence);
+                            leftNorthFence = rightNorthFence = null;
+                        }
+                        r++;
                     }
                 }
                 // configure a horizontal run of fence parts
-                _makeSlope(fences) {
+                _makeSlope(fences, leftNorthFence, rightNorthFence) {
                     if (!(fences.length > 0))
                         return;
+                    // allow for acute angles with a side at the lower end of a slope
+                    //  by converting slope ends to sides if the flip direction matches
+                    if ((fences[0].isFlipped) && (leftNorthFence) &&
+                        (leftNorthFence.isFlipped)) {
+                        const side = fences.shift();
+                        side.variant = 1 /* SIDE */;
+                    }
+                    else if ((!fences[0].isFlipped) && (rightNorthFence) &&
+                        (!rightNorthFence.isFlipped)) {
+                        const side = fences.pop();
+                        side.variant = 1 /* SIDE */;
+                    }
                     if (fences.length == 1)
                         fences[0].variant = 1 /* SIDE */;
                     else {
@@ -1405,17 +1483,21 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                     if ((this.tool == 1 /* PART */) && (this.partPrototype) &&
                         (this.canPlacePart(this.partPrototype.type, column, row))) {
                         this._action = 1 /* PLACE_PART */;
+                        this.view.cursor = 'pointer';
                     }
                     else if ((this.tool == 2 /* ERASER */) &&
                         (!this.isBackgroundPart(column, row))) {
                         this._action = 2 /* CLEAR_PART */;
+                        this.view.cursor = 'pointer';
                     }
                     else if ((this.tool == 3 /* HAND */) &&
                         (this.canFlipPart(column, row))) {
                         this._action = 3 /* FLIP_PART */;
+                        this.view.cursor = 'pointer';
                     }
                     else {
                         this._action = 0 /* PAN */;
+                        this.view.cursor = 'move';
                     }
                     this._updatePreview();
                 }
@@ -1451,14 +1533,14 @@ System.register("board/board", ["parts/fence", "parts/gearbit", "util/disjoint",
                     }
                 }
             };
-            exports_14("Board", Board);
+            exports_15("Board", Board);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("ui/button", ["renderer"], function (exports_15, context_15) {
+System.register("ui/button", ["renderer"], function (exports_16, context_16) {
     "use strict";
-    var __moduleName = context_15 && context_15.id;
+    var __moduleName = context_16 && context_16.id;
     var renderer_3, Button, PartButton, SpriteButton, ButtonBar;
     return {
         setters: [
@@ -1564,7 +1646,7 @@ System.register("ui/button", ["renderer"], function (exports_15, context_15) {
                     renderer_3.Renderer.needsUpdate();
                 }
             };
-            exports_15("Button", Button);
+            exports_16("Button", Button);
             PartButton = class PartButton extends Button {
                 constructor(part) {
                     super();
@@ -1576,7 +1658,14 @@ System.register("ui/button", ["renderer"], function (exports_15, context_15) {
                     }
                     this._normalView = new PIXI.Container();
                     this.addChild(this._normalView);
-                    for (let i = 0 /* BACK */; i <= 2 /* FRONT */; i++) {
+                    let firstLayer = 0 /* BACK */;
+                    let lastLayer = 2 /* FRONT */;
+                    // show only the darker back layer for fence-like components 
+                    //  because otherwise they're hard to see
+                    if ((part.type == 10 /* FENCE */) || (part.type == 9 /* DROP */)) {
+                        lastLayer = firstLayer;
+                    }
+                    for (let i = firstLayer; i <= lastLayer; i++) {
                         const sprite = part.getSpriteForLayer(i);
                         if (sprite)
                             this._normalView.addChild(sprite);
@@ -1604,7 +1693,7 @@ System.register("ui/button", ["renderer"], function (exports_15, context_15) {
                         this.part.size = Math.floor(this.size * 0.5);
                 }
             };
-            exports_15("PartButton", PartButton);
+            exports_16("PartButton", PartButton);
             SpriteButton = class SpriteButton extends Button {
                 constructor(sprite) {
                     super();
@@ -1624,7 +1713,7 @@ System.register("ui/button", ["renderer"], function (exports_15, context_15) {
                     }
                 }
             };
-            exports_15("SpriteButton", SpriteButton);
+            exports_16("SpriteButton", SpriteButton);
             ButtonBar = class ButtonBar extends PIXI.Container {
                 constructor() {
                     super();
@@ -1712,14 +1801,14 @@ System.register("ui/button", ["renderer"], function (exports_15, context_15) {
                     renderer_3.Renderer.needsUpdate();
                 }
             };
-            exports_15("ButtonBar", ButtonBar);
+            exports_16("ButtonBar", ButtonBar);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("ui/toolbar", ["ui/button", "renderer"], function (exports_16, context_16) {
+System.register("ui/toolbar", ["ui/button", "renderer"], function (exports_17, context_17) {
     "use strict";
-    var __moduleName = context_16 && context_16.id;
+    var __moduleName = context_17 && context_17.id;
     var button_1, renderer_4, Toolbar;
     return {
         setters: [
@@ -1742,14 +1831,14 @@ System.register("ui/toolbar", ["ui/button", "renderer"], function (exports_16, c
                     this._eraserButton = new button_1.PartButton(this.board.partFactory.make(1 /* PARTLOC */));
                     this.addButton(this._eraserButton);
                     // add buttons for parts
-                    for (let i = 3 /* TOOLBOX_MIN */; i <= 9 /* TOOLBOX_MAX */; i++) {
+                    for (let i = 3 /* TOOLBOX_MIN */; i <= 10 /* TOOLBOX_MAX */; i++) {
                         const part = board.partFactory.make(i);
                         if (!part)
                             continue;
                         const button = new button_1.PartButton(part);
                         this.addButton(button);
                     }
-                    this._updateToggled();
+                    this.updateToggled();
                 }
                 onButtonClick(button) {
                     if (button === this._handButton) {
@@ -1770,9 +1859,9 @@ System.register("ui/toolbar", ["ui/button", "renderer"], function (exports_16, c
                         this.board.tool = 1 /* PART */;
                         this.board.partPrototype = this.board.partFactory.copy(newPart);
                     }
-                    this._updateToggled();
+                    this.updateToggled();
                 }
-                _updateToggled() {
+                updateToggled() {
                     // update button toggle states
                     for (const button of this._buttons) {
                         if (button === this._handButton) {
@@ -1792,14 +1881,14 @@ System.register("ui/toolbar", ["ui/button", "renderer"], function (exports_16, c
                     renderer_4.Renderer.needsUpdate();
                 }
             };
-            exports_16("Toolbar", Toolbar);
+            exports_17("Toolbar", Toolbar);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("ui/actionbar", ["board/board", "ui/button", "renderer"], function (exports_17, context_17) {
+System.register("ui/actionbar", ["board/board", "ui/button", "renderer"], function (exports_18, context_18) {
     "use strict";
-    var __moduleName = context_17 && context_17.id;
+    var __moduleName = context_18 && context_18.id;
     var board_2, button_2, renderer_5, Actionbar;
     return {
         setters: [
@@ -1836,13 +1925,15 @@ System.register("ui/actionbar", ["board/board", "ui/button", "renderer"], functi
                     this._heartButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['heart']));
                     this.addButton(this._heartButton);
                     this.bottomCount = 1;
-                    this._updateToggled();
+                    this.updateToggled();
                 }
                 onButtonClick(button) {
                     if (button === this._schematicButton) {
                         this.board.schematic = !this.board.schematic;
                         this._desiredSchematic = this.board.schematic;
-                        this._updateToggled();
+                        this.updateToggled();
+                        if (this.peer)
+                            this.peer.updateToggled();
                     }
                     else if (button === this._zoomInButton) {
                         this.zoomIn();
@@ -1857,7 +1948,7 @@ System.register("ui/actionbar", ["board/board", "ui/button", "renderer"], functi
                         window.open('https://www.turingtumble.com/', '_blank');
                     }
                 }
-                _updateToggled() {
+                updateToggled() {
                     // update button toggle states
                     for (const button of this._buttons) {
                         if (button === this._schematicButton) {
@@ -1904,14 +1995,14 @@ System.register("ui/actionbar", ["board/board", "ui/button", "renderer"], functi
                         return;
                     this.board.partSize = board_2.PartSizes[this.zoomIndex + 1];
                     this._updateAutoSchematic();
-                    this._updateToggled();
+                    this.updateToggled();
                 }
                 zoomOut() {
                     if (!this.canZoomOut)
                         return;
                     this.board.partSize = board_2.PartSizes[this.zoomIndex - 1];
                     this._updateAutoSchematic();
-                    this._updateToggled();
+                    this.updateToggled();
                 }
                 // zoom to fit the board
                 zoomToFit() {
@@ -1927,20 +2018,20 @@ System.register("ui/actionbar", ["board/board", "ui/button", "renderer"], functi
                     }
                     this.board.partSize = s;
                     this._updateAutoSchematic();
-                    this._updateToggled();
+                    this.updateToggled();
                 }
                 get zoomIndex() {
                     return (board_2.PartSizes.indexOf(this.board.partSize));
                 }
             };
-            exports_17("Actionbar", Actionbar);
+            exports_18("Actionbar", Actionbar);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("app", ["board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "parts/fence"], function (exports_18, context_18) {
+System.register("app", ["board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "parts/fence"], function (exports_19, context_19) {
     "use strict";
-    var __moduleName = context_18 && context_18.id;
+    var __moduleName = context_19 && context_19.id;
     var board_3, factory_1, toolbar_1, actionbar_1, renderer_6, fence_3, SimulatorApp;
     return {
         setters: [
@@ -1976,6 +2067,8 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbar", "ui/action
                     this.toolbar.width = 64;
                     this.actionbar = new actionbar_1.Actionbar(this.board);
                     this.actionbar.width = 64;
+                    this.actionbar.peer = this.toolbar;
+                    this.toolbar.peer = this.actionbar;
                     this.addChild(this.board.view);
                     this.addChild(this.toolbar);
                     this.addChild(this.actionbar);
@@ -2014,7 +2107,7 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbar", "ui/action
                     const collectLevel = dropLevel + verticalDrop;
                     const steps = Math.ceil(center / fence_3.Fence.maxModulus);
                     const maxModulus = Math.ceil(center / steps);
-                    const height = collectLevel + steps + 1;
+                    const height = collectLevel + steps + 2;
                     this.board.setSize(width, height);
                     // block out unreachable locations at the top
                     const blank = this.partFactory.make(0 /* BLANK */);
@@ -2025,13 +2118,13 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbar", "ui/action
                                 ((c - r) > (blueColumn - dropLevel));
                             const redCantReach = ((r + c) < (redColumn + dropLevel)) ||
                                 ((c - r) > (redColumn - dropLevel));
-                            if (blueCantReach && redCantReach) {
+                            if ((blueCantReach && redCantReach) || (r <= dropLevel)) {
                                 this.board.setPart(this.partFactory.copy(blank), c, r);
                             }
                         }
                     }
                     // add fences on the sides
-                    const fence = this.partFactory.make(9 /* FENCE */);
+                    const fence = this.partFactory.make(10 /* FENCE */);
                     fence.isLocked = true;
                     const flippedFence = this.partFactory.copy(fence);
                     flippedFence.flip();
@@ -2071,16 +2164,30 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbar", "ui/action
                             this.board.setPart(this.partFactory.copy(blank), c, r);
                         }
                     }
+                    // make a fence to collect balls
+                    r = height - 1;
+                    const rightSide = Math.min(center + fence_3.Fence.maxModulus, height - 1);
+                    for (c = center; c < rightSide; c++) {
+                        this.board.setPart(this.partFactory.copy(fence), c, r);
+                    }
+                    this.board.setPart(this.partFactory.copy(fence), rightSide, r);
+                    this.board.setPart(this.partFactory.copy(fence), rightSide, r - 1);
+                    // make a ball drops
+                    const blueDrop = this.partFactory.make(9 /* DROP */);
+                    this.board.setPart(blueDrop, blueColumn - 1, dropLevel);
+                    const redDrop = this.partFactory.make(9 /* DROP */);
+                    redDrop.isFlipped = true;
+                    this.board.setPart(redDrop, redColumn + 1, dropLevel);
                 }
             };
-            exports_18("SimulatorApp", SimulatorApp);
+            exports_19("SimulatorApp", SimulatorApp);
         }
     };
 });
 /// <reference types="pixi.js" />
-System.register("index", ["app", "renderer"], function (exports_19, context_19) {
+System.register("index", ["app", "renderer"], function (exports_20, context_20) {
     "use strict";
-    var __moduleName = context_19 && context_19.id;
+    var __moduleName = context_20 && context_20.id;
     var app_1, renderer_7, container, sim, resizeApp, loader;
     return {
         setters: [

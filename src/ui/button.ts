@@ -3,6 +3,7 @@
 import { Part, Layer } from 'parts/part';
 import { Colors, Alphas } from './config';
 import { Renderer } from 'renderer';
+import { PartType } from 'parts/factory';
 
 export abstract class Button extends PIXI.Sprite {
 
@@ -118,7 +119,14 @@ export class PartButton extends Button {
     }
     this._normalView = new PIXI.Container();
     this.addChild(this._normalView);
-    for (let i:number = Layer.BACK; i <= Layer.FRONT; i++) {
+    let firstLayer:number = Layer.BACK;
+    let lastLayer:number = Layer.FRONT;
+    // show only the darker back layer for fence-like components 
+    //  because otherwise they're hard to see
+    if ((part.type == PartType.FENCE) || (part.type == PartType.DROP)) {
+      lastLayer = firstLayer;
+    }
+    for (let i:number = firstLayer; i <= lastLayer; i++) {
       const sprite = part.getSpriteForLayer(i);
       if (sprite) this._normalView.addChild(sprite);
     }
@@ -182,6 +190,9 @@ export abstract class ButtonBar extends PIXI.Container {
   private _background:PIXI.Graphics = new PIXI.Graphics();
   protected _buttons:Button[] = [ ];
 
+  // another button bar to keep in sync with this one
+  public peer:ButtonBar;
+
   // the number of buttons to push to the bottom of the bar
   public get bottomCount():number { return(this._bottomCount); }
   public set bottomCount(v:number) {
@@ -231,6 +242,9 @@ export abstract class ButtonBar extends PIXI.Container {
     this.onButtonClick(e.target);
   }
   protected abstract onButtonClick(button:Button):void;
+
+  // update the toggled state of buttons
+  public abstract updateToggled():void;
 
   // lay out buttons in a vertical strip
   protected _layout():void {

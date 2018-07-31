@@ -4,7 +4,7 @@
 import { Part, Layer } from 'parts/part';
 import { Fence, FenceVariant } from 'parts/fence';
 import { PartFactory, PartType } from 'parts/factory';
-import { GearBase } from 'parts/gearbit';
+import { GearBase, Gear } from 'parts/gearbit';
 import { Alphas, Delays, Sizes } from 'ui/config';
 import { DisjointSet } from 'util/disjoint';
 import { Renderer } from 'renderer';
@@ -305,9 +305,8 @@ export class Board {
         (row < 0) || (row >= this._rowCount)) return(false);
     const oldPart = this.getPart(column, row);
     if ((oldPart) && (oldPart.isLocked)) return(false);
-    else if ((type == PartType.PARTLOC) || (type == PartType.GEARLOC)) return(true);
-    else if (type == PartType.GEAR) return((row + column) % 2 != 0);
-    else if (type == PartType.FENCE) return(true);
+    else if ((type == PartType.PARTLOC) || (type == PartType.GEARLOC) ||
+             (type == PartType.GEAR) || (type == PartType.FENCE)) return(true);
     else return((row + column) % 2 == 0);
   }
 
@@ -337,8 +336,6 @@ export class Board {
   public set tool(v:ToolType) {
     if (v === this._tool) return;
     this._tool = v;
-    this.view.cursor = (this.tool != ToolType.NONE) ?
-      'pointer' : 'auto';
   }
   private _tool:ToolType = ToolType.NONE;
 
@@ -373,6 +370,10 @@ export class Board {
     if (newPart) this.addPart(newPart);
     this._grid[row][column] = newPart;
     if (newPart) this.layoutPart(newPart, column, row);
+    // tell gears what kind of location they're on
+    if (newPart instanceof Gear) {
+      newPart.isOnPartLocation = ((column + row) % 2) == 0;
+    }
     // update gear connections
     if ((oldPart instanceof GearBase) || (newPart instanceof GearBase)) {
       // disconnect the old part
@@ -492,23 +493,60 @@ export class Board {
   // configure fences
   protected _updateFences():void {
     let slopeParts:Fence[] = [ ];
+    let northPart:Part;
+    let leftNorthFence:Fence;
+    let rightNorthFence:Fence;
+    let r:number = 0;
+    let c:number;
     for (const row of this._grid) {
+      c = 0;
       for (const part of row) {
         if (part instanceof Fence) {
+          northPart = this.getPart(c, r - 1);
+          // track the parts above the ends of the slope
+          if ((northPart instanceof Fence) && 
+              (northPart.variant == FenceVariant.SIDE)) {
+            if (slopeParts.length == 0) leftNorthFence = northPart;
+            else rightNorthFence = northPart;
+          }
+          else {
+            rightNorthFence = null;
+          }
           if ((slopeParts.length > 0) && 
               (slopeParts[0].isFlipped !== part.isFlipped)) {
-            this._makeSlope(slopeParts);
+            this._makeSlope(slopeParts, leftNorthFence, rightNorthFence);
+            leftNorthFence = rightNorthFence = null;
           }
           slopeParts.push(part);
         }
-        else this._makeSlope(slopeParts);
+        else if (slopeParts.length > 0) {
+          this._makeSlope(slopeParts, leftNorthFence, rightNorthFence);
+          leftNorthFence = rightNorthFence = null;
+        }
+        c++;
       }
-      this._makeSlope(slopeParts);
+      if (slopeParts.length > 0) {
+        this._makeSlope(slopeParts, leftNorthFence, rightNorthFence);
+        leftNorthFence = rightNorthFence = null;
+      }
+      r++;
     }
   }
   // configure a horizontal run of fence parts
-  protected _makeSlope(fences:Fence[]):void {
+  protected _makeSlope(fences:Fence[], leftNorthFence:Fence, rightNorthFence:Fence):void {
     if (! (fences.length > 0)) return;
+    // allow for acute angles with a side at the lower end of a slope
+    //  by converting slope ends to sides if the flip direction matches
+    if ((fences[0].isFlipped) && (leftNorthFence) && 
+        (leftNorthFence.isFlipped)) {
+      const side = fences.shift();
+      side.variant = FenceVariant.SIDE;
+    }
+    else if ((! fences[0].isFlipped) && (rightNorthFence) &&
+             (! rightNorthFence.isFlipped)) {
+      const side = fences.pop();
+      side.variant = FenceVariant.SIDE;
+    }
     if (fences.length == 1) fences[0].variant = FenceVariant.SIDE;
     else {
       for (let i:number = 0; i < fences.length; i++) {
@@ -673,17 +711,21 @@ export class Board {
     if ((this.tool == ToolType.PART) && (this.partPrototype) &&
         (this.canPlacePart(this.partPrototype.type, column, row))) {
       this._action = ActionType.PLACE_PART;
+      this.view.cursor = 'pointer';
     }
     else if ((this.tool == ToolType.ERASER) && 
              (! this.isBackgroundPart(column, row))) {
       this._action = ActionType.CLEAR_PART;
+      this.view.cursor = 'pointer';
     }
     else if ((this.tool == ToolType.HAND) &&
              (this.canFlipPart(column, row))) {
       this._action = ActionType.FLIP_PART;
+      this.view.cursor = 'pointer';
     }
     else {
       this._action = ActionType.PAN;
+      this.view.cursor = 'move';
     }
     this._updatePreview();
   }

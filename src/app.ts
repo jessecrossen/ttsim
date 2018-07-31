@@ -6,6 +6,7 @@ import { Toolbar } from 'ui/toolbar';
 import { Actionbar } from 'ui/actionbar';
 import { Renderer } from 'renderer';
 import { Fence } from 'parts/fence';
+import { Drop } from 'parts/drop';
 
 export class SimulatorApp extends PIXI.Container {
 
@@ -17,6 +18,8 @@ export class SimulatorApp extends PIXI.Container {
     this.toolbar.width = 64;
     this.actionbar = new Actionbar(this.board);
     this.actionbar.width = 64;
+    this.actionbar.peer = this.toolbar;
+    this.toolbar.peer = this.actionbar;
     this.addChild(this.board.view);
     this.addChild(this.toolbar);
     this.addChild(this.actionbar);
@@ -64,7 +67,7 @@ export class SimulatorApp extends PIXI.Container {
     const collectLevel:number = dropLevel + verticalDrop;
     const steps:number = Math.ceil(center / Fence.maxModulus);
     const maxModulus:number = Math.ceil(center / steps);
-    const height:number = collectLevel + steps + 1;
+    const height:number = collectLevel + steps + 2;
     this.board.setSize(width, height);
     // block out unreachable locations at the top
     const blank = this.partFactory.make(PartType.BLANK);
@@ -77,7 +80,7 @@ export class SimulatorApp extends PIXI.Container {
         const redCantReach:boolean = 
           ((r + c) < (redColumn + dropLevel)) || 
           ((c - r) > (redColumn - dropLevel));
-        if (blueCantReach && redCantReach) {
+        if ((blueCantReach && redCantReach) || (r <= dropLevel)) {
           this.board.setPart(this.partFactory.copy(blank), c, r);
         }
       }
@@ -115,6 +118,20 @@ export class SimulatorApp extends PIXI.Container {
         this.board.setPart(this.partFactory.copy(blank), c, r);
       }
     }
+    // make a fence to collect balls
+    r = height - 1;
+    const rightSide:number = Math.min(center + Fence.maxModulus, height - 1);
+    for (c = center; c < rightSide; c++) {
+      this.board.setPart(this.partFactory.copy(fence), c, r);
+    }
+    this.board.setPart(this.partFactory.copy(fence), rightSide, r);
+    this.board.setPart(this.partFactory.copy(fence), rightSide, r - 1);
+    // make a ball drops
+    const blueDrop:Drop = this.partFactory.make(PartType.DROP) as Drop;
+    this.board.setPart(blueDrop, blueColumn - 1, dropLevel);
+    const redDrop:Drop = this.partFactory.make(PartType.DROP) as Drop;
+    redDrop.isFlipped = true;
+    this.board.setPart(redDrop, redColumn + 1, dropLevel);
   }
 
 }

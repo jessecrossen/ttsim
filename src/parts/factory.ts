@@ -7,6 +7,7 @@ import { Bit } from './bit';
 import { Gear, Gearbit } from './gearbit';
 import { Fence } from './fence';
 import { Blank } from './blank';
+import { Drop } from './drop';
 
 export const enum PartType {
   BLANK = 0, 
@@ -18,6 +19,7 @@ export const enum PartType {
   BIT,
   GEARBIT,
   GEAR,       
+  DROP,
   FENCE,      TOOLBOX_MAX = FENCE
 }
 
@@ -39,6 +41,7 @@ export class PartFactory {
       case PartType.BIT: return(new Bit(this.textures));
       case PartType.GEAR: return(new Gear(this.textures));
       case PartType.GEARBIT: return(new Gearbit(this.textures));
+      case PartType.DROP: return(new Drop(this.textures));
       case PartType.FENCE: return(new Fence(this.textures));
       default: return(null);
     }

@@ -30,7 +30,7 @@ export class Actionbar extends ButtonBar {
       new PIXI.Sprite(board.partFactory.textures['heart']));
     this.addButton(this._heartButton);
     this.bottomCount = 1;
-    this._updateToggled();
+    this.updateToggled();
   }
   private _schematicButton:Button;
   private _zoomInButton:Button;
@@ -42,7 +42,8 @@ export class Actionbar extends ButtonBar {
     if (button === this._schematicButton) {
       this.board.schematic = ! this.board.schematic;
       this._desiredSchematic = this.board.schematic;
-      this._updateToggled();
+      this.updateToggled();
+      if (this.peer) this.peer.updateToggled();
     }
     else if (button === this._zoomInButton) { this.zoomIn(); }
     else if (button === this._zoomOutButton) { this.zoomOut(); }
@@ -52,7 +53,7 @@ export class Actionbar extends ButtonBar {
     }
   }
 
-  protected _updateToggled():void {
+  public updateToggled():void {
     // update button toggle states
     for (const button of this._buttons) {
       if (button === this._schematicButton) {
@@ -105,14 +106,14 @@ export class Actionbar extends ButtonBar {
     if (! this.canZoomIn) return;
     this.board.partSize = PartSizes[this.zoomIndex + 1];
     this._updateAutoSchematic();
-    this._updateToggled();
+    this.updateToggled();
   }
   
   public zoomOut():void {
     if (! this.canZoomOut) return;
     this.board.partSize = PartSizes[this.zoomIndex - 1];
     this._updateAutoSchematic();
-    this._updateToggled();
+    this.updateToggled();
   }
 
   // zoom to fit the board
@@ -128,7 +129,7 @@ export class Actionbar extends ButtonBar {
     }
     this.board.partSize = s;
     this._updateAutoSchematic();
-    this._updateToggled();
+    this.updateToggled();
   }
 
   protected get zoomIndex():number {

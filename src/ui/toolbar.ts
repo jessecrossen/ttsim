@@ -26,7 +26,7 @@ export class Toolbar extends ButtonBar {
       const button = new PartButton(part);
       this.addButton(button);
     }
-    this._updateToggled();
+    this.updateToggled();
   }
   private _eraserButton:PartButton;
   private _handButton:Button;
@@ -50,10 +50,10 @@ export class Toolbar extends ButtonBar {
       this.board.tool = ToolType.PART;
       this.board.partPrototype = this.board.partFactory.copy(newPart);
     }
-    this._updateToggled();
+    this.updateToggled();
   }
 
-  protected _updateToggled():void {
+  public updateToggled():void {
     // update button toggle states
     for (const button of this._buttons) {
       if (button === this._handButton) {

@@ -1827,11 +1827,11 @@ System.register("app", ["board/board", "parts/factory", "ui/toolbox", "renderer"
                 initStandardBoard(redBlueDistance = 5, verticalDrop = 11) {
                     let r, c, run;
                     const width = (redBlueDistance * 2) + 3;
-                    const dropLevel = (width % 2 == 0) ? 1 : 0;
-                    const collectLevel = dropLevel + verticalDrop;
                     const center = Math.floor(width / 2);
                     const blueColumn = center - Math.floor(redBlueDistance / 2);
                     const redColumn = center + Math.floor(redBlueDistance / 2);
+                    const dropLevel = (blueColumn % 2 == 0) ? 1 : 0;
+                    const collectLevel = dropLevel + verticalDrop;
                     const steps = Math.ceil(center / fence_3.Fence.maxModulus);
                     const maxModulus = Math.ceil(center / steps);
                     const height = collectLevel + steps + 1;

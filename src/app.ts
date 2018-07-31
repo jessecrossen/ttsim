@@ -48,11 +48,11 @@ export class SimulatorApp extends PIXI.Container {
   public initStandardBoard(redBlueDistance:number=5, verticalDrop:number=11):void {
     let r:number, c:number, run:number;
     const width:number = (redBlueDistance * 2) + 3;
-    const dropLevel:number = (width % 2 == 0) ? 1 : 0;
-    const collectLevel:number = dropLevel + verticalDrop;
     const center:number = Math.floor(width / 2);
     const blueColumn:number = center - Math.floor(redBlueDistance / 2);
     const redColumn:number = center + Math.floor(redBlueDistance / 2);
+    const dropLevel:number = (blueColumn % 2 == 0) ? 1 : 0;
+    const collectLevel:number = dropLevel + verticalDrop;
     const steps:number = Math.ceil(center / Fence.maxModulus);
     const maxModulus:number = Math.ceil(center / steps);
     const height:number = collectLevel + steps + 1;

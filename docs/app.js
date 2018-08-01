@@ -395,7 +395,6 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer"], function 
                     this._wallHeight = 16;
                     this._wallThickness = 16;
                     this._balls = new Set();
-                    this._skipCounter = 0;
                     this.engine = matter_js_1.Engine.create();
                     this.engine.enabled = false;
                     matter_js_1.Events.on(this.engine, 'afterUpdate', this.afterUpdate.bind(this));
@@ -470,6 +469,8 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer"], function 
                         ball.readBody();
                         this.board.layoutPart(ball, ball.column, ball.row);
                     }
+                    // re-render the wireframe if there is one
+                    this.renderWireframe();
                 }
                 // WIREFRAME PREVIEW ********************************************************
                 get showWireframe() {
@@ -483,20 +484,12 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer"], function 
                         this.board._layers.addChild(this._wireframe);
                         this.onBoardSizeChanged();
                         this.renderWireframe();
-                        PIXI.ticker.shared.add(this.onRender, this);
                     }
                     else if ((!v) && (this._wireframe)) {
                         this.board._layers.removeChild(this._wireframe);
                         this._wireframe = null;
                         this._wireframeGraphics = null;
-                        PIXI.ticker.shared.remove(this.onRender, this);
                         renderer_1.Renderer.needsUpdate();
-                    }
-                }
-                onRender() {
-                    // render wireframes at 15 FPS because it's expensive
-                    if ((this._skipCounter++ % 4) == 0) {
-                        this.renderWireframe();
                     }
                 }
                 renderWireframe() {
@@ -505,7 +498,7 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer"], function 
                     // setup
                     const g = this._wireframeGraphics;
                     g.clear();
-                    g.lineStyle(2 / this._wireframe.scale.x, 0xFF0000, 1);
+                    g.lineStyle(1 / this._wireframe.scale.x, 0xFF0000, 1);
                     // draw all bodies
                     var bodies = matter_js_1.Composite.allBodies(this.engine.world);
                     for (const body of bodies) {

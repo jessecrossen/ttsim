@@ -104,6 +104,8 @@ export class PhysicalBallRouter implements IBallRouter {
       ball.readBody();
       this.board.layoutPart(ball, ball.column, ball.row);
     }
+    // re-render the wireframe if there is one
+    this.renderWireframe();
   }
 
   // WIREFRAME PREVIEW ********************************************************
@@ -119,33 +121,23 @@ export class PhysicalBallRouter implements IBallRouter {
       this.board._layers.addChild(this._wireframe);
       this.onBoardSizeChanged();
       this.renderWireframe();
-      PIXI.ticker.shared.add(this.onRender, this);
     }
     else if ((! v) && (this._wireframe)) {
       this.board._layers.removeChild(this._wireframe);
       this._wireframe = null;
       this._wireframeGraphics = null;
-      PIXI.ticker.shared.remove(this.onRender, this);
       Renderer.needsUpdate();
     }
   }
   private _wireframe:PIXI.Sprite;
   private _wireframeGraphics:PIXI.Graphics;
 
-  public onRender():void {
-    // render wireframes at 15 FPS because it's expensive
-    if ((this._skipCounter++ % 4) == 0) {
-      this.renderWireframe();
-    }
-  }
-  private _skipCounter:number = 0;
-
   public renderWireframe():void {
     if (! this._wireframe) return;
     // setup
     const g = this._wireframeGraphics;
     g.clear();
-    g.lineStyle(2 / this._wireframe.scale.x, 0xFF0000, 1);
+    g.lineStyle(1 / this._wireframe.scale.x, 0xFF0000, 1);
     // draw all bodies
     var bodies = Composite.allBodies(this.engine.world);
     for (const body of bodies) {

@@ -117,7 +117,7 @@ class SVGParser(object):
   #  with a given prefix
   def getGroupsLabeledWithPrefix(self, labelPrefix, ctm=Transform()):
     results = list()
-    self._getLabeledGroupsIn(self.root, labelPrefix, results)
+    self._getLabeledGroupsIn(self.root, labelPrefix, results, ctm=ctm)
     return(results)
   
   # get a list of rectangles inside the given group, 

@@ -153,7 +153,7 @@ export class Board {
     this._updateDropShadows();
     this._updateLayerVisibility();
     this._updatePan();
-    if (this.router) this.router.onPartSizeChanged();
+    if (this.router) this.router.onBoardSizeChanged();
   }
   private _partSize:number = 64;
 
@@ -309,12 +309,16 @@ export class Board {
       }
     }
     this._rowCount = rowCount;
+    if (this.router) this.router.onBoardSizeChanged();
   }
   private _grid:Part[][] = [ ];
 
   // whether a part can be placed at the given row and column
   public canPlacePart(type:PartType, column:number, row:number):boolean {
-    if (type == PartType.BALL) return(true);
+    if (type == PartType.BALL) {
+      return((row >= 0.0) && (column >= 0.0) &&
+             (row < this.rowCount) && (column < this.columnCount));
+    }
     if ((column < 0) || (column >= this._columnCount) ||
         (row < 0) || (row >= this._rowCount)) return(false);
     const oldPart = this.getPart(column, row);
@@ -437,8 +441,8 @@ export class Board {
   public addBall(ball:Ball, x:number, y:number) {
     if (! this.balls.has(ball)) {
       this.balls.add(ball);
-      this.addPart(ball);
       this.layoutPart(ball, this.columnForX(x), this.rowForY(y));
+      this.addPart(ball);
     }
   }
 

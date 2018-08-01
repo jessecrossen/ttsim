@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js';
-import { Body } from 'matter-js';
+import { Body, Vector } from 'matter-js';
 
 import { PartType } from './factory';
 import { Renderer } from 'renderer';
@@ -42,14 +42,14 @@ export abstract class Part {
   public set column(v:number) {
     if (v === this._column) return;
     this._column = v;
-    this._updateBody();
+    this.writeBody();
   }
   private _column:number = 0.0;
   public get row():number { return(this._row); }
   public set row(v:number) {
     if (v === this._row) return;
     this._row = v;
-    this._updateBody();
+    this.writeBody();
   }
   private _row:number = 0.0;
 
@@ -70,7 +70,7 @@ export abstract class Part {
     if (r === this._rotation) return;
     this._rotation = r;
     this._updateSprites();
-    this._updateBody();
+    this.writeBody();
   }
   private _rotation:number = 0.0;
 
@@ -88,7 +88,7 @@ export abstract class Part {
     if ((! this.canFlip) || (v === this._isFlipped)) return;
     this._isFlipped = v;
     this._updateSprites();
-    this._updateBody();
+    this.writeBody();
   }
   private _isFlipped:boolean = false;
 
@@ -275,16 +275,33 @@ export abstract class Part {
 
   // PHYSICS ******************************************************************
 
+  // whether the body can be moved by the physics simulator
+  public get bodyCanMove():boolean { return(false); }
+  public get bodyCanRotate():boolean { return(this.canRotate); }
+
   // a body representing the physical form of the part
   public getBody():Body {
     return(null);
   };
   protected _body:Body;
   // transfer relevant properties to the body
-  protected _updateBody():void {
-    if (! this._body) return;
-    this._body.position.x = this.column * SPACING;
-    this._body.position.y = this.row * SPACING;
+  public writeBody():void {
+    if ((! this._body) || (this._readingBody)) return;
+    Body.setPosition(this._body, 
+      { x: this.column * SPACING, 
+        y: this.row * SPACING });
   }
+
+  // tranfer relevant properties from the body
+  public readBody():void {
+    if (! this._body) return;
+    this._readingBody = true;
+    if (this.bodyCanMove) {
+      this.column = this._body.position.x / SPACING;
+      this.row = this._body.position.y / SPACING;
+    }
+    this._readingBody = false;
+  }
+  protected _readingBody:boolean = false;
 
 }

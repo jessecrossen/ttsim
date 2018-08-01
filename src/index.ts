@@ -2,6 +2,7 @@ import * as PIXI from 'pixi.js';
 
 import { SimulatorApp } from 'app';
 import { Renderer } from 'renderer';
+import { BoardBuilder } from 'board/builder';
 
 const container = document.getElementById('container');
 container.appendChild(Renderer.instance.view);
@@ -33,6 +34,6 @@ loader.add('images/parts.json').load(() => {
   sim.height = Renderer.instance.height;
   Renderer.stage.addChild(sim);
   // set up the standard board
-  sim.initStandardBoard();
+  BoardBuilder.initStandardBoard(sim.board);
   sim.actionbar.zoomToFit();
 });

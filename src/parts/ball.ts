@@ -2,7 +2,7 @@ import { Body, Bodies } from 'matter-js';
 
 import { Part, Layer } from './part';
 import { PartType } from './factory';
-import { PART_SIZE } from 'board/physics';
+import { PART_SIZE, SPACING } from 'board/physics';
 
 export class Ball extends Part {
 
@@ -31,15 +31,19 @@ export class Ball extends Part {
     }
   }
 
+  public get bodyCanMove():boolean { return(true); }
+
   public getBody():Body {
     if (! this._body) {
-      this._body = Bodies.circle(0, 0, (5 * PART_SIZE) / 32);
+      this._body = Bodies.circle(
+        SPACING * this.column, 
+        SPACING * this.row, (5 * PART_SIZE) / 32);
     }
     return(this._body);
   }
 
-  protected _updateBody():void {
-    super._updateBody();
+  public writeBody():void {
+    super.writeBody();
   }
 
 }

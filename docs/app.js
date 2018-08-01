@@ -324,49 +324,152 @@ System.register("board/router", [], function (exports_10, context_10) {
         }
     };
 });
-System.register("board/physics", ["pixi.js", "matter-js", "board/board"], function (exports_11, context_11) {
+System.register("ui/config", [], function (exports_11, context_11) {
     "use strict";
     var __moduleName = context_11 && context_11.id;
-    var PIXI, matter_js_1, board_2, PART_SIZE, SPACING, PhysicalBallRouter;
+    return {
+        setters: [],
+        execute: function () {
+        }
+    };
+});
+System.register("renderer", ["pixi.js"], function (exports_12, context_12) {
+    "use strict";
+    var __moduleName = context_12 && context_12.id;
+    var PIXI, Renderer;
     return {
         setters: [
             function (PIXI_1) {
                 PIXI = PIXI_1;
+            }
+        ],
+        execute: function () {
+            Renderer = class Renderer {
+                static needsUpdate() {
+                    Renderer._needsUpdate = true;
+                }
+                static start() {
+                    PIXI.ticker.shared.add(Renderer.render, Renderer, PIXI.UPDATE_PRIORITY.LOW);
+                }
+                static render() {
+                    if (Renderer._needsUpdate) {
+                        Renderer.instance.render(Renderer.stage);
+                        Renderer._needsUpdate = false;
+                    }
+                }
+            };
+            Renderer._needsUpdate = false;
+            Renderer.instance = PIXI.autoDetectRenderer({
+                antialias: false,
+                backgroundColor: 16777215 /* BACKGROUND */
+            });
+            Renderer.stage = new PIXI.Container();
+            exports_12("Renderer", Renderer);
+        }
+    };
+});
+System.register("board/physics", ["pixi.js", "matter-js", "renderer"], function (exports_13, context_13) {
+    "use strict";
+    var __moduleName = context_13 && context_13.id;
+    var PIXI, matter_js_1, renderer_1, PART_SIZE, SPACING, PhysicalBallRouter;
+    return {
+        setters: [
+            function (PIXI_2) {
+                PIXI = PIXI_2;
             },
             function (matter_js_1_1) {
                 matter_js_1 = matter_js_1_1;
             },
-            function (board_2_1) {
-                board_2 = board_2_1;
+            function (renderer_1_1) {
+                renderer_1 = renderer_1_1;
             }
         ],
         execute: function () {
             // the canonical part size the simulator runs at
-            exports_11("PART_SIZE", PART_SIZE = 64);
-            // the spacing between simulated parts
-            exports_11("SPACING", SPACING = PART_SIZE * board_2.SPACING_FACTOR);
+            exports_13("PART_SIZE", PART_SIZE = 64);
+            exports_13("SPACING", SPACING = 68);
             PhysicalBallRouter = class PhysicalBallRouter {
                 constructor(board) {
                     this.board = board;
+                    this._wallWidth = 16;
+                    this._wallHeight = 16;
+                    this._wallThickness = 16;
+                    this._balls = new Set();
+                    this._skipCounter = 0;
                     this.engine = matter_js_1.Engine.create();
+                    this.engine.enabled = false;
+                    matter_js_1.Events.on(this.engine, 'afterUpdate', this.afterUpdate.bind(this));
+                    matter_js_1.Engine.run(this.engine);
+                    // make walls to catch stray balls
+                    this._createWalls();
                     // get initial board state
                     this.onBoardChanged();
                 }
-                onPartSizeChanged() {
+                onBoardSizeChanged() {
                     // rescale the wireframe to match the board spacing
                     if (this._wireframe) {
                         const scale = this.board.spacing / SPACING;
                         this._wireframe.scale.set(scale, scale);
+                        this.renderWireframe();
                     }
+                    // update the walls around the board
+                    this._updateWalls();
+                }
+                _createWalls() {
+                    const options = { isStatic: true };
+                    this._top = matter_js_1.Bodies.rectangle(0, 0, this._wallWidth, this._wallThickness, options);
+                    this._bottom = matter_js_1.Bodies.rectangle(0, 0, this._wallWidth, this._wallThickness, options);
+                    this._left = matter_js_1.Bodies.rectangle(0, 0, this._wallThickness, this._wallHeight, options);
+                    this._right = matter_js_1.Bodies.rectangle(0, 0, this._wallThickness, this._wallHeight, options);
+                    matter_js_1.World.add(this.engine.world, [this._top, this._right, this._bottom, this._left]);
+                }
+                _updateWalls() {
+                    const w = ((this.board.columnCount + 2) * SPACING);
+                    const h = ((this.board.rowCount + 2) * SPACING);
+                    const hw = (w - this._wallThickness) / 2;
+                    const hh = (h + this._wallThickness) / 2;
+                    const cx = ((this.board.columnCount - 1) / 2) * SPACING;
+                    const cy = ((this.board.rowCount - 1) / 2) * SPACING;
+                    matter_js_1.Body.setPosition(this._top, { x: cx, y: cy - hh });
+                    matter_js_1.Body.setPosition(this._bottom, { x: cx, y: cy + hh });
+                    matter_js_1.Body.setPosition(this._left, { x: cx - hw, y: cy });
+                    matter_js_1.Body.setPosition(this._right, { x: cx + hw, y: cy });
+                    const sx = w / this._wallWidth;
+                    const sy = h / this._wallHeight;
+                    if (sx != 1.0) {
+                        matter_js_1.Body.scale(this._top, sx, 1.0);
+                        matter_js_1.Body.scale(this._bottom, sx, 1.0);
+                    }
+                    if (sy != 1.0) {
+                        matter_js_1.Body.scale(this._left, 1.0, sy);
+                        matter_js_1.Body.scale(this._right, 1.0, sy);
+                    }
+                    this._wallWidth = w;
+                    this._wallHeight = h;
                 }
                 onBoardChanged() {
                     // add balls to the world
                     for (const ball of this.board.balls) {
-                        const body = ball.getBody();
-                        if (!body.parent)
-                            matter_js_1.World.addBody(this.engine.world, body);
+                        if (!this._balls.has(ball)) {
+                            this._balls.add(ball);
+                            matter_js_1.World.addBody(this.engine.world, ball.getBody());
+                        }
                     }
                     this.renderWireframe();
+                }
+                // UPDATING *****************************************************************
+                start() {
+                    this.engine.enabled = true;
+                }
+                stop() {
+                    this.engine.enabled = false;
+                }
+                afterUpdate() {
+                    // transfer ball positions
+                    for (const ball of this.board.balls) {
+                        ball.readBody();
+                        this.board.layoutPart(ball, ball.column, ball.row);
+                    }
                 }
                 // WIREFRAME PREVIEW ********************************************************
                 get showWireframe() {
@@ -374,25 +477,40 @@ System.register("board/physics", ["pixi.js", "matter-js", "board/board"], functi
                 }
                 set showWireframe(v) {
                     if ((v) && (!this._wireframe)) {
-                        this._wireframe = new PIXI.Graphics();
+                        this._wireframe = new PIXI.Sprite();
+                        this._wireframeGraphics = new PIXI.Graphics();
+                        this._wireframe.addChild(this._wireframeGraphics);
                         this.board._layers.addChild(this._wireframe);
+                        this.onBoardSizeChanged();
+                        this.renderWireframe();
+                        PIXI.ticker.shared.add(this.onRender, this);
                     }
                     else if ((!v) && (this._wireframe)) {
                         this.board._layers.removeChild(this._wireframe);
                         this._wireframe = null;
+                        this._wireframeGraphics = null;
+                        PIXI.ticker.shared.remove(this.onRender, this);
+                        renderer_1.Renderer.needsUpdate();
+                    }
+                }
+                onRender() {
+                    // render wireframes at 15 FPS because it's expensive
+                    if ((this._skipCounter++ % 4) == 0) {
+                        this.renderWireframe();
                     }
                 }
                 renderWireframe() {
                     if (!this._wireframe)
                         return;
                     // setup
-                    const g = this._wireframe;
+                    const g = this._wireframeGraphics;
                     g.clear();
-                    g.lineStyle(2, 0xFF0000, 0.5);
+                    g.lineStyle(2 / this._wireframe.scale.x, 0xFF0000, 1);
                     // draw all bodies
                     var bodies = matter_js_1.Composite.allBodies(this.engine.world);
                     for (const body of bodies) {
-                        let first = false;
+                        // draw the vertices of the body
+                        let first = true;
                         for (const vertex of body.vertices) {
                             if (first) {
                                 g.moveTo(vertex.x, vertex.y);
@@ -402,17 +520,18 @@ System.register("board/physics", ["pixi.js", "matter-js", "board/board"], functi
                                 g.lineTo(vertex.x, vertex.y);
                             }
                         }
-                        g.lineTo(body.vertices[0].x, body.vertices[0].y);
+                        g.closePath();
                     }
+                    renderer_1.Renderer.needsUpdate();
                 }
             };
-            exports_11("PhysicalBallRouter", PhysicalBallRouter);
+            exports_13("PhysicalBallRouter", PhysicalBallRouter);
         }
     };
 });
-System.register("parts/ball", ["matter-js", "parts/part", "board/physics"], function (exports_12, context_12) {
+System.register("parts/ball", ["matter-js", "parts/part", "board/physics"], function (exports_14, context_14) {
     "use strict";
-    var __moduleName = context_12 && context_12.id;
+    var __moduleName = context_14 && context_14.id;
     var matter_js_2, part_10, physics_1, Ball;
     return {
         setters: [
@@ -455,23 +574,24 @@ System.register("parts/ball", ["matter-js", "parts/part", "board/physics"], func
                         sprite.tint = this._color;
                     }
                 }
+                get bodyCanMove() { return (true); }
                 getBody() {
                     if (!this._body) {
-                        this._body = matter_js_2.Bodies.circle(0, 0, (5 * physics_1.PART_SIZE) / 32);
+                        this._body = matter_js_2.Bodies.circle(physics_1.SPACING * this.column, physics_1.SPACING * this.row, (5 * physics_1.PART_SIZE) / 32);
                     }
                     return (this._body);
                 }
-                _updateBody() {
-                    super._updateBody();
+                writeBody() {
+                    super.writeBody();
                 }
             };
-            exports_12("Ball", Ball);
+            exports_14("Ball", Ball);
         }
     };
 });
-System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit", "parts/fence", "parts/blank", "parts/drop", "parts/ball"], function (exports_13, context_13) {
+System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit", "parts/fence", "parts/blank", "parts/drop", "parts/ball"], function (exports_15, context_15) {
     "use strict";
-    var __moduleName = context_13 && context_13.id;
+    var __moduleName = context_15 && context_15.id;
     var location_1, ramp_1, crossover_1, interceptor_1, bit_1, gearbit_1, fence_1, blank_1, drop_1, ball_1, PartFactory;
     return {
         setters: [
@@ -542,65 +662,24 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
                     return (newPart);
                 }
             };
-            exports_13("PartFactory", PartFactory);
+            exports_15("PartFactory", PartFactory);
         }
     };
 });
-System.register("ui/config", [], function (exports_14, context_14) {
-    "use strict";
-    var __moduleName = context_14 && context_14.id;
-    return {
-        setters: [],
-        execute: function () {
-        }
-    };
-});
-System.register("renderer", ["pixi.js"], function (exports_15, context_15) {
-    "use strict";
-    var __moduleName = context_15 && context_15.id;
-    var PIXI, Renderer;
-    return {
-        setters: [
-            function (PIXI_2) {
-                PIXI = PIXI_2;
-            }
-        ],
-        execute: function () {
-            Renderer = class Renderer {
-                static needsUpdate() {
-                    Renderer._needsUpdate = true;
-                }
-                static start() {
-                    PIXI.ticker.shared.add(Renderer.render, Renderer, PIXI.UPDATE_PRIORITY.LOW);
-                }
-                static render() {
-                    if (Renderer._needsUpdate) {
-                        Renderer.instance.render(Renderer.stage);
-                        Renderer._needsUpdate = false;
-                    }
-                }
-            };
-            Renderer._needsUpdate = false;
-            Renderer.instance = PIXI.autoDetectRenderer({
-                antialias: false,
-                backgroundColor: 16777215 /* BACKGROUND */
-            });
-            Renderer.stage = new PIXI.Container();
-            exports_15("Renderer", Renderer);
-        }
-    };
-});
-System.register("parts/part", ["pixi.js", "renderer", "board/physics"], function (exports_16, context_16) {
+System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/physics"], function (exports_16, context_16) {
     "use strict";
     var __moduleName = context_16 && context_16.id;
-    var PIXI, renderer_1, physics_2, Part;
+    var PIXI, matter_js_3, renderer_2, physics_2, Part;
     return {
         setters: [
             function (PIXI_3) {
                 PIXI = PIXI_3;
             },
-            function (renderer_1_1) {
-                renderer_1 = renderer_1_1;
+            function (matter_js_3_1) {
+                matter_js_3 = matter_js_3_1;
+            },
+            function (renderer_2_1) {
+                renderer_2 = renderer_2_1;
             },
             function (physics_2_1) {
                 physics_2 = physics_2_1;
@@ -629,6 +708,7 @@ System.register("parts/part", ["pixi.js", "renderer", "board/physics"], function
                     // adjustable offsets for textures (as a fraction of the size)
                     this._xOffset = 0.0;
                     this._yOffset = 0.0;
+                    this._readingBody = false;
                 }
                 // the current position of the ball in grid units
                 get column() { return (this._column); }
@@ -636,14 +716,14 @@ System.register("parts/part", ["pixi.js", "renderer", "board/physics"], function
                     if (v === this._column)
                         return;
                     this._column = v;
-                    this._updateBody();
+                    this.writeBody();
                 }
                 get row() { return (this._row); }
                 set row(v) {
                     if (v === this._row)
                         return;
                     this._row = v;
-                    this._updateBody();
+                    this.writeBody();
                 }
                 // the unit-size of the part
                 get size() { return (this._size); }
@@ -663,7 +743,7 @@ System.register("parts/part", ["pixi.js", "renderer", "board/physics"], function
                         return;
                     this._rotation = r;
                     this._updateSprites();
-                    this._updateBody();
+                    this.writeBody();
                 }
                 // whether the part is pointing right (or will be when animations finish)
                 get bitValue() {
@@ -680,7 +760,7 @@ System.register("parts/part", ["pixi.js", "renderer", "board/physics"], function
                         return;
                     this._isFlipped = v;
                     this._updateSprites();
-                    this._updateBody();
+                    this.writeBody();
                 }
                 // flip the part if it can be flipped
                 flip(time = 0.0) {
@@ -843,7 +923,7 @@ System.register("parts/part", ["pixi.js", "renderer", "board/physics"], function
                     sprite.visible = this.visible;
                     sprite.alpha = sprite.visible ? this.alpha : 0;
                     // schedule rendering
-                    renderer_1.Renderer.needsUpdate();
+                    renderer_2.Renderer.needsUpdate();
                 }
                 // get the angle for the given rotation value
                 _angleForRotation(r, layer) {
@@ -854,17 +934,31 @@ System.register("parts/part", ["pixi.js", "renderer", "board/physics"], function
                     return (this.isFlipped);
                 }
                 // PHYSICS ******************************************************************
+                // whether the body can be moved by the physics simulator
+                get bodyCanMove() { return (false); }
+                get bodyCanRotate() { return (this.canRotate); }
                 // a body representing the physical form of the part
                 getBody() {
                     return (null);
                 }
                 ;
                 // transfer relevant properties to the body
-                _updateBody() {
+                writeBody() {
+                    if ((!this._body) || (this._readingBody))
+                        return;
+                    matter_js_3.Body.setPosition(this._body, { x: this.column * physics_2.SPACING,
+                        y: this.row * physics_2.SPACING });
+                }
+                // tranfer relevant properties from the body
+                readBody() {
                     if (!this._body)
                         return;
-                    this._body.position.x = this.column * physics_2.SPACING;
-                    this._body.position.y = this.row * physics_2.SPACING;
+                    this._readingBody = true;
+                    if (this.bodyCanMove) {
+                        this.column = this._body.position.x / physics_2.SPACING;
+                        this.row = this._body.position.y / physics_2.SPACING;
+                    }
+                    this._readingBody = false;
                 }
             };
             exports_16("Part", Part);
@@ -993,7 +1087,7 @@ System.register("util/disjoint", [], function (exports_17, context_17) {
 System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer"], function (exports_18, context_18) {
     "use strict";
     var __moduleName = context_18 && context_18.id;
-    var filter, fence_2, gearbit_2, disjoint_1, renderer_2, PartSizes, SPACING_FACTOR, Board;
+    var filter, fence_2, gearbit_2, disjoint_1, renderer_3, PartSizes, SPACING_FACTOR, Board;
     return {
         setters: [
             function (filter_1) {
@@ -1008,8 +1102,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             function (disjoint_1_1) {
                 disjoint_1 = disjoint_1_1;
             },
-            function (renderer_2_1) {
-                renderer_2 = renderer_2_1;
+            function (renderer_3_1) {
+                renderer_3 = renderer_3_1;
             }
         ],
         execute: function () {
@@ -1131,7 +1225,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     showContainer(4 /* SCHEMATIC */, this.schematic);
                     showContainer(6 /* SCHEMATIC_4 */, this.schematic && (this.partSize == 4));
                     showContainer(5 /* SCHEMATIC_2 */, this.schematic && (this.partSize == 2));
-                    renderer_2.Renderer.needsUpdate();
+                    renderer_3.Renderer.needsUpdate();
                 }
                 // LAYOUT *******************************************************************
                 // change the size to draw parts at
@@ -1145,7 +1239,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._updateLayerVisibility();
                     this._updatePan();
                     if (this.router)
-                        this.router.onPartSizeChanged();
+                        this.router.onBoardSizeChanged();
                 }
                 // the width of the display area
                 get width() { return (this._width); }
@@ -1190,7 +1284,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._layers.y =
                         Math.round((this.height / 2) - this.yForRow(this.centerRow));
                     this._updateFilterAreas();
-                    renderer_2.Renderer.needsUpdate();
+                    renderer_3.Renderer.needsUpdate();
                 }
                 // do layout for one part at the given location
                 layoutPart(part, column, row) {
@@ -1287,11 +1381,15 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                     }
                     this._rowCount = rowCount;
+                    if (this.router)
+                        this.router.onBoardSizeChanged();
                 }
                 // whether a part can be placed at the given row and column
                 canPlacePart(type, column, row) {
-                    if (type == 9 /* BALL */)
-                        return (true);
+                    if (type == 9 /* BALL */) {
+                        return ((row >= 0.0) && (column >= 0.0) &&
+                            (row < this.rowCount) && (column < this.columnCount));
+                    }
                     if ((column < 0) || (column >= this._columnCount) ||
                         (row < 0) || (row >= this._rowCount))
                         return (false);
@@ -1417,8 +1515,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 addBall(ball, x, y) {
                     if (!this.balls.has(ball)) {
                         this.balls.add(ball);
-                        this.addPart(ball);
                         this.layoutPart(ball, this.columnForX(x), this.rowForY(y));
+                        this.addPart(ball);
                     }
                 }
                 // remove a ball from the board
@@ -1426,7 +1524,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     if (!this.balls.has(ball)) {
                         this.balls.delete(ball);
                         this.removePart(ball);
-                        renderer_2.Renderer.needsUpdate();
+                        renderer_3.Renderer.needsUpdate();
                     }
                 }
                 // remove a part from the board's layers
@@ -1787,14 +1885,14 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
 System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, context_19) {
     "use strict";
     var __moduleName = context_19 && context_19.id;
-    var PIXI, renderer_3, Button, PartButton, SpriteButton, ButtonBar;
+    var PIXI, renderer_4, Button, PartButton, SpriteButton, ButtonBar;
     return {
         setters: [
             function (PIXI_4) {
                 PIXI = PIXI_4;
             },
-            function (renderer_3_1) {
-                renderer_3 = renderer_3_1;
+            function (renderer_4_1) {
+                renderer_4 = renderer_4_1;
             }
         ],
         execute: function () {
@@ -1821,7 +1919,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, cont
                         return;
                     this._size = v;
                     this.onSizeChanged();
-                    renderer_3.Renderer.needsUpdate();
+                    renderer_4.Renderer.needsUpdate();
                 }
                 get isToggled() { return (this._isToggled); }
                 set isToggled(v) {
@@ -1877,7 +1975,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, cont
                     }
                     this._background.alpha = alpha;
                     this.alpha = this.isEnabled ? 1.0 : 0.25 /* BUTTON_DISABLED */;
-                    renderer_3.Renderer.needsUpdate();
+                    renderer_4.Renderer.needsUpdate();
                 }
                 _drawDecorations() {
                     const radius = 8; // pixels
@@ -1892,7 +1990,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, cont
                         this._background.drawRoundedRect(-hs, -hs, s, s, radius);
                         this._background.endFill();
                     }
-                    renderer_3.Renderer.needsUpdate();
+                    renderer_4.Renderer.needsUpdate();
                 }
             };
             exports_19("Button", Button);
@@ -1934,7 +2032,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, cont
                         this.addChild(this._normalView);
                         this.removeChild(this._schematicView);
                     }
-                    renderer_3.Renderer.needsUpdate();
+                    renderer_4.Renderer.needsUpdate();
                 }
                 onSizeChanged() {
                     super.onSizeChanged();
@@ -2047,7 +2145,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, cont
                     this._background.beginFill(16777215 /* BACKGROUND */, 1.0);
                     this._background.drawRect(0, 0, this.width, this.height);
                     this._background.endFill();
-                    renderer_3.Renderer.needsUpdate();
+                    renderer_4.Renderer.needsUpdate();
                 }
             };
             exports_19("ButtonBar", ButtonBar);
@@ -2057,7 +2155,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, cont
 System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (exports_20, context_20) {
     "use strict";
     var __moduleName = context_20 && context_20.id;
-    var PIXI, button_1, renderer_4, Toolbar;
+    var PIXI, button_1, renderer_5, Toolbar;
     return {
         setters: [
             function (PIXI_5) {
@@ -2066,8 +2164,8 @@ System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (ex
             function (button_1_1) {
                 button_1 = button_1_1;
             },
-            function (renderer_4_1) {
-                renderer_4 = renderer_4_1;
+            function (renderer_5_1) {
+                renderer_5 = renderer_5_1;
             }
         ],
         execute: function () {
@@ -2129,7 +2227,7 @@ System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (ex
                             button.schematic = this.board.schematic;
                         }
                     }
-                    renderer_4.Renderer.needsUpdate();
+                    renderer_5.Renderer.needsUpdate();
                 }
             };
             exports_20("Toolbar", Toolbar);
@@ -2139,20 +2237,20 @@ System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (ex
 System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "renderer"], function (exports_21, context_21) {
     "use strict";
     var __moduleName = context_21 && context_21.id;
-    var PIXI, board_3, button_2, renderer_5, Actionbar;
+    var PIXI, board_2, button_2, renderer_6, Actionbar;
     return {
         setters: [
             function (PIXI_6) {
                 PIXI = PIXI_6;
             },
-            function (board_3_1) {
-                board_3 = board_3_1;
+            function (board_2_1) {
+                board_2 = board_2_1;
             },
             function (button_2_1) {
                 button_2 = button_2_1;
             },
-            function (renderer_5_1) {
-                renderer_5 = renderer_5_1;
+            function (renderer_6_1) {
+                renderer_6 = renderer_6_1;
             }
         ],
         execute: function () {
@@ -2221,7 +2319,7 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "rendere
                             button.schematic = this.board.schematic;
                         }
                     }
-                    renderer_5.Renderer.needsUpdate();
+                    renderer_6.Renderer.needsUpdate();
                 }
                 // force schematic mode when parts are very small
                 get forceSchematic() {
@@ -2238,7 +2336,7 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "rendere
                     }
                 }
                 get canZoomIn() {
-                    return (this.zoomIndex < board_3.PartSizes.length - 1);
+                    return (this.zoomIndex < board_2.PartSizes.length - 1);
                 }
                 get canZoomOut() {
                     return (this.zoomIndex > 0);
@@ -2246,14 +2344,14 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "rendere
                 zoomIn() {
                     if (!this.canZoomIn)
                         return;
-                    this.board.partSize = board_3.PartSizes[this.zoomIndex + 1];
+                    this.board.partSize = board_2.PartSizes[this.zoomIndex + 1];
                     this._updateAutoSchematic();
                     this.updateToggled();
                 }
                 zoomOut() {
                     if (!this.canZoomOut)
                         return;
-                    this.board.partSize = board_3.PartSizes[this.zoomIndex - 1];
+                    this.board.partSize = board_2.PartSizes[this.zoomIndex - 1];
                     this._updateAutoSchematic();
                     this.updateToggled();
                 }
@@ -2261,11 +2359,11 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "rendere
                 zoomToFit() {
                     this.board.centerColumn = (this.board.columnCount - 1) / 2;
                     this.board.centerRow = (this.board.rowCount - 1) / 2;
-                    let s = board_3.PartSizes[0];
-                    for (let i = board_3.PartSizes.length - 1; i >= 0; i--) {
-                        s = board_3.PartSizes[i];
-                        const w = this.board.columnCount * Math.floor(s * board_3.SPACING_FACTOR);
-                        const h = this.board.rowCount * Math.floor(s * board_3.SPACING_FACTOR);
+                    let s = board_2.PartSizes[0];
+                    for (let i = board_2.PartSizes.length - 1; i >= 0; i--) {
+                        s = board_2.PartSizes[i];
+                        const w = this.board.columnCount * Math.floor(s * board_2.SPACING_FACTOR);
+                        const h = this.board.rowCount * Math.floor(s * board_2.SPACING_FACTOR);
                         if ((w <= this.board.width) && (h <= this.board.height))
                             break;
                     }
@@ -2274,24 +2372,63 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "rendere
                     this.updateToggled();
                 }
                 get zoomIndex() {
-                    return (board_3.PartSizes.indexOf(this.board.partSize));
+                    return (board_2.PartSizes.indexOf(this.board.partSize));
                 }
             };
             exports_21("Actionbar", Actionbar);
         }
     };
 });
-System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "parts/fence", "board/physics"], function (exports_22, context_22) {
+System.register("ui/keyboard", [], function (exports_22, context_22) {
     "use strict";
     var __moduleName = context_22 && context_22.id;
-    var PIXI, board_4, factory_1, toolbar_1, actionbar_1, renderer_6, fence_3, physics_3, SimulatorApp;
+    function makeKeyHandler(key) {
+        const handler = {
+            key: key,
+            isDown: false,
+            isUp: true,
+            downHandler: (event) => {
+                if (event.key === handler.key) {
+                    if ((handler.isUp) && (handler.press))
+                        handler.press();
+                    handler.isDown = true;
+                    handler.isUp = false;
+                    event.preventDefault();
+                }
+            },
+            upHandler: (event) => {
+                if (event.key === handler.key) {
+                    if ((handler.isDown) && (handler.release))
+                        handler.release();
+                    handler.isDown = false;
+                    handler.isUp = true;
+                    event.preventDefault();
+                }
+            }
+        };
+        //Attach event listeners
+        window.addEventListener('keydown', handler.downHandler.bind(handler), false);
+        window.addEventListener('keyup', handler.upHandler.bind(handler), false);
+        return (handler);
+    }
+    exports_22("makeKeyHandler", makeKeyHandler);
+    return {
+        setters: [],
+        execute: function () {
+        }
+    };
+});
+System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "board/physics", "ui/keyboard"], function (exports_23, context_23) {
+    "use strict";
+    var __moduleName = context_23 && context_23.id;
+    var PIXI, board_3, factory_1, toolbar_1, actionbar_1, renderer_7, physics_3, keyboard_1, SimulatorApp;
     return {
         setters: [
             function (PIXI_7) {
                 PIXI = PIXI_7;
             },
-            function (board_4_1) {
-                board_4 = board_4_1;
+            function (board_3_1) {
+                board_3 = board_3_1;
             },
             function (factory_1_1) {
                 factory_1 = factory_1_1;
@@ -2302,14 +2439,14 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
             function (actionbar_1_1) {
                 actionbar_1 = actionbar_1_1;
             },
-            function (renderer_6_1) {
-                renderer_6 = renderer_6_1;
-            },
-            function (fence_3_1) {
-                fence_3 = fence_3_1;
+            function (renderer_7_1) {
+                renderer_7 = renderer_7_1;
             },
             function (physics_3_1) {
                 physics_3 = physics_3_1;
+            },
+            function (keyboard_1_1) {
+                keyboard_1 = keyboard_1_1;
             }
         ],
         execute: function () {
@@ -2320,7 +2457,7 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     this._width = 0;
                     this._height = 0;
                     this.partFactory = new factory_1.PartFactory(textures);
-                    this.board = new board_4.Board(this.partFactory);
+                    this.board = new board_3.Board(this.partFactory);
                     this.toolbar = new toolbar_1.Toolbar(this.board);
                     this.toolbar.width = 64;
                     this.actionbar = new actionbar_1.Actionbar(this.board);
@@ -2330,11 +2467,13 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     this.addChild(this.board.view);
                     this.addChild(this.toolbar);
                     this.addChild(this.actionbar);
-                    //!!!
-                    const router = new physics_3.PhysicalBallRouter(this.board);
-                    this.board.router = router;
-                    router.showWireframe = true;
                     this._layout();
+                    // set up ball routers
+                    this.physicalRouter = new physics_3.PhysicalBallRouter(this.board);
+                    this.board.router = this.physicalRouter;
+                    this.physicalRouter.start();
+                    // add event listeners
+                    this._addKeyHandlers();
                 }
                 get width() { return (this._width); }
                 set width(v) {
@@ -2357,9 +2496,31 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     this.board.view.x = this.toolbar.width;
                     this.board.width = Math.max(0, this.width - (this.toolbar.width + this.actionbar.width));
                     this.board.height = this.height;
-                    renderer_6.Renderer.needsUpdate();
+                    renderer_7.Renderer.needsUpdate();
                 }
-                initStandardBoard(redBlueDistance = 5, verticalDrop = 11) {
+                _addKeyHandlers() {
+                    const w = keyboard_1.makeKeyHandler('w');
+                    w.press = () => { this.physicalRouter.showWireframe = true; };
+                    w.release = () => { this.physicalRouter.showWireframe = false; };
+                }
+            };
+            exports_23("SimulatorApp", SimulatorApp);
+        }
+    };
+});
+System.register("board/builder", ["parts/fence"], function (exports_24, context_24) {
+    "use strict";
+    var __moduleName = context_24 && context_24.id;
+    var fence_3, BoardBuilder;
+    return {
+        setters: [
+            function (fence_3_1) {
+                fence_3 = fence_3_1;
+            }
+        ],
+        execute: function () {
+            BoardBuilder = class BoardBuilder {
+                static initStandardBoard(board, redBlueDistance = 5, verticalDrop = 11) {
                     let r, c, run;
                     const width = (redBlueDistance * 2) + 3;
                     const center = Math.floor(width / 2);
@@ -2370,9 +2531,9 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     const steps = Math.ceil(center / fence_3.Fence.maxModulus);
                     const maxModulus = Math.ceil(center / steps);
                     const height = collectLevel + steps + 2;
-                    this.board.setSize(width, height);
+                    board.setSize(width, height);
                     // block out unreachable locations at the top
-                    const blank = this.partFactory.make(0 /* BLANK */);
+                    const blank = board.partFactory.make(0 /* BLANK */);
                     blank.isLocked = true;
                     for (r = 0; r < height; r++) {
                         for (c = 0; c < width; c++) {
@@ -2381,18 +2542,18 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                             const redCantReach = ((r + c) < (redColumn + dropLevel)) ||
                                 ((c - r) > (redColumn - dropLevel));
                             if ((blueCantReach && redCantReach) || (r <= dropLevel)) {
-                                this.board.setPart(this.partFactory.copy(blank), c, r);
+                                board.setPart(board.partFactory.copy(blank), c, r);
                             }
                         }
                     }
                     // add fences on the sides
-                    const fence = this.partFactory.make(11 /* FENCE */);
+                    const fence = board.partFactory.make(11 /* FENCE */);
                     fence.isLocked = true;
-                    const flippedFence = this.partFactory.copy(fence);
+                    const flippedFence = board.partFactory.copy(fence);
                     flippedFence.flip();
                     for (r = dropLevel; r < collectLevel; r++) {
-                        this.board.setPart(this.partFactory.copy(fence), 0, r);
-                        this.board.setPart(this.partFactory.copy(flippedFence), width - 1, r);
+                        board.setPart(board.partFactory.copy(fence), 0, r);
+                        board.setPart(board.partFactory.copy(flippedFence), width - 1, r);
                     }
                     // add collection fences at the bottom
                     r = collectLevel;
@@ -2402,7 +2563,7 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                             r++;
                             run = 0;
                         }
-                        this.board.setPart(this.partFactory.copy(fence), c, r);
+                        board.setPart(board.partFactory.copy(fence), c, r);
                     }
                     r = collectLevel;
                     run = 0;
@@ -2411,45 +2572,45 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                             r++;
                             run = 0;
                         }
-                        this.board.setPart(this.partFactory.copy(flippedFence), c, r);
+                        board.setPart(board.partFactory.copy(flippedFence), c, r);
                     }
                     // block out the unreachable locations at the bottom
                     for (r = collectLevel; r < height; r++) {
                         for (c = 0; c < width; c++) {
-                            if (this.board.getPart(c, r) instanceof fence_3.Fence)
+                            if (board.getPart(c, r) instanceof fence_3.Fence)
                                 break;
-                            this.board.setPart(this.partFactory.copy(blank), c, r);
+                            board.setPart(board.partFactory.copy(blank), c, r);
                         }
                         for (c = width - 1; c >= 0; c--) {
-                            if (this.board.getPart(c, r) instanceof fence_3.Fence)
+                            if (board.getPart(c, r) instanceof fence_3.Fence)
                                 break;
-                            this.board.setPart(this.partFactory.copy(blank), c, r);
+                            board.setPart(board.partFactory.copy(blank), c, r);
                         }
                     }
                     // make a fence to collect balls
                     r = height - 1;
                     const rightSide = Math.min(center + fence_3.Fence.maxModulus, height - 1);
                     for (c = center; c < rightSide; c++) {
-                        this.board.setPart(this.partFactory.copy(fence), c, r);
+                        board.setPart(board.partFactory.copy(fence), c, r);
                     }
-                    this.board.setPart(this.partFactory.copy(fence), rightSide, r);
-                    this.board.setPart(this.partFactory.copy(fence), rightSide, r - 1);
+                    board.setPart(board.partFactory.copy(fence), rightSide, r);
+                    board.setPart(board.partFactory.copy(fence), rightSide, r - 1);
                     // make a ball drops
-                    const blueDrop = this.partFactory.make(10 /* DROP */);
-                    this.board.setPart(blueDrop, blueColumn - 1, dropLevel);
-                    const redDrop = this.partFactory.make(10 /* DROP */);
+                    const blueDrop = board.partFactory.make(10 /* DROP */);
+                    board.setPart(blueDrop, blueColumn - 1, dropLevel);
+                    const redDrop = board.partFactory.make(10 /* DROP */);
                     redDrop.isFlipped = true;
-                    this.board.setPart(redDrop, redColumn + 1, dropLevel);
+                    board.setPart(redDrop, redColumn + 1, dropLevel);
                 }
             };
-            exports_22("SimulatorApp", SimulatorApp);
+            exports_24("BoardBuilder", BoardBuilder);
         }
     };
 });
-System.register("index", ["pixi.js", "app", "renderer"], function (exports_23, context_23) {
+System.register("index", ["pixi.js", "app", "renderer", "board/builder"], function (exports_25, context_25) {
     "use strict";
-    var __moduleName = context_23 && context_23.id;
-    var PIXI, app_1, renderer_7, container, sim, resizeApp, loader;
+    var __moduleName = context_25 && context_25.id;
+    var PIXI, app_1, renderer_8, builder_1, container, sim, resizeApp, loader;
     return {
         setters: [
             function (PIXI_8) {
@@ -2458,18 +2619,21 @@ System.register("index", ["pixi.js", "app", "renderer"], function (exports_23, c
             function (app_1_1) {
                 app_1 = app_1_1;
             },
-            function (renderer_7_1) {
-                renderer_7 = renderer_7_1;
+            function (renderer_8_1) {
+                renderer_8 = renderer_8_1;
+            },
+            function (builder_1_1) {
+                builder_1 = builder_1_1;
             }
         ],
         execute: function () {
             container = document.getElementById('container');
-            container.appendChild(renderer_7.Renderer.instance.view);
+            container.appendChild(renderer_8.Renderer.instance.view);
             // dynamically resize the app to track the size of the browser window
             container.style.overflow = 'hidden';
             resizeApp = () => {
                 const r = container.getBoundingClientRect();
-                renderer_7.Renderer.instance.resize(r.width, r.height);
+                renderer_8.Renderer.instance.resize(r.width, r.height);
                 if (sim) {
                     sim.width = r.width;
                     sim.height = r.height;
@@ -2477,16 +2641,16 @@ System.register("index", ["pixi.js", "app", "renderer"], function (exports_23, c
             };
             resizeApp();
             window.addEventListener('resize', resizeApp);
-            renderer_7.Renderer.start();
+            renderer_8.Renderer.start();
             // load sprites
             loader = PIXI.loader;
             loader.add('images/parts.json').load(() => {
                 sim = new app_1.SimulatorApp(PIXI.loader.resources["images/parts.json"].textures);
-                sim.width = renderer_7.Renderer.instance.width;
-                sim.height = renderer_7.Renderer.instance.height;
-                renderer_7.Renderer.stage.addChild(sim);
+                sim.width = renderer_8.Renderer.instance.width;
+                sim.height = renderer_8.Renderer.instance.height;
+                renderer_8.Renderer.stage.addChild(sim);
                 // set up the standard board
-                sim.initStandardBoard();
+                builder_1.BoardBuilder.initStandardBoard(sim.board);
                 sim.actionbar.zoomToFit();
             });
         }

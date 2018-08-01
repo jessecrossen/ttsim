@@ -53,7 +53,8 @@ docs/images/parts.png: src/svg/parts.svg
 	inkscape --export-png=docs/images/parts.png \
 					 --export-area-page src/svg/parts.svg
 
-docs/images/parts.json: src/svg/parts.svg src/svg/spritesheet.py
+docs/images/parts.json: src/svg/parts.svg \
+												src/svg/spritesheet.py src/svg/parser.py
 	mkdir -p docs/images
 	src/svg/spritesheet.py src/svg/parts.svg docs/images/parts.json
 

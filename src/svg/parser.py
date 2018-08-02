@@ -3,7 +3,7 @@ import math
 import xml.etree.ElementTree
 
 # manage a 2D affine transform
-class Transform:
+class Transform(object):
   # initialize to the identity matrix by default
   def __init__(self, a=1, b=0, c=0, d=1, e=0, f=0):
     (self.a, self.b, self.c, self.d, self.e, self.f) = (a, b, c, d, e, f)
@@ -58,13 +58,13 @@ class Transform:
   def parse(self, s):
     # get a list of all the transformations
     matches = re.findall(
-      '[,\s]*((matrix|translate|scale|rotate|skewX|skewY)\s*\(([^\)]+)\))', s)
+      r'[,\s]*((matrix|translate|scale|rotate|skewX|skewY)\s*\(([^\)]+)\))', s)
     if ((not matches) or (not (len(matches) > 0))):
       return
     for (full, func, args) in matches:
       # divide the arguments and make them into numbers
-      args = re.split('[,\s]+', args)
-      args = map(float, args)
+      args = re.split(r'[,\s]+', args)
+      args = [ float(p) for p in args ]
       # concatenate the transform
       if ((func == 'matrix') and (len(args) == 6)):
         self.concat(Transform(args[0], args[1], args[2], args[3], args[4], args[5]))
@@ -126,25 +126,36 @@ class SVGParser(object):
     rects = list()
     self._getRectsIn(group, ctm, rects)
     return(rects)
+  
+  # get a list of paths inside the given group as lists of (x, y) tuples, 
+  #  with the given base transform applied
+  def getPathsInGroup(self, group, ctm=Transform()):
+    paths = list()
+    self._getPathsIn(group, ctm, paths)
+    return(paths)
 
   # IMPLEMENTATION ************************************************************
   
   def _tagWithoutNamespace(self, el):
     return(el.tag.split('}')[-1])
-
-  def _getLabeledGroupsIn(self, el, labelPrefix, results, ctm=Transform(), lastGroup=None):
-    tag = self._tagWithoutNamespace(el)
-    # save the next parent group up from the label
-    if (tag == 'g'):
-      lastGroup = el
-    # apply a transform matrix if there is one
+  
+  def _applyTransform(self, el, ctm):
     if ('transform' in el.attrib):
       ctm = ctm.clone()
       ctm.parse(el.attrib['transform'])
+    return(ctm)
+
+  def _getLabeledGroupsIn(self, el, labelPrefix, results, ctm=Transform(), lastGroup=None):
+    tag = self._tagWithoutNamespace(el)
+    # save the next parent group up from the label and the transform above it
+    if (tag == 'g'):
+      lastGroup = (el, ctm)
+    # apply a transform matrix if there is one
+    ctm = self._applyTransform(el, ctm)
     # find text labels
     if ((el.text is not None) and (lastGroup is not None) and 
         (el.text.startswith(labelPrefix))):
-      results.append((el.text[1:], lastGroup, ctm))
+      results.append((el.text[1:], lastGroup[0], lastGroup[1]))
     # search children of the group
     for child in el:
       # recursively scan children
@@ -153,6 +164,9 @@ class SVGParser(object):
   # get rectangles inside the given group, transforming their 
   #  coordinates to document coordinates
   def _getRectsIn(self, el, ctm=Transform(), rects=list()):
+    # apply a transform matrix if there is one
+    ctm = self._applyTransform(el, ctm)
+    # find rectangles
     if (self._tagWithoutNamespace(el) == 'rect'):
       x = float(el.attrib['x'])
       y = float(el.attrib['y'])
@@ -165,3 +179,170 @@ class SVGParser(object):
     else:
       for child in el:
         self._getRectsIn(child, ctm, rects)
+  
+  # get paths inside the given group, transforming their coordinates to 
+  #  document coordinates
+  def _getPathsIn(self, el, ctm=Transform(), paths=list()):
+    # apply a transform matrix if there is one
+    ctm = self._applyTransform(el, ctm)
+    # find paths
+    if (self._tagWithoutNamespace(el) == 'path'):
+      # get paths from the geometry attribute
+      newPaths = self._parsePath(el.attrib['d'])
+      # apply the coordinate transform to the paths
+      for newPath in newPaths:
+        paths.append([ ctm.apply(p) for p in newPath ])
+    else:
+      for child in el:
+        self._getPathsIn(child, ctm, paths)
+  
+  def _parsePath(self, d):
+    paths = list()
+    # tokenize the path elements
+    tokens = re.findall(r'[,\s]*([-+0-9.eE]+|[MmZzLlHhVvCcSsQqTtAa])', d)
+    # set an initial position
+    sp = (0.0, 0.0)
+    ip = (0.0, 0.0)
+    # process the path
+    tokenIndex = 0
+    operator = 'z'
+    # begin the first path segment
+    subpath = list()
+    while (tokenIndex < len(tokens)):
+      token = tokens[tokenIndex]
+      # determine whether the current token is an operator 
+      #  and how many parameters it consumes
+      isOperator = True
+      if ((token == 'Z') or (token == 'z')):
+        paramCount = 0
+      elif ((token == 'H') or (token == 'h') or (token == 'V') or (token == 'v')):
+        paramCount = 1
+      elif ((token == 'M') or (token == 'm') or (token == 'L') or (token == 'l') or
+            (token == 'T') or (token == 't')):
+        paramCount = 2
+      elif ((token == 'S') or (token == 's') or (token == 'Q') or (token == 'q')):
+        paramCount = 4
+      elif ((token == 'C') or (token == 'c')):
+        paramCount = 6
+      elif ((token == 'A') or (token == 'a')):
+        paramCount = 7
+      else:
+        isOperator = False
+      # if this is an operator, switch the current operator and advance
+      if (isOperator):
+        operator = token
+        tokenIndex += 1
+      # if we're using a move-to operator twice, 
+      #  subsequent operations are implicit line-to's
+      elif (operator == 'M'):
+        operator = 'L'
+      elif (operator == 'm'):
+        operator = 'l'
+      # load parameters
+      if (paramCount > 0):
+        params = tokens[tokenIndex:tokenIndex+paramCount]
+        params = [ float(p) for p in params ]
+        tokenIndex += paramCount
+      # if there are no parameters and this is not an operator, move on
+      elif (not isOperator):
+        tokenIndex += 1
+      # get a copy of the current position
+      ep = sp
+      # move-to
+      if ((operator == 'M') or (operator == 'm')):
+        # if there are any segments already in the path, draw them
+        if (len(subpath) > 0):
+          paths.append(subpath)
+          subpath = list()
+        # absolute move-to
+        if (operator == 'M'):
+          ip = sp = params
+          subpath.append(sp)
+        # relative move-to
+        elif (operator == 'm'):
+          ip = sp = (sp[0] + params[0], sp[1] + params[1])
+          subpath.append(sp)
+      # line-to
+      elif ((operator == 'L') or (operator == 'l') or 
+            (operator == 'H') or (operator == 'h') or
+            (operator == 'V') or (operator == 'v')):
+        # handle different types of line-to
+        if (operator == 'H'): # absolute horizontal line-to
+          ep = (params[0], ep[1])
+        elif (operator == 'h'): # relative horizontal line-to
+          ep = (sp[0] + params[0], ep[1])
+        elif (operator == 'V'): # absolute vertical line-to
+          ep = (ep[0], params[0])
+        elif (operator == 'v'): # relative vertical line-to
+          ep = (ep[0], sp[1] + params[0])
+        elif (operator == 'L'): # absolute line-to
+          ep = params
+        elif (operator == 'l'): # relative line-to
+          ep = (sp[0] + params[0], sp[1] + params[1])
+        # add the line
+        subpath.append(ep)
+        # advance the cursor
+        sp = ep
+      # cubic curve-to (discard control points)
+      elif ((operator == 'C') or (operator == 'c') or
+            (operator == 'S') or (operator == 's')):
+        # absolute cubic curve-to
+        if (operator == 'C'):
+          ep = params[4:6]
+        # relative cubic curve-to
+        elif (operator == 'c'):
+          ep = (sp[0] + params[4], sp[1] + params[5])
+        # absolute cubic smooth curve-to
+        elif (operator == 'S'):
+          ep = params[2:4]
+        # relative cubic smooth curve-to
+        elif (operator == 's'):
+          ep = (sp[0] + params[2], sp[1] + params[3])
+        # add the endpoint
+        subpath.append(ep)
+        # advance the cursor
+        sp = ep
+      # quadratic curve-to (discard control points)
+      elif ((operator == 'Q') or (operator == 'q') or
+            (operator == 'T') or (operator == 't')):
+        # absolute quadratic curve-to
+        if (operator == 'Q'):
+          ep = params[2:4]
+        # relative quadratic curve-to
+        elif (operator == 'q'):
+          ep = (sp[0] + params[2], sp[1] + params[3])
+        # absolute quadratic smooth curve-to
+        elif (operator == 'T'):
+          ep = params
+        # relative quadratic smooth curve-to
+        elif (operator == 't'):
+          ep = (sp[0] + params[0], sp[1] + params[1])
+        # add the endpoint
+        subpath.append(ep)
+        # advance the cursor
+        sp = ep
+      # arc-to
+      elif ((operator == 'A') or (operator == 'a')):
+        # absolute arc-to
+        if (operator == 'A'):
+          ep = params[5:7]
+        # relative arc-to
+        elif (operator == 'a'):
+          ep = (sp[0] + params[5], sp[1] + params[6])
+        # add the endpoint
+        subpath.append(ep)
+        # advance the cursor
+        sp = ep
+      # close the path and reset the cursor
+      elif ((operator == 'Z') or (operator == 'z')):
+        sp = ip
+        if (len(subpath) > 0):
+          paths.append(subpath)
+          subpath = list()
+      else:
+        print('WARNING: Unhandled path operator "%s"' % (operator))
+    # write the end of the final subpath
+    if (len(subpath) > 0):
+      paths.append(subpath)
+    # return accumulated paths
+    return(paths)

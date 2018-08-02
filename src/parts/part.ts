@@ -1,9 +1,10 @@
 import * as PIXI from 'pixi.js';
-import { Body, Vector } from 'matter-js';
+import { Body, Vector, Vertices, Constraint } from 'matter-js';
 
 import { PartType } from './factory';
 import { Renderer } from 'renderer';
-import { SPACING } from 'board/physics';
+import { SPACING } from 'board/constants';
+import { getVertexSets } from './bodies';
 
 export const enum Layer {
   BACK = 0, // keep this at the start to allow iteration through all layers
@@ -151,10 +152,13 @@ export abstract class Part {
       this.rotation = target;
       return;
     }
-    this._rv = (target - this.rotation) / (time * 60.0);
+    this._rv = (target < this.rotation ? - 1.0 : 1.0) / (time * 60.0);
     PIXI.ticker.shared.add(this.tickRotation);
   }
   private _rv:number = 0.0;
+  public isAnimatingRotation():boolean {
+    return(this._rv !== 0.0);
+  }
   public cancelRotationAnimation():void {
     if (this._rv !== 0) {
       this._rv = 0.0;
@@ -162,7 +166,7 @@ export abstract class Part {
     }
   }
   protected _tickRotation(delta:number):void {
-    if (this._rv == 0.0) {
+    if (this._rv === 0.0) {
       this.cancelRotationAnimation();
       return;
     }
@@ -265,8 +269,12 @@ export abstract class Part {
   protected _yOffset:number = 0.0;
 
   // get the angle for the given rotation value
-  protected _angleForRotation(r:number, layer:Layer):number {
-    return(r * (Math.PI / 2));
+  protected _angleForRotation(r:number, layer:Layer=Layer.MID):number {
+    return((this.isFlipped ? - r : r) * (Math.PI / 2));
+  }
+  // get the rotation for the given angle
+  protected _rotationForAngle(a:number):number {
+    return((this.isFlipped ? - a : a) / (Math.PI / 2));
   }
   // get whether to flip the x axis
   protected get _flipX():boolean {
@@ -277,20 +285,85 @@ export abstract class Part {
 
   // whether the body can be moved by the physics simulator
   public get bodyCanMove():boolean { return(false); }
+  // whether the body can be rotated by the physics simulator
   public get bodyCanRotate():boolean { return(this.canRotate); }
+  // the rotation to return the body to when not active
+  public get restingRotation():number { return(this.rotation); }
+  // the amount the body will bounce in a collision (0.0 - 1.0)
+  public get bodyRestitution():number { return(0.25); }
 
   // a body representing the physical form of the part
   public getBody():Body {
-    return(null);
+    if (this._body === undefined) {
+      this._body = this._bodyFromVertexSets(
+        getVertexSets(this.constructor.name));
+      if (this._body) {
+        this.initBody();
+        this.writeBody();
+      }
+    }
+    return(this._body);
   };
-  protected _body:Body;
+  protected _body:Body = undefined;
+
+  // get constraints to apply to the body
+  public get constraints():Constraint[] { return(this._constraints); }
+  private _constraints:Constraint[] = null;
+
+  // initialize the body after creation
+  protected initBody():void {
+    if (! this._body) return;
+    // parts that can't rotate can be static
+    if ((! this.bodyCanRotate) && (! this.bodyCanMove)) {
+      Body.setStatic(this._body, true);
+    }
+    // parts that can rotate need to be placed in a composite 
+    //  to simulate the pin joint attaching them to the board
+    else if (this.bodyCanRotate) {
+      this._rotationConstraint = Constraint.create({
+        bodyA: this._body,
+        pointB: { x:0, y:0 },
+        length: 0,
+        stiffness: 1
+      });
+      if (! this._constraints) this._constraints = [ ];
+      this._constraints.push(this._rotationConstraint);
+    }
+    
+  }
+  private _rotationConstraint:Constraint;
+
   // transfer relevant properties to the body
   public writeBody():void {
     if ((! this._body) || (this._readingBody)) return;
-    Body.setPosition(this._body, 
-      { x: this.column * SPACING, 
-        y: this.row * SPACING });
+    if (this._bodyFlipped !== this.isFlipped) {
+      Body.scale(this._body, -1, 1);
+      this._bodyOffset.x *= -1;
+    }
+    if ((this._bodyRow !== this.row) || 
+        (this._bodyColumn !== this.column) ||
+        (this._bodyFlipped !== this.isFlipped)) {
+      const x:number = (this.column * SPACING) + this._bodyOffset.x;
+      const y:number = (this.row * SPACING) + this._bodyOffset.y;
+      Body.setPosition(this._body, { x: x, y: y });
+      if (this._rotationConstraint) {
+        this._rotationConstraint.pointB = { x: x, y: y };
+      }
+      this._bodyRow = this.row;
+      this._bodyColumn = this.column;
+    }
+    let desiredAngle:number = this._angleForRotation(this.rotation);
+    if (this._bodyAngle != desiredAngle) {
+      Body.setAngle(this._body, desiredAngle);
+      this._bodyAngle = desiredAngle;
+    }
+    this._bodyFlipped = this.isFlipped;
   }
+  protected _bodyOffset:Vector = { x: 0.0, y: 0.0 };
+  private _bodyRow:number;
+  private _bodyColumn:number;
+  private _bodyFlipped:boolean = false;
+  private _bodyAngle:number = 0.0;
 
   // tranfer relevant properties from the body
   public readBody():void {
@@ -300,8 +373,38 @@ export abstract class Part {
       this.column = this._body.position.x / SPACING;
       this.row = this._body.position.y / SPACING;
     }
+    if (this.bodyCanRotate) {
+      const r:number = this._rotationForAngle(this._body.angle);
+      this.rotation = r;
+      if ((r < 0) || (r > 1)) {
+        Body.setAngularVelocity(this._body, 0.0);
+        Body.setAngle(this._body, 
+          this._angleForRotation(this.rotation));
+      }
+    }
     this._readingBody = false;
   }
   protected _readingBody:boolean = false;
+
+  // construct a body from a set of vertex lists
+  protected _bodyFromVertexSets(vertexSets:Vector[][]):Body {
+    if (! vertexSets) return(null);
+    const parts:Body[] = [ ];
+    for (const vertices of vertexSets) {
+      const center = Vertices.centre(vertices);
+      parts.push(Body.create({ position: center, vertices: vertices }));
+    }
+    const body = Body.create({ parts: parts, 
+      restitution: this.bodyRestitution,
+      friction: 0 });
+    // this is a hack to prevent matter.js from placing the body's center 
+    //  of mass over the origin, which complicates our ability to precisely
+    //  position parts of an arbitrary shape
+    body.position.x = 0;
+    body.position.y = 0;
+    (body as any).positionPrev.x = 0;
+    (body as any).positionPrev.y = 0;
+    return(body);
+  }
 
 }

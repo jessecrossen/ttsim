@@ -2,7 +2,7 @@ import { Body, Bodies } from 'matter-js';
 
 import { Part, Layer } from './part';
 import { PartType } from './factory';
-import { PART_SIZE, SPACING } from 'board/physics';
+import { PART_SIZE } from 'board/constants';
 
 export class Ball extends Part {
 
@@ -10,6 +10,10 @@ export class Ball extends Part {
   public get canMirror():boolean { return(false); }
   public get canFlip():boolean { return(false); }
   public get type():PartType { return(PartType.BALL); }
+
+  // data used by ball routers
+  public lastColumn:number;
+  public lastRow:number;
 
   // the color of the ball
   public get color():number { return(this._color); }
@@ -35,9 +39,11 @@ export class Ball extends Part {
 
   public getBody():Body {
     if (! this._body) {
-      this._body = Bodies.circle(
-        SPACING * this.column, 
-        SPACING * this.row, (5 * PART_SIZE) / 32);
+      this._body = Bodies.circle(0, 0, (5 * PART_SIZE) / 32,
+        { restitution: this.bodyRestitution,
+          density: .003, friction: 0 });
+      this.initBody();
+      this.writeBody();
     }
     return(this._body);
   }

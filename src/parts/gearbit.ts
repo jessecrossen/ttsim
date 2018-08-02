@@ -35,6 +35,9 @@ export class Gearbit extends GearBase {
   public get canFlip():boolean { return(false); }
   public get type():PartType { return(PartType.GEARBIT); }
 
+  // return the bit to whichever side it's closest to, preventing stuck bits
+  public get restingRotation():number { return(this.bitValue ? 1.0 : 0.0); }
+
 }
 
 export class Gear extends GearBase {
@@ -52,6 +55,9 @@ export class Gear extends GearBase {
   }
   private _isOnPartLocation:boolean = false;
 
+  // gears don't interact with balls in a rotationally asymmetric way, 
+  //  so we can ignore their rotation
+  public get bodyCanRotate():boolean { return(false); }
   
   protected _angleForRotation(r:number, layer:Layer):number {
     // gears on a regular-part location need to be rotated by 1/16 turn 

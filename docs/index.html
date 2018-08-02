@@ -19,12 +19,11 @@
     <script type="text/javascript">
       SystemJS.config({
         map: {
-          'matter-js': './matter.min.js',
           'pixi.js': './pixi.min.js',
-          'pixi-filters': './pixi-filters.js'
+          'pixi-filters': './pixi-filters.js',
+          'matter-js': './matter.min.js'
         },
         meta: {
-          'matter-js': { esModule: true },
           'pixi.js': {
             format: 'global',
             exports: 'PIXI',
@@ -35,7 +34,9 @@
             format: 'global',
             exports: 'PIXI.filters',
             esModule: true
-          }
+          },
+          'matter-js': { esModule: true },
+          'poly-decomp': { esModule: true },
         }
       });
       SystemJS.import('index');

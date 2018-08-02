@@ -17,7 +17,8 @@ export class Renderer {
   public static readonly stage = new PIXI.Container();
 
   public static start():void {
-    PIXI.ticker.shared.add(Renderer.render, Renderer, PIXI.UPDATE_PRIORITY.LOW);
+    PIXI.ticker.shared.add(Renderer.render, Renderer, 
+      PIXI.UPDATE_PRIORITY.INTERACTION);
   }
 
   public static render():void {

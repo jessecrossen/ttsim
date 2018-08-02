@@ -42,6 +42,9 @@ System.register("parts/ramp", ["parts/part"], function (exports_2, context_2) {
                 get canMirror() { return (false); }
                 get canFlip() { return (true); }
                 get type() { return (3 /* RAMP */); }
+                get bodyRestitution() { return (0.05); }
+                // return ramps to zero (simulating counterweight)
+                get restingRotation() { return (0.0); }
             };
             exports_2("Ramp", Ramp);
         }
@@ -154,6 +157,8 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
                 get type() { return (7 /* GEARBIT */); }
+                // return the bit to whichever side it's closest to, preventing stuck bits
+                get restingRotation() { return (this.bitValue ? 1.0 : 0.0); }
             };
             exports_6("Gearbit", Gearbit);
             Gear = class Gear extends GearBase {
@@ -172,6 +177,9 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
                     this._isOnPartLocation = v;
                     this._updateSprites();
                 }
+                // gears don't interact with balls in a rotationally asymmetric way, 
+                //  so we can ignore their rotation
+                get bodyCanRotate() { return (false); }
                 _angleForRotation(r, layer) {
                     // gears on a regular-part location need to be rotated by 1/16 turn 
                     //  to mesh with neighbors
@@ -315,227 +323,33 @@ System.register("parts/drop", ["parts/part"], function (exports_9, context_9) {
         }
     };
 });
-System.register("board/router", [], function (exports_10, context_10) {
+System.register("board/constants", [], function (exports_10, context_10) {
     "use strict";
     var __moduleName = context_10 && context_10.id;
+    var PART_SIZE, SPACING;
     return {
         setters: [],
-        execute: function () {
-        }
-    };
-});
-System.register("ui/config", [], function (exports_11, context_11) {
-    "use strict";
-    var __moduleName = context_11 && context_11.id;
-    return {
-        setters: [],
-        execute: function () {
-        }
-    };
-});
-System.register("renderer", ["pixi.js"], function (exports_12, context_12) {
-    "use strict";
-    var __moduleName = context_12 && context_12.id;
-    var PIXI, Renderer;
-    return {
-        setters: [
-            function (PIXI_1) {
-                PIXI = PIXI_1;
-            }
-        ],
-        execute: function () {
-            Renderer = class Renderer {
-                static needsUpdate() {
-                    Renderer._needsUpdate = true;
-                }
-                static start() {
-                    PIXI.ticker.shared.add(Renderer.render, Renderer, PIXI.UPDATE_PRIORITY.LOW);
-                }
-                static render() {
-                    if (Renderer._needsUpdate) {
-                        Renderer.instance.render(Renderer.stage);
-                        Renderer._needsUpdate = false;
-                    }
-                }
-            };
-            Renderer._needsUpdate = false;
-            Renderer.instance = PIXI.autoDetectRenderer({
-                antialias: false,
-                backgroundColor: 16777215 /* BACKGROUND */
-            });
-            Renderer.stage = new PIXI.Container();
-            exports_12("Renderer", Renderer);
-        }
-    };
-});
-System.register("board/physics", ["pixi.js", "matter-js", "renderer"], function (exports_13, context_13) {
-    "use strict";
-    var __moduleName = context_13 && context_13.id;
-    var PIXI, matter_js_1, renderer_1, PART_SIZE, SPACING, PhysicalBallRouter;
-    return {
-        setters: [
-            function (PIXI_2) {
-                PIXI = PIXI_2;
-            },
-            function (matter_js_1_1) {
-                matter_js_1 = matter_js_1_1;
-            },
-            function (renderer_1_1) {
-                renderer_1 = renderer_1_1;
-            }
-        ],
         execute: function () {
             // the canonical part size the simulator runs at
-            exports_13("PART_SIZE", PART_SIZE = 64);
-            exports_13("SPACING", SPACING = 68);
-            PhysicalBallRouter = class PhysicalBallRouter {
-                constructor(board) {
-                    this.board = board;
-                    this._wallWidth = 16;
-                    this._wallHeight = 16;
-                    this._wallThickness = 16;
-                    this._balls = new Set();
-                    this.engine = matter_js_1.Engine.create();
-                    this.engine.enabled = false;
-                    matter_js_1.Events.on(this.engine, 'afterUpdate', this.afterUpdate.bind(this));
-                    matter_js_1.Engine.run(this.engine);
-                    // make walls to catch stray balls
-                    this._createWalls();
-                    // get initial board state
-                    this.onBoardChanged();
-                }
-                onBoardSizeChanged() {
-                    // rescale the wireframe to match the board spacing
-                    if (this._wireframe) {
-                        const scale = this.board.spacing / SPACING;
-                        this._wireframe.scale.set(scale, scale);
-                        this.renderWireframe();
-                    }
-                    // update the walls around the board
-                    this._updateWalls();
-                }
-                _createWalls() {
-                    const options = { isStatic: true };
-                    this._top = matter_js_1.Bodies.rectangle(0, 0, this._wallWidth, this._wallThickness, options);
-                    this._bottom = matter_js_1.Bodies.rectangle(0, 0, this._wallWidth, this._wallThickness, options);
-                    this._left = matter_js_1.Bodies.rectangle(0, 0, this._wallThickness, this._wallHeight, options);
-                    this._right = matter_js_1.Bodies.rectangle(0, 0, this._wallThickness, this._wallHeight, options);
-                    matter_js_1.World.add(this.engine.world, [this._top, this._right, this._bottom, this._left]);
-                }
-                _updateWalls() {
-                    const w = ((this.board.columnCount + 2) * SPACING);
-                    const h = ((this.board.rowCount + 2) * SPACING);
-                    const hw = (w - this._wallThickness) / 2;
-                    const hh = (h + this._wallThickness) / 2;
-                    const cx = ((this.board.columnCount - 1) / 2) * SPACING;
-                    const cy = ((this.board.rowCount - 1) / 2) * SPACING;
-                    matter_js_1.Body.setPosition(this._top, { x: cx, y: cy - hh });
-                    matter_js_1.Body.setPosition(this._bottom, { x: cx, y: cy + hh });
-                    matter_js_1.Body.setPosition(this._left, { x: cx - hw, y: cy });
-                    matter_js_1.Body.setPosition(this._right, { x: cx + hw, y: cy });
-                    const sx = w / this._wallWidth;
-                    const sy = h / this._wallHeight;
-                    if (sx != 1.0) {
-                        matter_js_1.Body.scale(this._top, sx, 1.0);
-                        matter_js_1.Body.scale(this._bottom, sx, 1.0);
-                    }
-                    if (sy != 1.0) {
-                        matter_js_1.Body.scale(this._left, 1.0, sy);
-                        matter_js_1.Body.scale(this._right, 1.0, sy);
-                    }
-                    this._wallWidth = w;
-                    this._wallHeight = h;
-                }
-                onBoardChanged() {
-                    // add balls to the world
-                    for (const ball of this.board.balls) {
-                        if (!this._balls.has(ball)) {
-                            this._balls.add(ball);
-                            matter_js_1.World.addBody(this.engine.world, ball.getBody());
-                        }
-                    }
-                    this.renderWireframe();
-                }
-                // UPDATING *****************************************************************
-                start() {
-                    this.engine.enabled = true;
-                }
-                stop() {
-                    this.engine.enabled = false;
-                }
-                afterUpdate() {
-                    // transfer ball positions
-                    for (const ball of this.board.balls) {
-                        ball.readBody();
-                        this.board.layoutPart(ball, ball.column, ball.row);
-                    }
-                    // re-render the wireframe if there is one
-                    this.renderWireframe();
-                }
-                // WIREFRAME PREVIEW ********************************************************
-                get showWireframe() {
-                    return (this._wireframe ? true : false);
-                }
-                set showWireframe(v) {
-                    if ((v) && (!this._wireframe)) {
-                        this._wireframe = new PIXI.Sprite();
-                        this._wireframeGraphics = new PIXI.Graphics();
-                        this._wireframe.addChild(this._wireframeGraphics);
-                        this.board._layers.addChild(this._wireframe);
-                        this.onBoardSizeChanged();
-                        this.renderWireframe();
-                    }
-                    else if ((!v) && (this._wireframe)) {
-                        this.board._layers.removeChild(this._wireframe);
-                        this._wireframe = null;
-                        this._wireframeGraphics = null;
-                        renderer_1.Renderer.needsUpdate();
-                    }
-                }
-                renderWireframe() {
-                    if (!this._wireframe)
-                        return;
-                    // setup
-                    const g = this._wireframeGraphics;
-                    g.clear();
-                    g.lineStyle(1 / this._wireframe.scale.x, 0xFF0000, 1);
-                    // draw all bodies
-                    var bodies = matter_js_1.Composite.allBodies(this.engine.world);
-                    for (const body of bodies) {
-                        // draw the vertices of the body
-                        let first = true;
-                        for (const vertex of body.vertices) {
-                            if (first) {
-                                g.moveTo(vertex.x, vertex.y);
-                                first = false;
-                            }
-                            else {
-                                g.lineTo(vertex.x, vertex.y);
-                            }
-                        }
-                        g.closePath();
-                    }
-                    renderer_1.Renderer.needsUpdate();
-                }
-            };
-            exports_13("PhysicalBallRouter", PhysicalBallRouter);
+            exports_10("PART_SIZE", PART_SIZE = 64);
+            exports_10("SPACING", SPACING = 68);
         }
     };
 });
-System.register("parts/ball", ["matter-js", "parts/part", "board/physics"], function (exports_14, context_14) {
+System.register("parts/ball", ["matter-js", "parts/part", "board/constants"], function (exports_11, context_11) {
     "use strict";
-    var __moduleName = context_14 && context_14.id;
-    var matter_js_2, part_10, physics_1, Ball;
+    var __moduleName = context_11 && context_11.id;
+    var matter_js_1, part_10, constants_1, Ball;
     return {
         setters: [
-            function (matter_js_2_1) {
-                matter_js_2 = matter_js_2_1;
+            function (matter_js_1_1) {
+                matter_js_1 = matter_js_1_1;
             },
             function (part_10_1) {
                 part_10 = part_10_1;
             },
-            function (physics_1_1) {
-                physics_1 = physics_1_1;
+            function (constants_1_1) {
+                constants_1 = constants_1_1;
             }
         ],
         execute: function () {
@@ -570,7 +384,10 @@ System.register("parts/ball", ["matter-js", "parts/part", "board/physics"], func
                 get bodyCanMove() { return (true); }
                 getBody() {
                     if (!this._body) {
-                        this._body = matter_js_2.Bodies.circle(physics_1.SPACING * this.column, physics_1.SPACING * this.row, (5 * physics_1.PART_SIZE) / 32);
+                        this._body = matter_js_1.Bodies.circle(0, 0, (5 * constants_1.PART_SIZE) / 32, { restitution: this.bodyRestitution,
+                            density: .003, friction: 0 });
+                        this.initBody();
+                        this.writeBody();
                     }
                     return (this._body);
                 }
@@ -578,13 +395,13 @@ System.register("parts/ball", ["matter-js", "parts/part", "board/physics"], func
                     super.writeBody();
                 }
             };
-            exports_14("Ball", Ball);
+            exports_11("Ball", Ball);
         }
     };
 });
-System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit", "parts/fence", "parts/blank", "parts/drop", "parts/ball"], function (exports_15, context_15) {
+System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit", "parts/fence", "parts/blank", "parts/drop", "parts/ball"], function (exports_12, context_12) {
     "use strict";
-    var __moduleName = context_15 && context_15.id;
+    var __moduleName = context_12 && context_12.id;
     var location_1, ramp_1, crossover_1, interceptor_1, bit_1, gearbit_1, fence_1, blank_1, drop_1, ball_1, PartFactory;
     return {
         setters: [
@@ -655,27 +472,108 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
                     return (newPart);
                 }
             };
-            exports_15("PartFactory", PartFactory);
+            exports_12("PartFactory", PartFactory);
         }
     };
 });
-System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/physics"], function (exports_16, context_16) {
+System.register("ui/config", [], function (exports_13, context_13) {
     "use strict";
-    var __moduleName = context_16 && context_16.id;
-    var PIXI, matter_js_3, renderer_2, physics_2, Part;
+    var __moduleName = context_13 && context_13.id;
+    return {
+        setters: [],
+        execute: function () {
+        }
+    };
+});
+System.register("renderer", ["pixi.js"], function (exports_14, context_14) {
+    "use strict";
+    var __moduleName = context_14 && context_14.id;
+    var PIXI, Renderer;
     return {
         setters: [
-            function (PIXI_3) {
-                PIXI = PIXI_3;
+            function (PIXI_1) {
+                PIXI = PIXI_1;
+            }
+        ],
+        execute: function () {
+            Renderer = class Renderer {
+                static needsUpdate() {
+                    Renderer._needsUpdate = true;
+                }
+                static start() {
+                    PIXI.ticker.shared.add(Renderer.render, Renderer, PIXI.UPDATE_PRIORITY.INTERACTION);
+                }
+                static render() {
+                    if (Renderer._needsUpdate) {
+                        Renderer.instance.render(Renderer.stage);
+                        Renderer._needsUpdate = false;
+                    }
+                }
+            };
+            Renderer._needsUpdate = false;
+            Renderer.instance = PIXI.autoDetectRenderer({
+                antialias: false,
+                backgroundColor: 16777215 /* BACKGROUND */
+            });
+            Renderer.stage = new PIXI.Container();
+            exports_14("Renderer", Renderer);
+        }
+    };
+});
+// WARNING: this file is autogenerated from src/svg/parts.svg
+//  (any changes you make will be overwritten)
+System.register("parts/bodies", [], function (exports_15, context_15) {
+    "use strict";
+    var __moduleName = context_15 && context_15.id;
+    function getVertexSets(name) {
+        switch (name) {
+            case 'Bit':
+                return ([[{ x: -31.902757, y: -34.167318 }, { x: -1.055229, y: -32.311155 }, { x: 0.889319, y: -31.073699 }, { x: 1.066087, y: -29.217536 }, { x: 0.270595, y: -27.714947 }, { x: -28.278844, y: 0.569336 }, { x: -29.869833, y: 1.099641 }, { x: -31.284045, y: 0.569336 }, { x: -32.256313, y: -0.579716 }, { x: -34.554409, y: -31.692408 }, { x: -33.847309, y: -33.283400 }, { x: -32.875029, y: -34.078915 }], [{ x: -18.644511, y: -8.976617 }, { x: -0.082950, y: 12.855295 }, { x: 11.053980, y: 14.888227 }, { x: 13.528849, y: 14.181153 }, { x: 14.854680, y: 11.971414 }, { x: 13.175300, y: 0.038993 }, { x: -9.275339, y: -18.699338 }], [{ x: 13.251941, y: 0.139112 }, { x: 16.699082, y: 0.315994 }, { x: 16.610679, y: 6.591597 }, { x: 13.605463, y: 5.884485 }], [{ x: 16.699097, y: 0.139112 }, { x: 19.439138, y: -0.125833 }, { x: 22.002379, y: 6.326539 }, { x: 19.173970, y: 6.679925 }, { x: 16.433926, y: 6.591484 }], [{ x: 19.439115, y: -0.302828 }, { x: 22.621114, y: -1.452031 }, { x: 26.863758, y: 4.204826 }, { x: 22.002379, y: 6.237758 }], [{ x: 22.797868, y: -1.451842 }, { x: 25.714688, y: -4.015155 }, { x: 31.636735, y: -1.982185 }, { x: 29.426996, y: 1.730104 }, { x: 26.686990, y: 4.028208 }], [{ x: 25.714688, y: -4.191886 }, { x: 26.333415, y: -7.108698 }, { x: 32.785787, y: -7.197139 }, { x: 31.636735, y: -1.893858 }], [{ x: 26.420847, y: -7.162746 }, { x: 27.625371, y: -30.038638 }, { x: 27.844206, y: -31.163652 }, { x: 28.781680, y: -32.163640 }, { x: 30.000426, y: -32.538569 }, { x: 31.156697, y: -32.288364 }, { x: 32.156684, y: -31.507136 }, { x: 32.625459, y: -30.163362 }, { x: 32.835185, y: -6.980308 }], [{ x: -0.224629, y: 13.353078 }, { x: -0.021683, y: 16.798782 }, { x: 6.253072, y: 16.662922 }, { x: 5.523253, y: 13.663140 }], [{ x: -0.198560, y: 16.800135 }, { x: -0.442775, y: 19.542101 }, { x: 6.028796, y: 22.056472 }, { x: 6.360782, y: 19.225471 }, { x: 6.251622, y: 16.486174 }], [{ x: -0.619766, y: 19.543417 }, { x: -1.744872, y: 22.734016 }, { x: 3.943909, y: 26.933758 }, { x: 5.940018, y: 22.057144 }], [{ x: -1.743346, y: 22.910763 }, { x: -4.284527, y: 25.846885 }, { x: -2.206829, y: 31.753388 }, { x: 1.488643, y: 29.515638 }, { x: 3.765959, y: 26.758331 }], [{ x: -4.461253, y: 25.848221 }, { x: -7.373303, y: 26.488990 }, { x: -7.412945, y: 32.941846 }, { x: -2.118504, y: 31.752720 }], [{ x: -7.426687, y: 26.576828 }, { x: -30.292816, y: 27.954319 }, { x: -31.416143, y: 28.181656 }, { x: -32.409012, y: 29.126665 }, { x: -32.774714, y: 30.348212 }, { x: -32.515772, y: 31.502558 }, { x: -31.727003, y: 32.496608 }, { x: -30.379723, y: 32.955207 }, { x: -7.195746, y: 32.989603 }]]);
+            case 'Crossover':
+                return ([[{ x: -2.562501, y: -15.812515 }, { x: -2.562501, y: -45.750000 }, { x: -1.875001, y: -47.312495 }, { x: -0.749998, y: -47.999991 }, { x: 0.687500, y: -48.062353 }, { x: 1.937499, y: -47.187355 }, { x: 2.562500, y: -45.687336 }, { x: 2.562500, y: -15.874839 }], [{ x: -2.499999, y: -15.781258 }, { x: -5.062500, y: -15.250008 }, { x: -8.062500, y: -13.968748 }, { x: -11.281251, y: -11.624987 }, { x: -12.343752, y: -10.374984 }, { x: -12.562511, y: -9.312483 }, { x: -12.250019, y: -8.343753 }, { x: -11.750018, y: -7.625000 }, { x: -3.187518, y: 3.218767 }, { x: -1.093769, y: 4.375000 }, { x: 0.062479, y: 4.500102 }, { x: 2.062480, y: 4.031365 }, { x: 3.749983, y: 2.531346 }, { x: 12.062483, y: -8.031148 }, { x: 12.499982, y: -9.187381 }, { x: 12.156234, y: -10.656143 }, { x: 11.124986, y: -11.718644 }, { x: 9.312483, y: -13.093636 }, { x: 7.812483, y: -14.062404 }, { x: 5.656236, y: -14.968622 }, { x: 3.718734, y: -15.593642 }, { x: 2.468734, y: -15.781107 }], [{ x: -30.930489, y: 31.659824 }, { x: -20.898410, y: 30.422369 }, { x: -10.689558, y: 29.759478 }, { x: -3.927851, y: 29.538376 }, { x: 3.982911, y: 29.449935 }, { x: 12.158830, y: 29.803320 }, { x: 20.113779, y: 30.333626 }, { x: 28.068728, y: 31.261727 }, { x: 30.941358, y: 31.659446 }, { x: 32.178791, y: 32.454961 }, { x: 32.532366, y: 33.515610 }, { x: 32.355597, y: 34.974016 }, { x: 31.736877, y: 35.990482 }, { x: 30.455247, y: 36.565008 }, { x: -30.046601, y: 36.565008 }, { x: -31.814369, y: 35.902117 }, { x: -32.433089, y: 34.753065 }, { x: -32.565675, y: 33.559793 }, { x: -31.814373, y: 32.101386 }], [{ x: -31.968752, y: -35.937516 }, { x: -33.031249, y: -36.593755 }, { x: -34.062500, y: -36.593755 }, { x: -35.062499, y: -36.187494 }, { x: -36.031248, y: -35.343752 }, { x: -38.000001, y: -33.062505 }, { x: -33.843749, y: -29.875002 }, { x: -31.968752, y: -32.031261 }, { x: -31.187501, y: -33.031248 }, { x: -31.062512, y: -34.093749 }, { x: -31.250014, y: -35.031261 }], [{ x: -38.031250, y: -33.062505 }, { x: -33.812500, y: -29.906259 }, { x: -36.718748, y: -25.843758 }, { x: -41.000000, y: -28.843758 }], [{ x: -36.687499, y: -25.906234 }, { x: -39.343751, y: -20.499998 }, { x: -44.156250, y: -22.562486 }, { x: -40.968751, y: -28.875015 }], [{ x: -39.406249, y: -20.468741 }, { x: -41.343748, y: -14.000004 }, { x: -46.437501, y: -14.968735 }, { x: -44.156250, y: -22.593743 }], [{ x: -41.343748, y: -13.937491 }, { x: -42.843748, y: -4.656257 }, { x: -48.093750, y: -4.468792 }, { x: -47.187499, y: -11.093775 }, { x: -46.406252, y: -15.093800 }], [{ x: -42.812499, y: -4.687513 }, { x: -33.375000, y: 6.593734 }, { x: -32.812501, y: 7.812518 }, { x: -33.124992, y: 9.124997 }, { x: -33.749994, y: 9.937482 }, { x: -34.874993, y: 10.593759 }, { x: -36.062494, y: 10.593759 }, { x: -36.968741, y: 10.156241 }, { x: -47.656243, y: -2.531255 }, { x: -48.062493, y: -3.625013 }, { x: -48.031123, y: -4.593743 }], [{ x: 31.840243, y: -35.937516 }, { x: 32.902740, y: -36.593755 }, { x: 33.933992, y: -36.593755 }, { x: 34.933991, y: -36.187494 }, { x: 35.902740, y: -35.343752 }, { x: 37.871492, y: -33.062505 }, { x: 33.715240, y: -29.875002 }, { x: 31.840243, y: -32.031261 }, { x: 31.058992, y: -33.031248 }, { x: 30.934003, y: -34.093749 }, { x: 31.121506, y: -35.031261 }], [{ x: 37.902741, y: -33.062505 }, { x: 33.683991, y: -29.906259 }, { x: 36.590240, y: -25.843758 }, { x: 40.871492, y: -28.843758 }], [{ x: 36.558991, y: -25.906234 }, { x: 39.215243, y: -20.499998 }, { x: 44.027742, y: -22.562486 }, { x: 40.840243, y: -28.875015 }], [{ x: 39.277741, y: -20.468741 }, { x: 41.215240, y: -14.000004 }, { x: 46.308993, y: -14.968735 }, { x: 44.027742, y: -22.593743 }], [{ x: 41.215240, y: -13.937491 }, { x: 42.715240, y: -4.656257 }, { x: 47.965242, y: -4.468792 }, { x: 47.058991, y: -11.093775 }, { x: 46.277743, y: -15.093800 }], [{ x: 42.683991, y: -4.687513 }, { x: 33.246492, y: 6.593734 }, { x: 32.683993, y: 7.812518 }, { x: 32.996484, y: 9.124997 }, { x: 33.621486, y: 9.937482 }, { x: 34.746485, y: 10.593759 }, { x: 35.933986, y: 10.593759 }, { x: 36.840233, y: 10.156241 }, { x: 47.527735, y: -2.531255 }, { x: 47.933985, y: -3.625013 }, { x: 47.902615, y: -4.593743 }]]);
+            case 'Gear':
+                return ([[{ x: -0.845361, y: -8.600842 }, { x: -5.529949, y: -6.479521 }, { x: -8.004822, y: -3.297541 }, { x: -8.535150, y: 0.679939 }, { x: -6.502221, y: 5.452912 }, { x: -3.408629, y: 8.016168 }, { x: 1.099179, y: 8.634888 }, { x: 5.518600, y: 6.690340 }, { x: 8.258640, y: 2.889640 }, { x: 8.612177, y: -1.087829 }, { x: 6.667640, y: -5.507249 }, { x: 3.308880, y: -8.070510 }]]);
+            case 'GearLocation':
+                return ([[{ x: -0.015621, y: -4.546895 }, { x: 2.093748, y: -4.046864 }, { x: 4.046880, y: -2.046889 }, { x: 4.562502, y: 0.015637 }, { x: 4.031251, y: 2.062516 }, { x: 2.093748, y: 4.015624 }, { x: -0.015621, y: 4.468752 }, { x: -2.031251, y: 4.000015 }, { x: -4.015620, y: 2.015612 }, { x: -4.546870, y: -0.031267 }, { x: -4.031252, y: -2.031242 }, { x: -2.046871, y: -3.999997 }]]);
+            case 'Gearbit':
+                return ([[{ x: 16.733914, y: -20.240208 }, { x: 20.296414, y: -20.333940 }, { x: 21.921414, y: -15.615200 }, { x: 18.608915, y: -15.115206 }, { x: 15.452666, y: -15.365033 }], [{ x: 20.296414, y: -20.365197 }, { x: 23.546414, y: -21.708932 }, { x: 26.796415, y: -17.833934 }, { x: 24.577662, y: -16.521455 }, { x: 22.046414, y: -15.615200 }], [{ x: 23.608913, y: -21.708932 }, { x: 26.046413, y: -24.208939 }, { x: 30.640164, y: -21.865216 }, { x: 28.921413, y: -19.708958 }, { x: 26.765166, y: -17.833934 }], [{ x: 26.108915, y: -24.208939 }, { x: 27.577666, y: -27.583943 }, { x: 32.546414, y: -26.646431 }, { x: 31.765163, y: -24.271452 }, { x: 30.577666, y: -21.833959 }], [{ x: 27.546413, y: -27.646457 }, { x: 27.796429, y: -30.146463 }, { x: 28.608929, y: -31.583968 }, { x: 30.296427, y: -32.271464 }, { x: 32.108930, y: -31.552712 }, { x: 32.858928, y: -29.677688 }, { x: 32.483923, y: -26.583956 }], [{ x: -20.447867, y: 17.081212 }, { x: -20.553619, y: 20.643379 }, { x: -15.840389, y: 22.284299 }, { x: -15.329223, y: 18.973508 }, { x: -15.568392, y: 15.816431 }], [{ x: -20.584872, y: 20.643266 }, { x: -21.939564, y: 23.888746 }, { x: -18.075549, y: 27.151801 }, { x: -16.755594, y: 24.937489 }, { x: -15.840805, y: 22.409288 }], [{ x: -21.939775, y: 23.951222 }, { x: -24.447987, y: 26.380286 }, { x: -22.119775, y: 30.981898 }, { x: -19.957731, y: 29.270453 }, { x: -18.075443, y: 27.120544 }], [{ x: -24.448199, y: 26.442799 }, { x: -27.828139, y: 27.900147 }, { x: -26.907394, y: 32.872040 }, { x: -24.529791, y: 32.098787 }, { x: -22.088307, y: 30.919536 }], [{ x: -27.890547, y: 27.868664 }, { x: -30.391381, y: 28.110176 }, { x: -31.831619, y: 28.917823 }, { x: -32.524803, y: 30.603001 }, { x: -31.812169, y: 32.417930 }, { x: -29.939686, y: 33.174251 }, { x: -26.844706, y: 32.809527 }], [{ x: -20.250002, y: 16.375008 }, { x: -32.250001, y: -29.625001 }, { x: -32.125012, y: -32.125000 }, { x: -30.000011, y: -32.125000 }, { x: 16.124987, y: -20.500001 }, { x: 15.749982, y: -15.124999 }, { x: 6.124981, y: 6.000001 }, { x: -15.500020, y: 15.875014 }]]);
+            case 'Interceptor':
+                return ([[{ x: -36.145402, y: -19.903674 }, { x: -30.134989, y: -28.212171 }, { x: -29.251109, y: -30.068335 }, { x: -30.046601, y: -32.278036 }, { x: -31.372429, y: -32.896782 }, { x: -33.582141, y: -32.189671 }, { x: -36.675730, y: -28.477343 }, { x: -40.564822, y: -22.201778 }], [{ x: -40.564822, y: -22.290181 }, { x: -36.145402, y: -19.992077 }, { x: -40.388038, y: -8.501596 }, { x: -46.044899, y: -8.590037 }, { x: -43.039690, y: -17.605646 }], [{ x: 36.230705, y: -19.903674 }, { x: 30.220293, y: -28.212171 }, { x: 29.336412, y: -30.068335 }, { x: 30.131904, y: -32.278036 }, { x: 31.457732, y: -32.896782 }, { x: 33.667445, y: -32.189671 }, { x: 36.761033, y: -28.477343 }, { x: 40.650125, y: -22.201778 }], [{ x: 40.650125, y: -22.290181 }, { x: 36.230705, y: -19.992077 }, { x: 40.473342, y: -8.501596 }, { x: 46.130202, y: -8.590037 }, { x: 43.124994, y: -17.605646 }], [{ x: -45.691339, y: -8.678364 }, { x: 45.525429, y: -8.678364 }, { x: 46.409320, y: -5.761552 }, { x: 45.437048, y: -3.816985 }, { x: 43.757672, y: -3.375045 }, { x: -44.100351, y: -3.375045 }, { x: -45.868119, y: -4.258925 }, { x: -46.398451, y: -6.026723 }], [{ x: -5.474638, y: -3.463448 }, { x: -6.712082, y: 0.072073 }, { x: -5.121090, y: 4.226341 }, { x: -1.850721, y: 6.347676 }, { x: 2.480311, y: 6.259236 }, { x: 5.397120, y: 4.137900 }, { x: 6.722948, y: -0.104733 }, { x: 5.573899, y: -3.551889 }]]);
+            case 'PartLocation':
+                return ([[{ x: -0.015621, y: -4.546889 }, { x: 2.093748, y: -4.046857 }, { x: 4.046880, y: -2.046883 }, { x: 4.562502, y: 0.015643 }, { x: 4.031251, y: 2.062522 }, { x: 2.093748, y: 4.015631 }, { x: -0.015621, y: 4.468758 }, { x: -2.031251, y: 4.000021 }, { x: -4.015620, y: 2.015618 }, { x: -4.546870, y: -0.031261 }, { x: -4.031252, y: -2.031235 }, { x: -2.046871, y: -3.999991 }]]);
+            case 'Ramp':
+                return ([[{ x: 14.677897, y: -16.036782 }, { x: -30.974694, y: -27.659887 }, { x: -31.991164, y: -28.455364 }, { x: -32.477295, y: -29.339245 }, { x: -32.565698, y: -30.532517 }, { x: -31.946978, y: -31.637348 }, { x: -31.239877, y: -32.256057 }, { x: -30.002437, y: -32.565600 }, { x: 16.534034, y: -20.633141 }], [{ x: 16.468750, y: -20.593758 }, { x: 20.031250, y: -20.687490 }, { x: 21.656250, y: -15.968750 }, { x: 18.343751, y: -15.468757 }, { x: 15.187502, y: -15.718583 }], [{ x: 20.031250, y: -20.718747 }, { x: 23.281250, y: -22.062483 }, { x: 26.531251, y: -18.187484 }, { x: 24.312498, y: -16.875005 }, { x: 21.781250, y: -15.968750 }], [{ x: 23.343748, y: -22.062483 }, { x: 25.781249, y: -24.562489 }, { x: 30.375000, y: -22.218766 }, { x: 28.656248, y: -20.062508 }, { x: 26.500002, y: -18.187484 }], [{ x: 25.843751, y: -24.562489 }, { x: 27.312502, y: -27.937493 }, { x: 32.281250, y: -26.999982 }, { x: 31.499999, y: -24.625002 }, { x: 30.312502, y: -22.187509 }], [{ x: 27.281249, y: -28.000007 }, { x: 27.531265, y: -30.500013 }, { x: 28.343765, y: -31.937518 }, { x: 30.031263, y: -32.625015 }, { x: 31.843766, y: -31.906262 }, { x: 32.593764, y: -30.031238 }, { x: 32.218759, y: -26.937506 }], [{ x: -4.500000, y: -20.874993 }, { x: -4.437487, y: -7.187510 }, { x: 6.187513, y: -5.750004 }, { x: 14.937516, y: -16.187509 }], [{ x: -4.437502, y: -7.312499 }, { x: -7.312501, y: -4.687503 }, { x: -8.687501, y: -0.875018 }, { x: -8.125002, y: 2.687489 }, { x: -5.062500, y: 6.937492 }, { x: 0.062498, y: 8.562499 }, { x: 4.500000, y: 7.437485 }, { x: 7.625000, y: 3.875016 }, { x: 8.624999, y: -0.687516 }, { x: 7.062500, y: -4.937519 }, { x: 6.000000, y: -5.812518 }], [{ x: 7.500000, y: 4.000005 }, { x: 13.750000, y: 8.687488 }, { x: 14.687500, y: 11.499986 }, { x: 12.937500, y: 14.187495 }, { x: 9.937500, y: 14.562424 }, { x: 8.000001, y: 13.062443 }, { x: 3.812500, y: 7.312421 }], [{ x: -17.374998, y: 12.562487 }, { x: -21.250000, y: 11.437510 }, { x: -25.937499, y: 12.000017 }, { x: -29.812501, y: 14.625013 }, { x: -32.250001, y: 19.249983 }, { x: -32.437504, y: 23.750001 }, { x: -30.375004, y: 28.437485 }, { x: -26.812505, y: 31.437485 }, { x: -21.312502, y: 32.562499 }, { x: -16.375003, y: 30.875015 }, { x: -12.312503, y: 26.187494 }, { x: -11.750003, y: 20.250008 }, { x: -13.937503, y: 15.937491 }], [{ x: -8.000001, y: 2.562500 }, { x: -17.499999, y: 12.875016 }, { x: -13.812499, y: 16.249983 }, { x: -4.937499, y: 6.625000 }]]);
+            default:
+                return (null);
+        }
+    }
+    exports_15("getVertexSets", getVertexSets);
+    return {
+        setters: [],
+        execute: function () {
+        }
+    };
+});
+System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/constants", "parts/bodies"], function (exports_16, context_16) {
+    "use strict";
+    var __moduleName = context_16 && context_16.id;
+    var PIXI, matter_js_2, renderer_1, constants_2, bodies_1, Part;
+    return {
+        setters: [
+            function (PIXI_2) {
+                PIXI = PIXI_2;
             },
-            function (matter_js_3_1) {
-                matter_js_3 = matter_js_3_1;
+            function (matter_js_2_1) {
+                matter_js_2 = matter_js_2_1;
             },
-            function (renderer_2_1) {
-                renderer_2 = renderer_2_1;
+            function (renderer_1_1) {
+                renderer_1 = renderer_1_1;
             },
-            function (physics_2_1) {
-                physics_2 = physics_2_1;
+            function (constants_2_1) {
+                constants_2 = constants_2_1;
+            },
+            function (bodies_1_1) {
+                bodies_1 = bodies_1_1;
             }
         ],
         execute: function () {
@@ -701,6 +599,11 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/physic
                     // adjustable offsets for textures (as a fraction of the size)
                     this._xOffset = 0.0;
                     this._yOffset = 0.0;
+                    this._body = undefined;
+                    this._constraints = null;
+                    this._bodyOffset = { x: 0.0, y: 0.0 };
+                    this._bodyFlipped = false;
+                    this._bodyAngle = 0.0;
                     this._readingBody = false;
                 }
                 // the current position of the ball in grid units
@@ -808,8 +711,11 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/physic
                         this.rotation = target;
                         return;
                     }
-                    this._rv = (target - this.rotation) / (time * 60.0);
+                    this._rv = (target < this.rotation ? -1.0 : 1.0) / (time * 60.0);
                     PIXI.ticker.shared.add(this.tickRotation);
+                }
+                isAnimatingRotation() {
+                    return (this._rv !== 0.0);
                 }
                 cancelRotationAnimation() {
                     if (this._rv !== 0) {
@@ -818,7 +724,7 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/physic
                     }
                 }
                 _tickRotation(delta) {
-                    if (this._rv == 0.0) {
+                    if (this._rv === 0.0) {
                         this.cancelRotationAnimation();
                         return;
                     }
@@ -916,11 +822,15 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/physic
                     sprite.visible = this.visible;
                     sprite.alpha = sprite.visible ? this.alpha : 0;
                     // schedule rendering
-                    renderer_2.Renderer.needsUpdate();
+                    renderer_1.Renderer.needsUpdate();
                 }
                 // get the angle for the given rotation value
-                _angleForRotation(r, layer) {
-                    return (r * (Math.PI / 2));
+                _angleForRotation(r, layer = 1 /* MID */) {
+                    return ((this.isFlipped ? -r : r) * (Math.PI / 2));
+                }
+                // get the rotation for the given angle
+                _rotationForAngle(a) {
+                    return ((this.isFlipped ? -a : a) / (Math.PI / 2));
                 }
                 // get whether to flip the x axis
                 get _flipX() {
@@ -929,18 +839,72 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/physic
                 // PHYSICS ******************************************************************
                 // whether the body can be moved by the physics simulator
                 get bodyCanMove() { return (false); }
+                // whether the body can be rotated by the physics simulator
                 get bodyCanRotate() { return (this.canRotate); }
+                // the rotation to return the body to when not active
+                get restingRotation() { return (this.rotation); }
+                // the amount the body will bounce in a collision (0.0 - 1.0)
+                get bodyRestitution() { return (0.25); }
                 // a body representing the physical form of the part
                 getBody() {
-                    return (null);
+                    if (this._body === undefined) {
+                        this._body = this._bodyFromVertexSets(bodies_1.getVertexSets(this.constructor.name));
+                        if (this._body) {
+                            this.initBody();
+                            this.writeBody();
+                        }
+                    }
+                    return (this._body);
                 }
                 ;
+                // get constraints to apply to the body
+                get constraints() { return (this._constraints); }
+                // initialize the body after creation
+                initBody() {
+                    if (!this._body)
+                        return;
+                    // parts that can't rotate can be static
+                    if ((!this.bodyCanRotate) && (!this.bodyCanMove)) {
+                        matter_js_2.Body.setStatic(this._body, true);
+                    }
+                    else if (this.bodyCanRotate) {
+                        this._rotationConstraint = matter_js_2.Constraint.create({
+                            bodyA: this._body,
+                            pointB: { x: 0, y: 0 },
+                            length: 0,
+                            stiffness: 1
+                        });
+                        if (!this._constraints)
+                            this._constraints = [];
+                        this._constraints.push(this._rotationConstraint);
+                    }
+                }
                 // transfer relevant properties to the body
                 writeBody() {
                     if ((!this._body) || (this._readingBody))
                         return;
-                    matter_js_3.Body.setPosition(this._body, { x: this.column * physics_2.SPACING,
-                        y: this.row * physics_2.SPACING });
+                    if (this._bodyFlipped !== this.isFlipped) {
+                        matter_js_2.Body.scale(this._body, -1, 1);
+                        this._bodyOffset.x *= -1;
+                    }
+                    if ((this._bodyRow !== this.row) ||
+                        (this._bodyColumn !== this.column) ||
+                        (this._bodyFlipped !== this.isFlipped)) {
+                        const x = (this.column * constants_2.SPACING) + this._bodyOffset.x;
+                        const y = (this.row * constants_2.SPACING) + this._bodyOffset.y;
+                        matter_js_2.Body.setPosition(this._body, { x: x, y: y });
+                        if (this._rotationConstraint) {
+                            this._rotationConstraint.pointB = { x: x, y: y };
+                        }
+                        this._bodyRow = this.row;
+                        this._bodyColumn = this.column;
+                    }
+                    let desiredAngle = this._angleForRotation(this.rotation);
+                    if (this._bodyAngle != desiredAngle) {
+                        matter_js_2.Body.setAngle(this._body, desiredAngle);
+                        this._bodyAngle = desiredAngle;
+                    }
+                    this._bodyFlipped = this.isFlipped;
                 }
                 // tranfer relevant properties from the body
                 readBody() {
@@ -948,10 +912,39 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/physic
                         return;
                     this._readingBody = true;
                     if (this.bodyCanMove) {
-                        this.column = this._body.position.x / physics_2.SPACING;
-                        this.row = this._body.position.y / physics_2.SPACING;
+                        this.column = this._body.position.x / constants_2.SPACING;
+                        this.row = this._body.position.y / constants_2.SPACING;
+                    }
+                    if (this.bodyCanRotate) {
+                        const r = this._rotationForAngle(this._body.angle);
+                        this.rotation = r;
+                        if ((r < 0) || (r > 1)) {
+                            matter_js_2.Body.setAngularVelocity(this._body, 0.0);
+                            matter_js_2.Body.setAngle(this._body, this._angleForRotation(this.rotation));
+                        }
                     }
                     this._readingBody = false;
+                }
+                // construct a body from a set of vertex lists
+                _bodyFromVertexSets(vertexSets) {
+                    if (!vertexSets)
+                        return (null);
+                    const parts = [];
+                    for (const vertices of vertexSets) {
+                        const center = matter_js_2.Vertices.centre(vertices);
+                        parts.push(matter_js_2.Body.create({ position: center, vertices: vertices }));
+                    }
+                    const body = matter_js_2.Body.create({ parts: parts,
+                        restitution: this.bodyRestitution,
+                        friction: 0 });
+                    // this is a hack to prevent matter.js from placing the body's center 
+                    //  of mass over the origin, which complicates our ability to precisely
+                    //  position parts of an arbitrary shape
+                    body.position.x = 0;
+                    body.position.y = 0;
+                    body.positionPrev.x = 0;
+                    body.positionPrev.y = 0;
+                    return (body);
                 }
             };
             exports_16("Part", Part);
@@ -1077,10 +1070,19 @@ System.register("util/disjoint", [], function (exports_17, context_17) {
         }
     };
 });
-System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer"], function (exports_18, context_18) {
+System.register("board/router", [], function (exports_18, context_18) {
     "use strict";
     var __moduleName = context_18 && context_18.id;
-    var filter, fence_2, gearbit_2, disjoint_1, renderer_3, PartSizes, SPACING_FACTOR, Board;
+    return {
+        setters: [],
+        execute: function () {
+        }
+    };
+});
+System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball"], function (exports_19, context_19) {
+    "use strict";
+    var __moduleName = context_19 && context_19.id;
+    var filter, fence_2, gearbit_2, disjoint_1, renderer_2, ball_2, PartSizes, SPACING_FACTOR, Board;
     return {
         setters: [
             function (filter_1) {
@@ -1095,13 +1097,16 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             function (disjoint_1_1) {
                 disjoint_1 = disjoint_1_1;
             },
-            function (renderer_3_1) {
-                renderer_3 = renderer_3_1;
+            function (renderer_2_1) {
+                renderer_2 = renderer_2_1;
+            },
+            function (ball_2_1) {
+                ball_2 = ball_2_1;
             }
         ],
         execute: function () {
-            exports_18("PartSizes", PartSizes = [2, 4, 6, 8, 12, 16, 24, 32, 48, 64]);
-            exports_18("SPACING_FACTOR", SPACING_FACTOR = 1.0625);
+            exports_19("PartSizes", PartSizes = [2, 4, 6, 8, 12, 16, 24, 32, 48, 64]);
+            exports_19("SPACING_FACTOR", SPACING_FACTOR = 1.0625);
             Board = class Board {
                 constructor(partFactory) {
                     this.partFactory = partFactory;
@@ -1109,6 +1114,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._layers = new PIXI.Container();
                     // the set of balls currently on the board
                     this.balls = new Set();
+                    this._changeCounter = 0;
                     this._schematic = false;
                     this._containers = new Map();
                     this._partSize = 64;
@@ -1129,6 +1135,11 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this.view.addChild(this._layers);
                     this._initContainers();
                     this._updateDropShadows();
+                }
+                // a counter that increments whenever the board changes
+                get changeCounter() { return (this._changeCounter); }
+                onChange() {
+                    this._changeCounter++;
                 }
                 // whether to show parts in schematic form
                 get schematic() { return (this._schematic); }
@@ -1218,7 +1229,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     showContainer(4 /* SCHEMATIC */, this.schematic);
                     showContainer(6 /* SCHEMATIC_4 */, this.schematic && (this.partSize == 4));
                     showContainer(5 /* SCHEMATIC_2 */, this.schematic && (this.partSize == 2));
-                    renderer_3.Renderer.needsUpdate();
+                    renderer_2.Renderer.needsUpdate();
                 }
                 // LAYOUT *******************************************************************
                 // change the size to draw parts at
@@ -1277,7 +1288,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._layers.y =
                         Math.round((this.height / 2) - this.yForRow(this.centerRow));
                     this._updateFilterAreas();
-                    renderer_3.Renderer.needsUpdate();
+                    renderer_2.Renderer.needsUpdate();
                 }
                 // do layout for one part at the given location
                 layoutPart(part, column, row) {
@@ -1479,6 +1490,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     if ((oldPart instanceof fence_2.Fence) || (newPart instanceof fence_2.Fence)) {
                         this._updateFences();
                     }
+                    this.onChange();
                 }
                 // flip the part at the given coordinates
                 flipPart(column, row) {
@@ -1493,31 +1505,38 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 clearPart(column, row) {
                     this.setPart(this.makeBackgroundPart(column, row), column, row);
                 }
-                // add a part to the board's layers
-                addPart(part) {
-                    for (let layer of this._containers.keys()) {
-                        const sprite = part.getSpriteForLayer(layer);
-                        if (!sprite)
-                            continue;
-                        this._containers.get(layer).addChild(sprite);
-                    }
-                    if (this.router)
-                        this.router.onBoardChanged();
-                }
                 // add a ball to the board
                 addBall(ball, x, y) {
                     if (!this.balls.has(ball)) {
                         this.balls.add(ball);
                         this.layoutPart(ball, this.columnForX(x), this.rowForY(y));
                         this.addPart(ball);
+                        this.onChange();
                     }
                 }
                 // remove a ball from the board
                 removeBall(ball) {
-                    if (!this.balls.has(ball)) {
+                    if (this.balls.has(ball)) {
                         this.balls.delete(ball);
                         this.removePart(ball);
-                        renderer_3.Renderer.needsUpdate();
+                        renderer_2.Renderer.needsUpdate();
+                        this.onChange();
+                    }
+                }
+                // add a part to the board's layers
+                addPart(part) {
+                    for (let layer of this._containers.keys()) {
+                        const sprite = part.getSpriteForLayer(layer);
+                        if (!sprite)
+                            continue;
+                        // add balls behind other parts to prevent ball highlights from
+                        //  displaying on top of gears, etc.
+                        if (part instanceof ball_2.Ball) {
+                            this._containers.get(layer).addChildAt(sprite, 0);
+                        }
+                        else {
+                            this._containers.get(layer).addChild(sprite);
+                        }
                     }
                 }
                 // remove a part from the board's layers
@@ -1530,8 +1549,6 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         if (sprite.parent === container)
                             container.removeChild(sprite);
                     }
-                    if (this.router)
-                        this.router.onBoardChanged();
                 }
                 // connect adjacent sets of gears
                 //  see: https://en.wikipedia.org/wiki/Connected-component_labeling
@@ -1871,21 +1888,21 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                 }
             };
-            exports_18("Board", Board);
+            exports_19("Board", Board);
         }
     };
 });
-System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, context_19) {
+System.register("ui/button", ["pixi.js", "renderer"], function (exports_20, context_20) {
     "use strict";
-    var __moduleName = context_19 && context_19.id;
-    var PIXI, renderer_4, Button, PartButton, SpriteButton, ButtonBar;
+    var __moduleName = context_20 && context_20.id;
+    var PIXI, renderer_3, Button, PartButton, SpriteButton, ButtonBar;
     return {
         setters: [
-            function (PIXI_4) {
-                PIXI = PIXI_4;
+            function (PIXI_3) {
+                PIXI = PIXI_3;
             },
-            function (renderer_4_1) {
-                renderer_4 = renderer_4_1;
+            function (renderer_3_1) {
+                renderer_3 = renderer_3_1;
             }
         ],
         execute: function () {
@@ -1912,7 +1929,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, cont
                         return;
                     this._size = v;
                     this.onSizeChanged();
-                    renderer_4.Renderer.needsUpdate();
+                    renderer_3.Renderer.needsUpdate();
                 }
                 get isToggled() { return (this._isToggled); }
                 set isToggled(v) {
@@ -1968,7 +1985,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, cont
                     }
                     this._background.alpha = alpha;
                     this.alpha = this.isEnabled ? 1.0 : 0.25 /* BUTTON_DISABLED */;
-                    renderer_4.Renderer.needsUpdate();
+                    renderer_3.Renderer.needsUpdate();
                 }
                 _drawDecorations() {
                     const radius = 8; // pixels
@@ -1983,10 +2000,10 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, cont
                         this._background.drawRoundedRect(-hs, -hs, s, s, radius);
                         this._background.endFill();
                     }
-                    renderer_4.Renderer.needsUpdate();
+                    renderer_3.Renderer.needsUpdate();
                 }
             };
-            exports_19("Button", Button);
+            exports_20("Button", Button);
             PartButton = class PartButton extends Button {
                 constructor(part) {
                     super();
@@ -2025,7 +2042,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, cont
                         this.addChild(this._normalView);
                         this.removeChild(this._schematicView);
                     }
-                    renderer_4.Renderer.needsUpdate();
+                    renderer_3.Renderer.needsUpdate();
                 }
                 onSizeChanged() {
                     super.onSizeChanged();
@@ -2033,7 +2050,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, cont
                         this.part.size = Math.floor(this.size * 0.5);
                 }
             };
-            exports_19("PartButton", PartButton);
+            exports_20("PartButton", PartButton);
             SpriteButton = class SpriteButton extends Button {
                 constructor(sprite) {
                     super();
@@ -2053,7 +2070,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, cont
                     }
                 }
             };
-            exports_19("SpriteButton", SpriteButton);
+            exports_20("SpriteButton", SpriteButton);
             ButtonBar = class ButtonBar extends PIXI.Container {
                 constructor() {
                     super();
@@ -2138,27 +2155,27 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_19, cont
                     this._background.beginFill(16777215 /* BACKGROUND */, 1.0);
                     this._background.drawRect(0, 0, this.width, this.height);
                     this._background.endFill();
-                    renderer_4.Renderer.needsUpdate();
+                    renderer_3.Renderer.needsUpdate();
                 }
             };
-            exports_19("ButtonBar", ButtonBar);
+            exports_20("ButtonBar", ButtonBar);
         }
     };
 });
-System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (exports_20, context_20) {
+System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (exports_21, context_21) {
     "use strict";
-    var __moduleName = context_20 && context_20.id;
-    var PIXI, button_1, renderer_5, Toolbar;
+    var __moduleName = context_21 && context_21.id;
+    var PIXI, button_1, renderer_4, Toolbar;
     return {
         setters: [
-            function (PIXI_5) {
-                PIXI = PIXI_5;
+            function (PIXI_4) {
+                PIXI = PIXI_4;
             },
             function (button_1_1) {
                 button_1 = button_1_1;
             },
-            function (renderer_5_1) {
-                renderer_5 = renderer_5_1;
+            function (renderer_4_1) {
+                renderer_4 = renderer_4_1;
             }
         ],
         execute: function () {
@@ -2220,21 +2237,21 @@ System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (ex
                             button.schematic = this.board.schematic;
                         }
                     }
-                    renderer_5.Renderer.needsUpdate();
+                    renderer_4.Renderer.needsUpdate();
                 }
             };
-            exports_20("Toolbar", Toolbar);
+            exports_21("Toolbar", Toolbar);
         }
     };
 });
-System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "renderer"], function (exports_21, context_21) {
+System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "renderer"], function (exports_22, context_22) {
     "use strict";
-    var __moduleName = context_21 && context_21.id;
-    var PIXI, board_2, button_2, renderer_6, Actionbar;
+    var __moduleName = context_22 && context_22.id;
+    var PIXI, board_2, button_2, renderer_5, Actionbar;
     return {
         setters: [
-            function (PIXI_6) {
-                PIXI = PIXI_6;
+            function (PIXI_5) {
+                PIXI = PIXI_5;
             },
             function (board_2_1) {
                 board_2 = board_2_1;
@@ -2242,8 +2259,8 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "rendere
             function (button_2_1) {
                 button_2 = button_2_1;
             },
-            function (renderer_6_1) {
-                renderer_6 = renderer_6_1;
+            function (renderer_5_1) {
+                renderer_5 = renderer_5_1;
             }
         ],
         execute: function () {
@@ -2312,7 +2329,7 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "rendere
                             button.schematic = this.board.schematic;
                         }
                     }
-                    renderer_6.Renderer.needsUpdate();
+                    renderer_5.Renderer.needsUpdate();
                 }
                 // force schematic mode when parts are very small
                 get forceSchematic() {
@@ -2368,13 +2385,284 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "rendere
                     return (board_2.PartSizes.indexOf(this.board.partSize));
                 }
             };
-            exports_21("Actionbar", Actionbar);
+            exports_22("Actionbar", Actionbar);
         }
     };
 });
-System.register("ui/keyboard", [], function (exports_22, context_22) {
+System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gearbit", "board/constants"], function (exports_23, context_23) {
     "use strict";
-    var __moduleName = context_22 && context_22.id;
+    var __moduleName = context_23 && context_23.id;
+    var PIXI, matter_js_3, renderer_6, gearbit_3, constants_3, PhysicalBallRouter;
+    return {
+        setters: [
+            function (PIXI_6) {
+                PIXI = PIXI_6;
+            },
+            function (matter_js_3_1) {
+                matter_js_3 = matter_js_3_1;
+            },
+            function (renderer_6_1) {
+                renderer_6 = renderer_6_1;
+            },
+            function (gearbit_3_1) {
+                gearbit_3 = gearbit_3_1;
+            },
+            function (constants_3_1) {
+                constants_3 = constants_3_1;
+            }
+        ],
+        execute: function () {
+            PhysicalBallRouter = class PhysicalBallRouter {
+                constructor(board) {
+                    this.board = board;
+                    this._boardChangeCounter = -1;
+                    this._wallWidth = 16;
+                    this._wallHeight = 16;
+                    this._wallThickness = 16;
+                    this._ballNeighbors = new Map();
+                    this._parts = new Set();
+                    this._dynamicParts = new Set();
+                    this.engine = matter_js_3.Engine.create();
+                    this.engine.enabled = false;
+                    matter_js_3.Events.on(this.engine, 'beforeUpdate', this.beforeUpdate.bind(this));
+                    matter_js_3.Events.on(this.engine, 'afterUpdate', this.afterUpdate.bind(this));
+                    matter_js_3.Engine.run(this.engine);
+                    // make walls to catch stray balls
+                    this._createWalls();
+                    // capture initial board state
+                    this.beforeUpdate();
+                }
+                onBoardSizeChanged() {
+                    // update the walls around the board
+                    this._updateWalls();
+                    // re-render the wireframe
+                    this.renderWireframe();
+                    // capture changes to board state
+                    this.beforeUpdate();
+                }
+                // UPDATING *****************************************************************
+                start() {
+                    this.engine.enabled = true;
+                }
+                stop() {
+                    this.engine.enabled = false;
+                }
+                beforeUpdate() {
+                    this.addNeighborParts(this._boardChangeCounter !== this.board.changeCounter);
+                    this._boardChangeCounter = this.board.changeCounter;
+                }
+                afterUpdate() {
+                    // transfer part positions
+                    for (const part of this._dynamicParts) {
+                        part.readBody();
+                        if (part.bodyCanMove) {
+                            this.board.layoutPart(part, part.column, part.row);
+                        }
+                    }
+                    // re-render the wireframe if there is one
+                    this.renderWireframe();
+                    // re-render the whole display if we're managing parts
+                    if (this._parts.size > 0)
+                        renderer_6.Renderer.needsUpdate();
+                }
+                // STATE MANAGEMENT *********************************************************
+                _createWalls() {
+                    const options = { isStatic: true };
+                    this._top = matter_js_3.Bodies.rectangle(0, 0, this._wallWidth, this._wallThickness, options);
+                    this._bottom = matter_js_3.Bodies.rectangle(0, 0, this._wallWidth, this._wallThickness, options);
+                    this._left = matter_js_3.Bodies.rectangle(0, 0, this._wallThickness, this._wallHeight, options);
+                    this._right = matter_js_3.Bodies.rectangle(0, 0, this._wallThickness, this._wallHeight, options);
+                    matter_js_3.World.add(this.engine.world, [this._top, this._right, this._bottom, this._left]);
+                }
+                _updateWalls() {
+                    const w = ((this.board.columnCount + 3) * constants_3.SPACING);
+                    const h = ((this.board.rowCount + 3) * constants_3.SPACING);
+                    const hw = (w - this._wallThickness) / 2;
+                    const hh = (h + this._wallThickness) / 2;
+                    const cx = ((this.board.columnCount - 1) / 2) * constants_3.SPACING;
+                    const cy = ((this.board.rowCount - 1) / 2) * constants_3.SPACING;
+                    matter_js_3.Body.setPosition(this._top, { x: cx, y: cy - hh });
+                    matter_js_3.Body.setPosition(this._bottom, { x: cx, y: cy + hh });
+                    matter_js_3.Body.setPosition(this._left, { x: cx - hw, y: cy });
+                    matter_js_3.Body.setPosition(this._right, { x: cx + hw, y: cy });
+                    const sx = w / this._wallWidth;
+                    const sy = h / this._wallHeight;
+                    if (sx != 1.0) {
+                        matter_js_3.Body.scale(this._top, sx, 1.0);
+                        matter_js_3.Body.scale(this._bottom, sx, 1.0);
+                    }
+                    if (sy != 1.0) {
+                        matter_js_3.Body.scale(this._left, 1.0, sy);
+                        matter_js_3.Body.scale(this._right, 1.0, sy);
+                    }
+                    this._wallWidth = w;
+                    this._wallHeight = h;
+                }
+                addNeighborParts(force = false) {
+                    // track any balls that may have been removed from the board
+                    const removedBalls = new Set(this._ballNeighbors.keys());
+                    for (const ball of this.board.balls) {
+                        const column = Math.round(ball.column);
+                        const row = Math.round(ball.row);
+                        // remove balls that drop off the board
+                        if (Math.round(row) > this.board.rowCount) {
+                            this.board.removeBall(ball);
+                            continue;
+                        }
+                        removedBalls.delete(ball);
+                        // don't update for balls in the same locality (unless forced to)
+                        if ((!force) && (ball.lastColumn === column) &&
+                            (ball.lastRow === row))
+                            continue;
+                        if (!this._ballNeighbors.has(ball)) {
+                            this.addPart(ball);
+                            this._ballNeighbors.set(ball, new Set());
+                        }
+                        const newNeighbors = new Set();
+                        const oldNeighbors = this._ballNeighbors.get(ball);
+                        for (let c = -1; c <= 1; c++) {
+                            for (let r = -1; r <= 1; r++) {
+                                const part = this.board.getPart(column + c, row + r);
+                                if (!part)
+                                    continue;
+                                newNeighbors.add(part);
+                                oldNeighbors.delete(part);
+                            }
+                        }
+                        for (const part of newNeighbors)
+                            this.addPart(part);
+                        for (const part of oldNeighbors)
+                            this.removePart(part);
+                        this._ballNeighbors.set(ball, newNeighbors);
+                        ball.lastColumn = column;
+                        ball.lastRow = row;
+                    }
+                    // remove balls and neighbors for any balls no longer on the board
+                    for (const ball of removedBalls) {
+                        this.removePart(ball);
+                        if (this._ballNeighbors.has(ball)) {
+                            for (const part of this._ballNeighbors.get(ball)) {
+                                this.removePart(part);
+                            }
+                        }
+                    }
+                }
+                addPart(part) {
+                    if (this._parts.has(part))
+                        return; // make it idempotent
+                    this._parts.add(part);
+                    const body = part.getBody();
+                    if (body) {
+                        matter_js_3.World.add(this.engine.world, body);
+                        if (!body.isStatic)
+                            this._dynamicParts.add(part);
+                    }
+                    const constraints = part.constraints;
+                    if (constraints)
+                        matter_js_3.World.add(this.engine.world, constraints);
+                }
+                removePart(part) {
+                    if (!this._parts.has(part))
+                        return; // make it idempotent
+                    this._parts.delete(part);
+                    this._dynamicParts.delete(part);
+                    const body = part.getBody();
+                    if (body)
+                        matter_js_3.World.remove(this.engine.world, body);
+                    const constraints = part.constraints;
+                    if (constraints) {
+                        for (const constraint of constraints) {
+                            matter_js_3.World.remove(this.engine.world, constraint);
+                        }
+                    }
+                    this._restoreRestingRotation(part);
+                }
+                // restore the rotation of the part if it has one
+                _restoreRestingRotation(part) {
+                    if (part.rotation === part.restingRotation)
+                        return;
+                    // ensure we don't "restore" a gear that's still connected
+                    //  to a chain that's being simulated
+                    if (part instanceof gearbit_3.GearBase) {
+                        for (const gear of part.connected) {
+                            if (this._dynamicParts.has(gear))
+                                return;
+                        }
+                    }
+                    part.animateRotation(part.restingRotation, 0.1);
+                }
+                // WIREFRAME PREVIEW ********************************************************
+                get showWireframe() {
+                    return (this._wireframe ? true : false);
+                }
+                set showWireframe(v) {
+                    if ((v) && (!this._wireframe)) {
+                        this._wireframe = new PIXI.Sprite();
+                        this._wireframeGraphics = new PIXI.Graphics();
+                        this._wireframe.addChild(this._wireframeGraphics);
+                        this.board._layers.addChild(this._wireframe);
+                        this.onBoardSizeChanged();
+                        this.renderWireframe();
+                    }
+                    else if ((!v) && (this._wireframe)) {
+                        this.board._layers.removeChild(this._wireframe);
+                        this._wireframe = null;
+                        this._wireframeGraphics = null;
+                        renderer_6.Renderer.needsUpdate();
+                    }
+                }
+                renderWireframe() {
+                    if (!this._wireframe)
+                        return;
+                    // setup
+                    const g = this._wireframeGraphics;
+                    g.clear();
+                    const scale = this.board.spacing / constants_3.SPACING;
+                    // draw all bodies
+                    var bodies = matter_js_3.Composite.allBodies(this.engine.world);
+                    for (const body of bodies) {
+                        this._drawBody(g, body, scale);
+                    }
+                    renderer_6.Renderer.needsUpdate();
+                }
+                _drawBody(g, body, scale) {
+                    if (body.parts.length > 1) {
+                        // if the body has more than one part, the first is the convex hull, which
+                        //  we draw in a different color to distinguish it
+                        this._drawVertices(g, body.vertices, 65280 /* WIREFRAME_HULL */, scale);
+                        for (let i = 1; i < body.parts.length; i++) {
+                            this._drawBody(g, body.parts[i], scale);
+                        }
+                    }
+                    else {
+                        this._drawVertices(g, body.vertices, 16711680 /* WIREFRAME */, scale);
+                    }
+                }
+                _drawVertices(g, vertices, color, scale) {
+                    g.lineStyle(1, color);
+                    g.beginFill(color, 0.2 /* WIREFRAME */);
+                    // draw the vertices of the body
+                    let first = true;
+                    for (const vertex of vertices) {
+                        if (first) {
+                            g.moveTo(vertex.x * scale, vertex.y * scale);
+                            first = false;
+                        }
+                        else {
+                            g.lineTo(vertex.x * scale, vertex.y * scale);
+                        }
+                    }
+                    g.closePath();
+                    g.endFill();
+                }
+            };
+            exports_23("PhysicalBallRouter", PhysicalBallRouter);
+        }
+    };
+});
+System.register("ui/keyboard", [], function (exports_24, context_24) {
+    "use strict";
+    var __moduleName = context_24 && context_24.id;
     function makeKeyHandler(key) {
         const handler = {
             key: key,
@@ -2404,17 +2692,17 @@ System.register("ui/keyboard", [], function (exports_22, context_22) {
         window.addEventListener('keyup', handler.upHandler.bind(handler), false);
         return (handler);
     }
-    exports_22("makeKeyHandler", makeKeyHandler);
+    exports_24("makeKeyHandler", makeKeyHandler);
     return {
         setters: [],
         execute: function () {
         }
     };
 });
-System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "board/physics", "ui/keyboard"], function (exports_23, context_23) {
+System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "board/physics", "ui/keyboard"], function (exports_25, context_25) {
     "use strict";
-    var __moduleName = context_23 && context_23.id;
-    var PIXI, board_3, factory_1, toolbar_1, actionbar_1, renderer_7, physics_3, keyboard_1, SimulatorApp;
+    var __moduleName = context_25 && context_25.id;
+    var PIXI, board_3, factory_1, toolbar_1, actionbar_1, renderer_7, physics_1, keyboard_1, SimulatorApp;
     return {
         setters: [
             function (PIXI_7) {
@@ -2435,8 +2723,8 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
             function (renderer_7_1) {
                 renderer_7 = renderer_7_1;
             },
-            function (physics_3_1) {
-                physics_3 = physics_3_1;
+            function (physics_1_1) {
+                physics_1 = physics_1_1;
             },
             function (keyboard_1_1) {
                 keyboard_1 = keyboard_1_1;
@@ -2462,7 +2750,7 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     this.addChild(this.actionbar);
                     this._layout();
                     // set up ball routers
-                    this.physicalRouter = new physics_3.PhysicalBallRouter(this.board);
+                    this.physicalRouter = new physics_1.PhysicalBallRouter(this.board);
                     this.board.router = this.physicalRouter;
                     this.physicalRouter.start();
                     // add event listeners
@@ -2497,13 +2785,13 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     w.release = () => { this.physicalRouter.showWireframe = false; };
                 }
             };
-            exports_23("SimulatorApp", SimulatorApp);
+            exports_25("SimulatorApp", SimulatorApp);
         }
     };
 });
-System.register("board/builder", ["parts/fence"], function (exports_24, context_24) {
+System.register("board/builder", ["parts/fence"], function (exports_26, context_26) {
     "use strict";
-    var __moduleName = context_24 && context_24.id;
+    var __moduleName = context_26 && context_26.id;
     var fence_3, BoardBuilder;
     return {
         setters: [
@@ -2596,13 +2884,13 @@ System.register("board/builder", ["parts/fence"], function (exports_24, context_
                     board.setPart(redDrop, redColumn + 1, dropLevel);
                 }
             };
-            exports_24("BoardBuilder", BoardBuilder);
+            exports_26("BoardBuilder", BoardBuilder);
         }
     };
 });
-System.register("index", ["pixi.js", "app", "renderer", "board/builder"], function (exports_25, context_25) {
+System.register("index", ["pixi.js", "app", "renderer", "board/builder"], function (exports_27, context_27) {
     "use strict";
-    var __moduleName = context_25 && context_25.id;
+    var __moduleName = context_27 && context_27.id;
     var PIXI, app_1, renderer_8, builder_1, container, sim, resizeApp, loader;
     return {
         setters: [

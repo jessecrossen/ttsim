@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 
-import math
-import re
 import os.path
 import argparse
-import xml.etree.ElementTree
 import json
 
 from parser import SVGParser

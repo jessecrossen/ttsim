@@ -45,6 +45,13 @@ export class Board {
   public readonly balls:Set<Ball> = new Set();
   // a router to manage the positions of the balls
   public router:IBallRouter;
+
+  // a counter that increments whenever the board changes
+  public get changeCounter():number { return(this._changeCounter); }
+  public onChange():void {
+    this._changeCounter++;
+  }
+  private _changeCounter:number = 0;
   
   // whether to show parts in schematic form
   public get schematic():boolean { return(this._schematic); }
@@ -411,6 +418,7 @@ export class Board {
     if ((oldPart instanceof Fence) || (newPart instanceof Fence)) {
       this._updateFences();
     }
+    this.onChange();
   }
   
   // flip the part at the given coordinates
@@ -427,31 +435,39 @@ export class Board {
     this.setPart(this.makeBackgroundPart(column, row), column, row);
   }
 
-  // add a part to the board's layers
-  public addPart(part:Part):void {
-    for (let layer of this._containers.keys()) {
-      const sprite = part.getSpriteForLayer(layer);
-      if (! sprite) continue;
-      this._containers.get(layer).addChild(sprite);
-    }
-    if (this.router) this.router.onBoardChanged();
-  }
-
   // add a ball to the board
   public addBall(ball:Ball, x:number, y:number) {
     if (! this.balls.has(ball)) {
       this.balls.add(ball);
       this.layoutPart(ball, this.columnForX(x), this.rowForY(y));
       this.addPart(ball);
+      this.onChange();
     }
   }
 
   // remove a ball from the board
   public removeBall(ball:Ball) {
-    if (! this.balls.has(ball)) {
+    if (this.balls.has(ball)) {
       this.balls.delete(ball);
       this.removePart(ball);
       Renderer.needsUpdate();
+      this.onChange();
+    }
+  }
+
+  // add a part to the board's layers
+  public addPart(part:Part):void {
+    for (let layer of this._containers.keys()) {
+      const sprite = part.getSpriteForLayer(layer);
+      if (! sprite) continue;
+      // add balls behind other parts to prevent ball highlights from
+      //  displaying on top of gears, etc.
+      if (part instanceof Ball) {
+        this._containers.get(layer).addChildAt(sprite, 0);
+      }
+      else {
+        this._containers.get(layer).addChild(sprite);
+      }
     }
   }
 
@@ -463,7 +479,6 @@ export class Board {
       const container = this._containers.get(layer);
       if (sprite.parent === container) container.removeChild(sprite);
     }
-    if (this.router) this.router.onBoardChanged();
   }
 
   // connect adjacent sets of gears

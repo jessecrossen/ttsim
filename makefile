@@ -3,7 +3,7 @@ default: dist
 watch: dist
 	node_modules/typescript/bin/tsc --watch
 
-dist: app graphics
+dist: physics app graphics
 
 server:
 	python -m webbrowser "http://localhost:8080/"
@@ -11,8 +11,7 @@ server:
 
 # APP
 
-app: docs/pixi.min.js docs/pixi-filters.js docs/matter.min.js \
-		 docs/index.html docs/system.js docs/app.js
+app: dependencies docs/index.html docs/app.js
 
 docs/index.html: src/index.html
 	mkdir -p docs
@@ -21,6 +20,11 @@ docs/index.html: src/index.html
 docs/app.js: node_modules $(shell find src -name '*.ts')
 	mkdir -p docs
 	node_modules/typescript/bin/tsc
+
+# DEPENDENCIES
+
+dependencies: docs/system.js docs/pixi.min.js docs/pixi-filters.js \
+							docs/matter.min.js
 
 docs/system.js: node_modules
 	mkdir -p docs
@@ -38,11 +42,17 @@ docs/matter.min.js: node_modules
 	mkdir -p docs
 	cp node_modules/matter-js/build/matter.min.js docs/
 
-# DEPENDENCIES
-
 node_modules: package.json
 	npm install
 	npm update
+
+# PHYSICS BODIES
+
+physics: src/parts/bodies.ts
+
+src/parts/bodies.ts: src/svg/parts.svg \
+										 src/svg/physics.py src/svg/parser.py
+	src/svg/physics.py src/svg/parts.svg src/parts/bodies.ts
 
 # GRAPHICS
 

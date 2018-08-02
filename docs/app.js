@@ -291,19 +291,19 @@ System.register("parts/gearbit", ["parts/part", "ui/animator"], function (export
                 // gears don't interact with balls in a rotationally asymmetric way, 
                 //  so we can ignore their rotation
                 get bodyCanRotate() { return (false); }
-                _angleForRotation(r, layer) {
+                angleForRotation(r, layer) {
                     // gears on a regular-part location need to be rotated by 1/16 turn 
                     //  to mesh with neighbors
                     if (this.isOnPartLocation) {
                         if (layer == 4 /* SCHEMATIC */) {
-                            return (super._angleForRotation(r, layer));
+                            return (super.angleForRotation(r, layer));
                         }
                         else {
-                            return (super._angleForRotation(r, layer) + (Math.PI * 0.125));
+                            return (super.angleForRotation(r, layer) + (Math.PI * 0.125));
                         }
                     }
                     else {
-                        return (-super._angleForRotation(r, layer));
+                        return (-super.angleForRotation(r, layer));
                     }
                 }
             };
@@ -447,20 +447,14 @@ System.register("board/constants", [], function (exports_11, context_11) {
         }
     };
 });
-System.register("parts/ball", ["matter-js", "parts/part", "board/constants"], function (exports_12, context_12) {
+System.register("parts/ball", ["parts/part"], function (exports_12, context_12) {
     "use strict";
     var __moduleName = context_12 && context_12.id;
-    var matter_js_1, part_10, constants_1, Ball;
+    var part_10, Ball;
     return {
         setters: [
-            function (matter_js_1_1) {
-                matter_js_1 = matter_js_1_1;
-            },
             function (part_10_1) {
                 part_10 = part_10_1;
-            },
-            function (constants_1_1) {
-                constants_1 = constants_1_1;
             }
         ],
         execute: function () {
@@ -494,18 +488,6 @@ System.register("parts/ball", ["matter-js", "parts/part", "board/constants"], fu
                 }
                 get bodyCanMove() { return (true); }
                 get bodyRestitution() { return (0.5); }
-                getBody() {
-                    if (!this._body) {
-                        this._body = matter_js_1.Bodies.circle(0, 0, (5 * constants_1.PART_SIZE) / 32, { restitution: this.bodyRestitution,
-                            density: .005, friction: 0 });
-                        this.initBody();
-                        this.writeBody();
-                    }
-                    return (this._body);
-                }
-                writeBody() {
-                    super.writeBody();
-                }
             };
             exports_12("Ball", Ball);
         }
@@ -553,23 +535,29 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
                 constructor(textures) {
                     this.textures = textures;
                 }
-                // make a new part of the given type
-                make(type) {
+                static constructorForType(type) {
                     switch (type) {
-                        case 0 /* BLANK */: return (new blank_1.Blank(this.textures));
-                        case 1 /* PARTLOC */: return (new location_1.PartLocation(this.textures));
-                        case 2 /* GEARLOC */: return (new location_1.GearLocation(this.textures));
-                        case 3 /* RAMP */: return (new ramp_1.Ramp(this.textures));
-                        case 4 /* CROSSOVER */: return (new crossover_1.Crossover(this.textures));
-                        case 5 /* INTERCEPTOR */: return (new interceptor_1.Interceptor(this.textures));
-                        case 6 /* BIT */: return (new bit_1.Bit(this.textures));
-                        case 8 /* GEAR */: return (new gearbit_1.Gear(this.textures));
-                        case 7 /* GEARBIT */: return (new gearbit_1.Gearbit(this.textures));
-                        case 9 /* BALL */: return (new ball_1.Ball(this.textures));
-                        case 10 /* DROP */: return (new drop_1.Drop(this.textures));
-                        case 11 /* FENCE */: return (new fence_1.Fence(this.textures));
+                        case 0 /* BLANK */: return (blank_1.Blank);
+                        case 1 /* PARTLOC */: return (location_1.PartLocation);
+                        case 2 /* GEARLOC */: return (location_1.GearLocation);
+                        case 3 /* RAMP */: return (ramp_1.Ramp);
+                        case 4 /* CROSSOVER */: return (crossover_1.Crossover);
+                        case 5 /* INTERCEPTOR */: return (interceptor_1.Interceptor);
+                        case 6 /* BIT */: return (bit_1.Bit);
+                        case 8 /* GEAR */: return (gearbit_1.Gear);
+                        case 7 /* GEARBIT */: return (gearbit_1.Gearbit);
+                        case 9 /* BALL */: return (ball_1.Ball);
+                        case 10 /* DROP */: return (drop_1.Drop);
+                        case 11 /* FENCE */: return (fence_1.Fence);
                         default: return (null);
                     }
+                }
+                // make a new part of the given type
+                make(type) {
+                    const constructor = PartFactory.constructorForType(type);
+                    if (!constructor)
+                        return (null);
+                    return (new constructor(this.textures));
                 }
                 // make a copy of the given part with the same basic state
                 copy(part) {
@@ -629,61 +617,20 @@ System.register("renderer", ["pixi.js"], function (exports_15, context_15) {
         }
     };
 });
-// WARNING: this file is autogenerated from src/svg/parts.svg
-//  (any changes you make will be overwritten)
-System.register("parts/bodies", [], function (exports_16, context_16) {
+System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (exports_16, context_16) {
     "use strict";
     var __moduleName = context_16 && context_16.id;
-    function getVertexSets(name) {
-        switch (name) {
-            case 'Bit':
-                return ([[{ x: -1.055229, y: -32.311155 }, { x: 0.083096, y: -27.714947 }, { x: -27.716345, y: 0.194331 }, { x: -32.193815, y: -1.017234 }, { x: -34.041082, y: -34.054877 }], [{ x: -18.644511, y: -8.976617 }, { x: -0.082950, y: 12.855295 }, { x: 12.203028, y: 15.153399 }, { x: 15.296620, y: 11.971414 }, { x: 13.175300, y: 0.038993 }, { x: -9.275339, y: -18.699338 }], [{ x: 26.420847, y: -7.162746 }, { x: 27.625371, y: -30.038638 }, { x: 27.844206, y: -31.163652 }, { x: 28.781680, y: -32.163640 }, { x: 30.000426, y: -32.538569 }, { x: 31.156697, y: -32.288364 }, { x: 32.156684, y: -31.507136 }, { x: 32.625459, y: -30.163362 }, { x: 32.835185, y: -6.980308 }], [{ x: -7.426689, y: 26.576831 }, { x: -30.292815, y: 27.954318 }, { x: -31.416143, y: 28.181468 }, { x: -32.409014, y: 29.126463 }, { x: -32.774721, y: 30.348006 }, { x: -32.515785, y: 31.502387 }, { x: -31.727017, y: 32.496403 }, { x: -30.379740, y: 32.955011 }, { x: -7.195759, y: 32.989026 }], [{ x: 26.521942, y: -7.474028 }, { x: 13.086908, y: 0.304164 }, { x: 15.385009, y: 12.059818 }, { x: 28.731650, y: 2.602268 }, { x: 32.797511, y: -6.766916 }], [{ x: -7.574706, y: 26.497612 }, { x: 0.203486, y: 13.062564 }, { x: 11.959139, y: 15.360668 }, { x: 2.501590, y: 28.707313 }, { x: -6.867594, y: 32.773178 }]]);
-            case 'Crossover':
-                return ([[{ x: -0.125001, y: -48.250007 }, { x: -2.750000, y: -46.000016 }, { x: -2.750000, y: -15.874990 }, { x: 3.000000, y: -15.874990 }, { x: 3.000000, y: -46.374983 }], [{ x: -3.500001, y: -16.125006 }, { x: -12.750002, y: -10.000017 }, { x: -2.249998, y: 4.250011 }, { x: 2.374998, y: 4.250011 }, { x: 12.750001, y: -10.125006 }, { x: 3.749998, y: -16.000017 }], [{ x: -31.249999, y: -32.999991 }, { x: -40.000002, y: -18.750001 }, { x: -44.999999, y: -20.499998 }, { x: -35.749999, y: -35.875002 }, { x: -32.125001, y: -36.625012 }], [{ x: -44.874999, y: -20.124993 }, { x: -48.124999, y: -3.374997 }, { x: -42.500000, y: -4.875016 }, { x: -40.249999, y: -18.625012 }], [{ x: -43.000002, y: -4.625000 }, { x: -32.624998, y: 7.499989 }, { x: -34.000002, y: 10.124984 }, { x: -37.249999, y: 10.374811 }, { x: -48.375000, y: -3.000181 }], [{ x: 30.750039, y: -32.999991 }, { x: 39.500042, y: -18.750001 }, { x: 44.500039, y: -20.499998 }, { x: 35.250039, y: -35.875002 }, { x: 31.625041, y: -36.625012 }], [{ x: 44.375039, y: -20.124993 }, { x: 47.625039, y: -3.374997 }, { x: 42.000040, y: -4.875016 }, { x: 39.750038, y: -18.625012 }], [{ x: 42.500042, y: -4.625000 }, { x: 32.125038, y: 7.499989 }, { x: 33.500042, y: 10.124984 }, { x: 36.750039, y: 10.374811 }, { x: 47.875040, y: -3.000181 }], [{ x: -32.250001, y: 31.999982 }, { x: -0.051776, y: 29.502583 }, { x: 31.124998, y: 31.499988 }, { x: 32.874999, y: 34.374999 }, { x: 30.375000, y: 36.999994 }, { x: -30.250000, y: 36.999994 }, { x: -32.749999, y: 35.125008 }]]);
-            case 'GearLocation':
-                return ([[{ x: -0.015621, y: -4.546895 }, { x: 2.093748, y: -4.046864 }, { x: 4.046880, y: -2.046889 }, { x: 4.562502, y: 0.015637 }, { x: 4.031251, y: 2.062516 }, { x: 2.093748, y: 4.015624 }, { x: -0.015621, y: 4.468752 }, { x: -2.031251, y: 4.000015 }, { x: -4.015620, y: 2.015612 }, { x: -4.546870, y: -0.031267 }, { x: -4.031252, y: -2.031242 }, { x: -2.046871, y: -3.999997 }]]);
-            case 'Gearbit':
-                return ([[{ x: -20.250002, y: 16.375008 }, { x: -32.250001, y: -29.625001 }, { x: -32.125012, y: -32.125000 }, { x: -30.000011, y: -32.125000 }, { x: 16.124987, y: -20.500001 }, { x: 15.749982, y: -15.124999 }, { x: 6.124981, y: 6.000001 }, { x: -15.500020, y: 15.875014 }], [{ x: -20.147112, y: 16.711310 }, { x: -22.887152, y: 25.108210 }, { x: -19.351612, y: 28.643732 }, { x: -15.108971, y: 22.191398 }, { x: -14.932203, y: 15.915833 }], [{ x: -22.887152, y: 25.019807 }, { x: -31.107261, y: 28.201791 }, { x: -31.195664, y: 32.444424 }, { x: -24.212984, y: 32.091039 }, { x: -18.998075, y: 28.201943 }], [{ x: 16.521191, y: -20.448456 }, { x: 24.918092, y: -23.188496 }, { x: 28.453613, y: -19.652956 }, { x: 22.001279, y: -15.410316 }, { x: 15.725714, y: -15.233547 }], [{ x: 24.829689, y: -23.188496 }, { x: 28.011673, y: -31.408606 }, { x: 32.254306, y: -31.497009 }, { x: 31.900920, y: -24.514328 }, { x: 28.011824, y: -19.299419 }]]);
-            case 'Interceptor':
-                return ([[{ x: -45.691339, y: -8.678364 }, { x: 45.525429, y: -8.678364 }, { x: 46.507671, y: -3.375045 }, { x: -46.600349, y: -3.375045 }], [{ x: -40.374999, y: -8.249992 }, { x: -28.500000, y: -30.875000 }, { x: -33.125000, y: -33.624984 }, { x: -41.999999, y: -20.749986 }, { x: -45.625001, y: -9.124991 }], [{ x: 40.624999, y: -8.249992 }, { x: 28.750000, y: -30.875000 }, { x: 33.375000, y: -33.624984 }, { x: 42.249999, y: -20.749986 }, { x: 45.875001, y: -9.124991 }], [{ x: -6.999999, y: -3.499996 }, { x: -6.500009, y: 3.625018 }, { x: -0.000012, y: 6.999985 }, { x: 6.374989, y: 3.624980 }, { x: 6.499978, y: -3.499996 }]]);
-            case 'PartLocation':
-                return ([[{ x: -0.015621, y: -4.546889 }, { x: 2.093748, y: -4.046857 }, { x: 4.046880, y: -2.046883 }, { x: 4.562502, y: 0.015643 }, { x: 4.031251, y: 2.062522 }, { x: 2.093748, y: 4.015631 }, { x: -0.015621, y: 4.468758 }, { x: -2.031251, y: 4.000021 }, { x: -4.015620, y: 2.015618 }, { x: -4.546870, y: -0.031261 }, { x: -4.031252, y: -2.031235 }, { x: -2.046871, y: -3.999991 }]]);
-            case 'Ramp':
-                return ([[{ x: -32.521481, y: -31.327994 }, { x: -30.046601, y: -32.742218 }, { x: 17.594721, y: -20.279453 }, { x: 6.015840, y: -5.783755 }, { x: -4.413982, y: -7.021210 }, { x: -31.814369, y: -28.499585 }], [{ x: 17.417941, y: -20.279453 }, { x: 25.196110, y: -23.903377 }, { x: 29.438751, y: -20.809796 }, { x: 22.809629, y: -16.125185 }, { x: 14.235960, y: -15.594880 }], [{ x: 25.461282, y: -24.522086 }, { x: 27.759382, y: -30.974457 }, { x: 30.057470, y: -32.830583 }, { x: 32.797511, y: -30.886054 }, { x: 29.527139, y: -21.074968 }], [{ x: -6.093362, y: -7.905091 }, { x: -17.495459, y: 12.601000 }, { x: -13.517979, y: 16.048156 }, { x: 12.203028, y: 14.191992 }, { x: 14.677900, y: 10.214531 }, { x: 6.369399, y: -5.872159 }], [{ x: -18.290952, y: 11.363583 }, { x: -26.422681, y: 11.363583 }, { x: -33.272779, y: 18.213674 }, { x: -33.272779, y: 25.594108 }, { x: -26.444779, y: 32.422089 }, { x: -17.760620, y: 32.422089 }, { x: -11.297231, y: 25.958682 }, { x: -11.485036, y: 15.959753 }]]);
-            default:
-                return (null);
-        }
-    }
-    exports_16("getVertexSets", getVertexSets);
-    return {
-        setters: [],
-        execute: function () {
-        }
-    };
-});
-System.register("parts/part", ["pixi.js", "matter-js", "renderer", "ui/animator", "board/constants", "parts/bodies"], function (exports_17, context_17) {
-    "use strict";
-    var __moduleName = context_17 && context_17.id;
-    var PIXI, matter_js_2, renderer_1, animator_2, constants_2, bodies_1, Part;
+    var PIXI, renderer_1, animator_2, Part;
     return {
         setters: [
             function (PIXI_2) {
                 PIXI = PIXI_2;
-            },
-            function (matter_js_2_1) {
-                matter_js_2 = matter_js_2_1;
             },
             function (renderer_1_1) {
                 renderer_1 = renderer_1_1;
             },
             function (animator_2_1) {
                 animator_2 = animator_2_1;
-            },
-            function (constants_2_1) {
-                constants_2 = constants_2_1;
-            },
-            function (bodies_1_1) {
-                bodies_1 = bodies_1_1;
             }
         ],
         execute: function () {
@@ -694,6 +641,8 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "ui/animator"
                     this.textures = textures;
                     // whether the part can be replaced
                     this.isLocked = false;
+                    // a counter to track changes to non-display properties
+                    this.changeCounter = 0;
                     this._column = 0.0;
                     this._row = 0.0;
                     this._size = 64;
@@ -707,11 +656,6 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "ui/animator"
                     // adjustable offsets for textures (as a fraction of the size)
                     this._xOffset = 0.0;
                     this._yOffset = 0.0;
-                    this._body = undefined;
-                    this._constraints = null;
-                    this._bodyOffset = { x: 0.0, y: 0.0 };
-                    this._bodyFlipped = false;
-                    this._readingBody = false;
                 }
                 // the current position of the ball in grid units
                 get column() { return (this._column); }
@@ -719,14 +663,14 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "ui/animator"
                     if (v === this._column)
                         return;
                     this._column = v;
-                    this.writeBody();
+                    this.changeCounter++;
                 }
                 get row() { return (this._row); }
                 set row(v) {
                     if (v === this._row)
                         return;
                     this._row = v;
-                    this.writeBody();
+                    this.changeCounter++;
                 }
                 // the unit-size of the part
                 get size() { return (this._size); }
@@ -746,7 +690,7 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "ui/animator"
                         return;
                     this._rotation = r;
                     this._updateSprites();
-                    this.writeBody();
+                    this.changeCounter++;
                 }
                 // whether the part is pointing right (or will be when animations finish)
                 get bitValue() {
@@ -759,7 +703,7 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "ui/animator"
                         return;
                     this._isFlipped = v;
                     this._updateSprites();
-                    this.writeBody();
+                    this.changeCounter++;
                 }
                 // flip the part if it can be flipped
                 flip(time = 0.0) {
@@ -892,10 +836,10 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "ui/animator"
                         //  less distortion from the rotation transform
                         if ((this.canMirror) && (this.rotation > 0.5)) {
                             xScale = -xScale;
-                            sprite.rotation = this._angleForRotation(this.rotation - 1.0, layer);
+                            sprite.rotation = this.angleForRotation(this.rotation - 1.0, layer);
                         }
                         else {
-                            sprite.rotation = this._angleForRotation(this.rotation, layer);
+                            sprite.rotation = this.angleForRotation(this.rotation, layer);
                         }
                     }
                     // apply any scale changes
@@ -909,11 +853,11 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "ui/animator"
                     renderer_1.Renderer.needsUpdate();
                 }
                 // get the angle for the given rotation value
-                _angleForRotation(r, layer = 1 /* MID */) {
+                angleForRotation(r, layer = 1 /* MID */) {
                     return ((this.isFlipped ? -r : r) * (Math.PI / 2));
                 }
                 // get the rotation for the given angle
-                _rotationForAngle(a) {
+                rotationForAngle(a) {
                     return ((this.isFlipped ? -a : a) / (Math.PI / 2));
                 }
                 // get whether to flip the x axis
@@ -929,108 +873,8 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "ui/animator"
                 get restingRotation() { return (this.rotation); }
                 // the amount the body will bounce in a collision (0.0 - 1.0)
                 get bodyRestitution() { return (0.25); }
-                // a body representing the physical form of the part
-                getBody() {
-                    if (this._body === undefined) {
-                        this._body = this._bodyFromVertexSets(bodies_1.getVertexSets(this.constructor.name));
-                        if (this._body) {
-                            this.initBody();
-                            this.writeBody();
-                        }
-                    }
-                    return (this._body);
-                }
-                ;
-                // get constraints to apply to the body
-                get constraints() { return (this._constraints); }
-                // initialize the body after creation
-                initBody() {
-                    if (!this._body)
-                        return;
-                    // parts that can't rotate can be static
-                    if ((!this.bodyCanRotate) && (!this.bodyCanMove)) {
-                        matter_js_2.Body.setStatic(this._body, true);
-                    }
-                    else if (this.bodyCanRotate) {
-                        this._rotationConstraint = matter_js_2.Constraint.create({
-                            bodyA: this._body,
-                            pointB: { x: 0, y: 0 },
-                            length: 0,
-                            stiffness: 0.7
-                        });
-                        if (!this._constraints)
-                            this._constraints = [];
-                        this._constraints.push(this._rotationConstraint);
-                    }
-                }
-                // transfer relevant properties to the body
-                writeBody() {
-                    if ((!this._body) || (this._readingBody))
-                        return;
-                    if (this._bodyFlipped !== this.isFlipped) {
-                        matter_js_2.Body.scale(this._body, -1, 1);
-                        this._bodyOffset.x *= -1;
-                    }
-                    if ((this._bodyRow !== this.row) ||
-                        (this._bodyColumn !== this.column) ||
-                        (this._bodyFlipped !== this.isFlipped)) {
-                        const x = (this.column * constants_2.SPACING) + this._bodyOffset.x;
-                        const y = (this.row * constants_2.SPACING) + this._bodyOffset.y;
-                        matter_js_2.Body.setPosition(this._body, { x: x, y: y });
-                        if (this._rotationConstraint) {
-                            this._rotationConstraint.pointB = { x: x, y: y };
-                        }
-                        this._bodyRow = this.row;
-                        this._bodyColumn = this.column;
-                    }
-                    let desiredAngle = this._angleForRotation(this.rotation);
-                    if (this._body.angle != desiredAngle) {
-                        matter_js_2.Body.setAngle(this._body, desiredAngle);
-                    }
-                    this._bodyFlipped = this.isFlipped;
-                }
-                // tranfer relevant properties from the body
-                readBody() {
-                    if (!this._body)
-                        return;
-                    this._readingBody = true;
-                    if (this.bodyCanMove) {
-                        this.column = this._body.position.x / constants_2.SPACING;
-                        this.row = this._body.position.y / constants_2.SPACING;
-                    }
-                    if (this.bodyCanRotate) {
-                        const r = this._rotationForAngle(this._body.angle);
-                        this.rotation = r;
-                        if ((r < 0) || (r > 1)) {
-                            matter_js_2.Body.setAngularVelocity(this._body, 0.0);
-                            matter_js_2.Body.setAngle(this._body, this._angleForRotation(this.rotation));
-                        }
-                    }
-                    this._readingBody = false;
-                }
-                // construct a body from a set of vertex lists
-                _bodyFromVertexSets(vertexSets) {
-                    if (!vertexSets)
-                        return (null);
-                    const parts = [];
-                    for (const vertices of vertexSets) {
-                        const center = matter_js_2.Vertices.centre(vertices);
-                        parts.push(matter_js_2.Body.create({ position: center, vertices: vertices }));
-                    }
-                    const body = matter_js_2.Body.create({ parts: parts,
-                        restitution: this.bodyRestitution,
-                        friction: 0 });
-                    // this is a hack to prevent matter.js from placing the body's center 
-                    //  of mass over the origin, which complicates our ability to precisely
-                    //  position parts of an arbitrary shape
-                    body.position.x = 0;
-                    body.position.y = 0;
-                    body.positionPrev.x = 0;
-                    body.positionPrev.y = 0;
-                    return (body);
-                }
             };
-            exports_17("Part", Part);
+            exports_16("Part", Part);
         }
     };
 });
@@ -1056,9 +900,9 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "ui/animator"
  *   out of or in connection with the Software or the use or other dealings in the
  *   Software.
  */
-System.register("util/disjoint", [], function (exports_18, context_18) {
+System.register("util/disjoint", [], function (exports_17, context_17) {
     "use strict";
-    var __moduleName = context_18 && context_18.id;
+    var __moduleName = context_17 && context_17.id;
     var DisjointSet;
     return {
         setters: [],
@@ -1149,22 +993,22 @@ System.register("util/disjoint", [], function (exports_18, context_18) {
                     }
                 }
             };
-            exports_18("DisjointSet", DisjointSet);
+            exports_17("DisjointSet", DisjointSet);
         }
     };
 });
-System.register("board/router", [], function (exports_19, context_19) {
+System.register("board/router", [], function (exports_18, context_18) {
     "use strict";
-    var __moduleName = context_19 && context_19.id;
+    var __moduleName = context_18 && context_18.id;
     return {
         setters: [],
         execute: function () {
         }
     };
 });
-System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball"], function (exports_20, context_20) {
+System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball"], function (exports_19, context_19) {
     "use strict";
-    var __moduleName = context_20 && context_20.id;
+    var __moduleName = context_19 && context_19.id;
     var filter, fence_2, gearbit_2, disjoint_1, renderer_2, ball_2, PartSizes, SPACING_FACTOR, Board;
     return {
         setters: [
@@ -1188,8 +1032,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             }
         ],
         execute: function () {
-            exports_20("PartSizes", PartSizes = [2, 4, 6, 8, 12, 16, 24, 32, 48, 64]);
-            exports_20("SPACING_FACTOR", SPACING_FACTOR = 1.0625);
+            exports_19("PartSizes", PartSizes = [2, 4, 6, 8, 12, 16, 24, 32, 48, 64]);
+            exports_19("SPACING_FACTOR", SPACING_FACTOR = 1.0625);
             Board = class Board {
                 constructor(partFactory) {
                     this.partFactory = partFactory;
@@ -1972,13 +1816,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                 }
             };
-            exports_20("Board", Board);
+            exports_19("Board", Board);
         }
     };
 });
-System.register("ui/button", ["pixi.js", "renderer"], function (exports_21, context_21) {
+System.register("ui/button", ["pixi.js", "renderer"], function (exports_20, context_20) {
     "use strict";
-    var __moduleName = context_21 && context_21.id;
+    var __moduleName = context_20 && context_20.id;
     var PIXI, renderer_3, Button, PartButton, SpriteButton, ButtonBar;
     return {
         setters: [
@@ -2087,7 +1931,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_21, cont
                     renderer_3.Renderer.needsUpdate();
                 }
             };
-            exports_21("Button", Button);
+            exports_20("Button", Button);
             PartButton = class PartButton extends Button {
                 constructor(part) {
                     super();
@@ -2134,7 +1978,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_21, cont
                         this.part.size = Math.floor(this.size * 0.5);
                 }
             };
-            exports_21("PartButton", PartButton);
+            exports_20("PartButton", PartButton);
             SpriteButton = class SpriteButton extends Button {
                 constructor(sprite) {
                     super();
@@ -2154,7 +1998,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_21, cont
                     }
                 }
             };
-            exports_21("SpriteButton", SpriteButton);
+            exports_20("SpriteButton", SpriteButton);
             ButtonBar = class ButtonBar extends PIXI.Container {
                 constructor() {
                     super();
@@ -2242,13 +2086,13 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_21, cont
                     renderer_3.Renderer.needsUpdate();
                 }
             };
-            exports_21("ButtonBar", ButtonBar);
+            exports_20("ButtonBar", ButtonBar);
         }
     };
 });
-System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (exports_22, context_22) {
+System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (exports_21, context_21) {
     "use strict";
-    var __moduleName = context_22 && context_22.id;
+    var __moduleName = context_21 && context_21.id;
     var PIXI, button_1, renderer_4, Toolbar;
     return {
         setters: [
@@ -2324,13 +2168,13 @@ System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (ex
                     renderer_4.Renderer.needsUpdate();
                 }
             };
-            exports_22("Toolbar", Toolbar);
+            exports_21("Toolbar", Toolbar);
         }
     };
 });
-System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "renderer"], function (exports_23, context_23) {
+System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "renderer"], function (exports_22, context_22) {
     "use strict";
-    var __moduleName = context_23 && context_23.id;
+    var __moduleName = context_22 && context_22.id;
     var PIXI, board_2, button_2, renderer_5, Actionbar;
     return {
         setters: [
@@ -2469,21 +2313,279 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "rendere
                     return (board_2.PartSizes.indexOf(this.board.partSize));
                 }
             };
-            exports_23("Actionbar", Actionbar);
+            exports_22("Actionbar", Actionbar);
         }
     };
 });
-System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gearbit", "board/constants"], function (exports_24, context_24) {
+// WARNING: this file is autogenerated from src/svg/parts.svg
+//  (any changes you make will be overwritten)
+System.register("parts/partvertices", [], function (exports_23, context_23) {
+    "use strict";
+    var __moduleName = context_23 && context_23.id;
+    function getVertexSets(name) {
+        switch (name) {
+            case 'Bit':
+                return ([[{ x: -1.055229, y: -32.311155 }, { x: 0.083096, y: -27.714947 }, { x: -27.716345, y: 0.194331 }, { x: -32.193815, y: -1.017234 }, { x: -34.041082, y: -34.054877 }], [{ x: -18.644511, y: -8.976617 }, { x: -0.082950, y: 12.855295 }, { x: 12.203028, y: 15.153399 }, { x: 15.296620, y: 11.971414 }, { x: 13.175300, y: 0.038993 }, { x: -9.275339, y: -18.699338 }], [{ x: 26.420847, y: -7.162746 }, { x: 27.625371, y: -30.038638 }, { x: 27.844206, y: -31.163652 }, { x: 28.781680, y: -32.163640 }, { x: 30.000426, y: -32.538569 }, { x: 31.156697, y: -32.288364 }, { x: 32.156684, y: -31.507136 }, { x: 32.625459, y: -30.163362 }, { x: 32.835185, y: -6.980308 }], [{ x: -7.426689, y: 26.576831 }, { x: -30.292815, y: 27.954318 }, { x: -31.416143, y: 28.181468 }, { x: -32.409014, y: 29.126463 }, { x: -32.774721, y: 30.348006 }, { x: -32.515785, y: 31.502387 }, { x: -31.727017, y: 32.496403 }, { x: -30.379740, y: 32.955011 }, { x: -7.195759, y: 32.989026 }], [{ x: 26.521942, y: -7.474028 }, { x: 13.086908, y: 0.304164 }, { x: 15.385009, y: 12.059818 }, { x: 28.731650, y: 2.602268 }, { x: 32.797511, y: -6.766916 }], [{ x: -7.574706, y: 26.497612 }, { x: 0.203486, y: 13.062564 }, { x: 11.959139, y: 15.360668 }, { x: 2.501590, y: 28.707313 }, { x: -6.867594, y: 32.773178 }]]);
+            case 'Crossover':
+                return ([[{ x: -0.125001, y: -48.250007 }, { x: -2.750000, y: -46.000016 }, { x: -2.750000, y: -15.874990 }, { x: 3.000000, y: -15.874990 }, { x: 3.000000, y: -46.374983 }], [{ x: -3.500001, y: -16.125006 }, { x: -12.750002, y: -10.000017 }, { x: -2.249998, y: 4.250011 }, { x: 2.374998, y: 4.250011 }, { x: 12.750001, y: -10.125006 }, { x: 3.749998, y: -16.000017 }], [{ x: -31.249999, y: -32.999991 }, { x: -40.000002, y: -18.750001 }, { x: -44.999999, y: -20.499998 }, { x: -35.749999, y: -35.875002 }, { x: -32.125001, y: -36.625012 }], [{ x: -44.874999, y: -20.124993 }, { x: -48.124999, y: -3.374997 }, { x: -42.500000, y: -4.875016 }, { x: -40.249999, y: -18.625012 }], [{ x: -43.000002, y: -4.625000 }, { x: -32.624998, y: 7.499989 }, { x: -34.000002, y: 10.124984 }, { x: -37.249999, y: 10.374811 }, { x: -48.375000, y: -3.000181 }], [{ x: 30.750039, y: -32.999991 }, { x: 39.500042, y: -18.750001 }, { x: 44.500039, y: -20.499998 }, { x: 35.250039, y: -35.875002 }, { x: 31.625041, y: -36.625012 }], [{ x: 44.375039, y: -20.124993 }, { x: 47.625039, y: -3.374997 }, { x: 42.000040, y: -4.875016 }, { x: 39.750038, y: -18.625012 }], [{ x: 42.500042, y: -4.625000 }, { x: 32.125038, y: 7.499989 }, { x: 33.500042, y: 10.124984 }, { x: 36.750039, y: 10.374811 }, { x: 47.875040, y: -3.000181 }], [{ x: -32.250001, y: 31.999982 }, { x: -0.051776, y: 29.502583 }, { x: 31.124998, y: 31.499988 }, { x: 32.874999, y: 34.374999 }, { x: 30.375000, y: 36.999994 }, { x: -30.250000, y: 36.999994 }, { x: -32.749999, y: 35.125008 }]]);
+            case 'GearLocation':
+                return ([[{ x: -0.015621, y: -4.546895 }, { x: 2.093748, y: -4.046864 }, { x: 4.046880, y: -2.046889 }, { x: 4.562502, y: 0.015637 }, { x: 4.031251, y: 2.062516 }, { x: 2.093748, y: 4.015624 }, { x: -0.015621, y: 4.468752 }, { x: -2.031251, y: 4.000015 }, { x: -4.015620, y: 2.015612 }, { x: -4.546870, y: -0.031267 }, { x: -4.031252, y: -2.031242 }, { x: -2.046871, y: -3.999997 }]]);
+            case 'Gearbit':
+                return ([[{ x: -20.250002, y: 16.375008 }, { x: -32.250001, y: -29.625001 }, { x: -32.125012, y: -32.125000 }, { x: -30.000011, y: -32.125000 }, { x: 16.124987, y: -20.500001 }, { x: 15.749982, y: -15.124999 }, { x: 6.124981, y: 6.000001 }, { x: -15.500020, y: 15.875014 }], [{ x: -20.147112, y: 16.711310 }, { x: -22.887152, y: 25.108210 }, { x: -19.351612, y: 28.643732 }, { x: -15.108971, y: 22.191398 }, { x: -14.932203, y: 15.915833 }], [{ x: -22.887152, y: 25.019807 }, { x: -31.107261, y: 28.201791 }, { x: -31.195664, y: 32.444424 }, { x: -24.212984, y: 32.091039 }, { x: -18.998075, y: 28.201943 }], [{ x: 16.521191, y: -20.448456 }, { x: 24.918092, y: -23.188496 }, { x: 28.453613, y: -19.652956 }, { x: 22.001279, y: -15.410316 }, { x: 15.725714, y: -15.233547 }], [{ x: 24.829689, y: -23.188496 }, { x: 28.011673, y: -31.408606 }, { x: 32.254306, y: -31.497009 }, { x: 31.900920, y: -24.514328 }, { x: 28.011824, y: -19.299419 }]]);
+            case 'Interceptor':
+                return ([[{ x: -45.691339, y: -8.678364 }, { x: 45.525429, y: -8.678364 }, { x: 46.507671, y: -3.375045 }, { x: -46.600349, y: -3.375045 }], [{ x: -40.374999, y: -8.249992 }, { x: -28.500000, y: -30.875000 }, { x: -33.125000, y: -33.624984 }, { x: -41.999999, y: -20.749986 }, { x: -45.625001, y: -9.124991 }], [{ x: 40.624999, y: -8.249992 }, { x: 28.750000, y: -30.875000 }, { x: 33.375000, y: -33.624984 }, { x: 42.249999, y: -20.749986 }, { x: 45.875001, y: -9.124991 }], [{ x: -6.999999, y: -3.499996 }, { x: -6.500009, y: 3.625018 }, { x: -0.000012, y: 6.999985 }, { x: 6.374989, y: 3.624980 }, { x: 6.499978, y: -3.499996 }]]);
+            case 'PartLocation':
+                return ([[{ x: -0.015621, y: -4.546889 }, { x: 2.093748, y: -4.046857 }, { x: 4.046880, y: -2.046883 }, { x: 4.562502, y: 0.015643 }, { x: 4.031251, y: 2.062522 }, { x: 2.093748, y: 4.015631 }, { x: -0.015621, y: 4.468758 }, { x: -2.031251, y: 4.000021 }, { x: -4.015620, y: 2.015618 }, { x: -4.546870, y: -0.031261 }, { x: -4.031252, y: -2.031235 }, { x: -2.046871, y: -3.999991 }]]);
+            case 'Ramp':
+                return ([[{ x: -32.521481, y: -31.327994 }, { x: -30.046601, y: -32.742218 }, { x: 17.594721, y: -20.279453 }, { x: 6.015840, y: -5.783755 }, { x: -4.413982, y: -7.021210 }, { x: -31.814369, y: -28.499585 }], [{ x: 17.417941, y: -20.279453 }, { x: 25.196110, y: -23.903377 }, { x: 29.438751, y: -20.809796 }, { x: 22.809629, y: -16.125185 }, { x: 14.235960, y: -15.594880 }], [{ x: 25.461282, y: -24.522086 }, { x: 27.759382, y: -30.974457 }, { x: 30.057470, y: -32.830583 }, { x: 32.797511, y: -30.886054 }, { x: 29.527139, y: -21.074968 }], [{ x: -6.093362, y: -7.905091 }, { x: -17.495459, y: 12.601000 }, { x: -13.517979, y: 16.048156 }, { x: 12.203028, y: 14.191992 }, { x: 14.677900, y: 10.214531 }, { x: 6.369399, y: -5.872159 }], [{ x: -18.290952, y: 11.363583 }, { x: -26.422681, y: 11.363583 }, { x: -33.272779, y: 18.213674 }, { x: -33.272779, y: 25.594108 }, { x: -26.444779, y: 32.422089 }, { x: -17.760620, y: 32.422089 }, { x: -11.297231, y: 25.958682 }, { x: -11.485036, y: 15.959753 }]]);
+            default:
+                return (null);
+        }
+    }
+    exports_23("getVertexSets", getVertexSets);
+    return {
+        setters: [],
+        execute: function () {
+        }
+    };
+});
+System.register("parts/partbody", ["matter-js", "parts/part", "parts/factory", "parts/partvertices", "board/constants"], function (exports_24, context_24) {
     "use strict";
     var __moduleName = context_24 && context_24.id;
-    var PIXI, matter_js_3, renderer_6, gearbit_3, constants_3, PhysicalBallRouter;
+    var matter_js_1, part_11, factory_1, partvertices_1, constants_1, PartBody, PartBodyPool;
+    return {
+        setters: [
+            function (matter_js_1_1) {
+                matter_js_1 = matter_js_1_1;
+            },
+            function (part_11_1) {
+                part_11 = part_11_1;
+            },
+            function (factory_1_1) {
+                factory_1 = factory_1_1;
+            },
+            function (partvertices_1_1) {
+                partvertices_1 = partvertices_1_1;
+            },
+            function (constants_1_1) {
+                constants_1 = constants_1_1;
+            }
+        ],
+        execute: function () {
+            // this composes a part with a matter.js body which simulates it
+            PartBody = class PartBody {
+                constructor(partOrType) {
+                    this._body = undefined;
+                    this._constraints = null;
+                    this._bodyOffset = { x: 0.0, y: 0.0 };
+                    this._bodyFlipped = false;
+                    this._partChangeCounter = NaN;
+                    if (partOrType instanceof part_11.Part) {
+                        this.type = partOrType.type;
+                        this.part = partOrType;
+                    }
+                    else
+                        this.type = partOrType;
+                }
+                get part() { return (this._part); }
+                set part(part) {
+                    if (part === this._part)
+                        return;
+                    this._partChangeCounter = NaN;
+                    if (part) {
+                        if (part.type !== this.type)
+                            throw ('Part type must match PartBody type');
+                        this._part = part;
+                        this.initBodyFromPart();
+                    }
+                    else
+                        this._part = null;
+                }
+                // a body representing the physical form of the part
+                get body() {
+                    // if there are no stored vertices, the body will be set to null,
+                    //  and we shouldn't keep trying to construct it
+                    if (this._body === undefined) {
+                        const constructor = factory_1.PartFactory.constructorForType(this.type);
+                        // construct the ball as a circle
+                        if (this.type == 9 /* BALL */) {
+                            this._body = matter_js_1.Bodies.circle(0, 0, (5 * constants_1.PART_SIZE) / 32, { density: .005, friction: 0 });
+                        }
+                        else {
+                            this._body = this._bodyFromVertexSets(partvertices_1.getVertexSets(constructor.name));
+                        }
+                        this.initBodyFromPart();
+                    }
+                    return (this._body);
+                }
+                ;
+                // get constraints to apply to the body
+                get constraints() { return (this._constraints); }
+                // initialize the body after creation
+                initBodyFromPart() {
+                    if ((!this._body) || (!this._part))
+                        return;
+                    // parts that can't rotate can be static
+                    if ((!this._part.bodyCanRotate) && (!this._part.bodyCanMove)) {
+                        matter_js_1.Body.setStatic(this._body, true);
+                    }
+                    else {
+                        matter_js_1.Body.setStatic(this._body, false);
+                    }
+                    // parts that can rotate need to be placed in a composite 
+                    //  to simulate the pin joint attaching them to the board
+                    if ((this._part.bodyCanRotate) && (!this._rotationConstraint)) {
+                        this._rotationConstraint = matter_js_1.Constraint.create({
+                            bodyA: this._body,
+                            pointB: { x: 0, y: 0 },
+                            length: 0,
+                            stiffness: 0.7
+                        });
+                        if (!this._constraints)
+                            this._constraints = [];
+                        this._constraints.push(this._rotationConstraint);
+                    }
+                    // perform a first update of properties from the part
+                    this.updateBodyFromPart();
+                }
+                // transfer relevant properties to the body
+                updateBodyFromPart() {
+                    // skip the update if the part hasn't changed
+                    if ((!this._body) || (!this._part) ||
+                        (this._part.changeCounter === this._partChangeCounter))
+                        return;
+                    // update mirroring
+                    if (this._bodyFlipped !== this._part.isFlipped) {
+                        matter_js_1.Body.scale(this._body, -1, 1);
+                        this._bodyOffset.x *= -1;
+                        this._bodyFlipped = this._part.isFlipped;
+                    }
+                    // update position
+                    const x = (this._part.column * constants_1.SPACING) + this._bodyOffset.x;
+                    const y = (this._part.row * constants_1.SPACING) + this._bodyOffset.y;
+                    matter_js_1.Body.setPosition(this._body, { x: x, y: y });
+                    if (this._rotationConstraint) {
+                        this._rotationConstraint.pointB = { x: x, y: y };
+                    }
+                    // update rotation
+                    matter_js_1.Body.setAngle(this._body, this._part.angleForRotation(this._part.rotation));
+                    // record that we've synced with the part
+                    this._partChangeCounter = this._part.changeCounter;
+                }
+                // tranfer relevant properties from the body
+                updatePartFromBody() {
+                    if ((!this._body) || (!this._part) || (this._body.isStatic))
+                        return;
+                    if (this._part.bodyCanMove) {
+                        this._part.column = this._body.position.x / constants_1.SPACING;
+                        this._part.row = this._body.position.y / constants_1.SPACING;
+                    }
+                    if (this._part.bodyCanRotate) {
+                        const r = this._part.rotationForAngle(this._body.angle);
+                        this._part.rotation = r;
+                        // TODO: use constraints instead
+                        if ((r < 0) || (r > 1)) {
+                            matter_js_1.Body.setAngularVelocity(this._body, 0.0);
+                            matter_js_1.Body.setAngle(this._body, this._part.angleForRotation(this._part.rotation));
+                        }
+                    }
+                    // record that we've synced with the part
+                    this._partChangeCounter = this._part.changeCounter;
+                }
+                // add the body to the given world, creating the body if needed
+                addToWorld(world) {
+                    const body = this.body;
+                    if (body) {
+                        matter_js_1.World.add(world, body);
+                    }
+                    if (this._constraints)
+                        matter_js_1.World.add(world, this._constraints);
+                }
+                // remove the body from the given world
+                removeFromWorld(world) {
+                    if (this._body)
+                        matter_js_1.World.remove(world, this._body);
+                    if (this._constraints) {
+                        for (const constraint of this._constraints) {
+                            matter_js_1.World.remove(world, constraint);
+                        }
+                    }
+                }
+                // construct a body from a set of vertex lists
+                _bodyFromVertexSets(vertexSets) {
+                    if (!vertexSets)
+                        return (null);
+                    const parts = [];
+                    for (const vertices of vertexSets) {
+                        const center = matter_js_1.Vertices.centre(vertices);
+                        parts.push(matter_js_1.Body.create({ position: center, vertices: vertices }));
+                    }
+                    const body = matter_js_1.Body.create({ parts: parts, friction: 0 });
+                    // this is a hack to prevent matter.js from placing the body's center 
+                    //  of mass over the origin, which complicates our ability to precisely
+                    //  position parts of an arbitrary shape
+                    body.position.x = 0;
+                    body.position.y = 0;
+                    body.positionPrev.x = 0;
+                    body.positionPrev.y = 0;
+                    return (body);
+                }
+            };
+            exports_24("PartBody", PartBody);
+            // maintain a pool of PartBody instances grouped by type to avoid 
+            //  creation/destruction penalties
+            PartBodyPool = class PartBodyPool {
+                constructor() {
+                    // instances that are available for use
+                    this._unused = new Map();
+                    // instances that have been made but not released
+                    this._used = new Set();
+                }
+                // make or fetch a part body of the given type from the pool
+                make(partOrType) {
+                    const part = (partOrType instanceof part_11.Part) ? partOrType : null;
+                    const type = (partOrType instanceof part_11.Part) ? part.type : partOrType;
+                    if (!this._unused.has(type)) {
+                        this._unused.set(type, []);
+                    }
+                    const available = this._unused.get(type);
+                    let instance = (available.length > 0) ?
+                        available.pop() : new PartBody(type);
+                    this._used.add(instance);
+                    if (part)
+                        instance.part = part;
+                    return (instance);
+                }
+                release(instance) {
+                    // don't allow double-releases
+                    if (!this._used.has(instance))
+                        return;
+                    // detach the body from its part
+                    instance.part = null;
+                    // remove it from the used set
+                    this._used.delete(instance);
+                    // add it to the unused set
+                    if (!this._unused.has(instance.type)) {
+                        this._unused.set(instance.type, []);
+                    }
+                    this._unused.get(instance.type).push(instance);
+                }
+            };
+            exports_24("PartBodyPool", PartBodyPool);
+        }
+    };
+});
+System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gearbit", "parts/partbody", "board/constants", "ui/animator"], function (exports_25, context_25) {
+    "use strict";
+    var __moduleName = context_25 && context_25.id;
+    var PIXI, matter_js_2, renderer_6, gearbit_3, partbody_1, constants_2, animator_3, PhysicalBallRouter;
     return {
         setters: [
             function (PIXI_6) {
                 PIXI = PIXI_6;
             },
-            function (matter_js_3_1) {
-                matter_js_3 = matter_js_3_1;
+            function (matter_js_2_1) {
+                matter_js_2 = matter_js_2_1;
             },
             function (renderer_6_1) {
                 renderer_6 = renderer_6_1;
@@ -2491,22 +2593,28 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
             function (gearbit_3_1) {
                 gearbit_3 = gearbit_3_1;
             },
-            function (constants_3_1) {
-                constants_3 = constants_3_1;
+            function (partbody_1_1) {
+                partbody_1 = partbody_1_1;
+            },
+            function (constants_2_1) {
+                constants_2 = constants_2_1;
+            },
+            function (animator_3_1) {
+                animator_3 = animator_3_1;
             }
         ],
         execute: function () {
             PhysicalBallRouter = class PhysicalBallRouter {
                 constructor(board) {
                     this.board = board;
+                    this.partBodyPool = new partbody_1.PartBodyPool();
                     this._boardChangeCounter = -1;
                     this._wallWidth = 16;
                     this._wallHeight = 16;
                     this._wallThickness = 16;
                     this._ballNeighbors = new Map();
-                    this._parts = new Set();
-                    this._dynamicParts = new Set();
-                    this.engine = matter_js_3.Engine.create();
+                    this._parts = new Map();
+                    this.engine = matter_js_2.Engine.create();
                     // make walls to catch stray balls
                     this._createWalls();
                     // capture initial board state
@@ -2523,17 +2631,20 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                 // UPDATING *****************************************************************
                 update(correction) {
                     this.beforeUpdate();
-                    matter_js_3.Engine.update(this.engine, 1000 / 60, correction);
+                    matter_js_2.Engine.update(this.engine, 1000 / 60, correction);
                     this.afterUpdate();
                 }
                 beforeUpdate() {
                     this.addNeighborParts(this._boardChangeCounter !== this.board.changeCounter);
                     this._boardChangeCounter = this.board.changeCounter;
+                    for (const partBody of this._parts.values()) {
+                        partBody.updateBodyFromPart();
+                    }
                 }
                 afterUpdate() {
                     // transfer part positions
-                    for (const part of this._dynamicParts) {
-                        part.readBody();
+                    for (const [part, partBody] of this._parts.entries()) {
+                        partBody.updatePartFromBody();
                         if (part.bodyCanMove) {
                             this.board.layoutPart(part, part.column, part.row);
                         }
@@ -2547,32 +2658,32 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                 // STATE MANAGEMENT *********************************************************
                 _createWalls() {
                     const options = { isStatic: true };
-                    this._top = matter_js_3.Bodies.rectangle(0, 0, this._wallWidth, this._wallThickness, options);
-                    this._bottom = matter_js_3.Bodies.rectangle(0, 0, this._wallWidth, this._wallThickness, options);
-                    this._left = matter_js_3.Bodies.rectangle(0, 0, this._wallThickness, this._wallHeight, options);
-                    this._right = matter_js_3.Bodies.rectangle(0, 0, this._wallThickness, this._wallHeight, options);
-                    matter_js_3.World.add(this.engine.world, [this._top, this._right, this._bottom, this._left]);
+                    this._top = matter_js_2.Bodies.rectangle(0, 0, this._wallWidth, this._wallThickness, options);
+                    this._bottom = matter_js_2.Bodies.rectangle(0, 0, this._wallWidth, this._wallThickness, options);
+                    this._left = matter_js_2.Bodies.rectangle(0, 0, this._wallThickness, this._wallHeight, options);
+                    this._right = matter_js_2.Bodies.rectangle(0, 0, this._wallThickness, this._wallHeight, options);
+                    matter_js_2.World.add(this.engine.world, [this._top, this._right, this._bottom, this._left]);
                 }
                 _updateWalls() {
-                    const w = ((this.board.columnCount + 3) * constants_3.SPACING);
-                    const h = ((this.board.rowCount + 3) * constants_3.SPACING);
+                    const w = ((this.board.columnCount + 3) * constants_2.SPACING);
+                    const h = ((this.board.rowCount + 3) * constants_2.SPACING);
                     const hw = (w - this._wallThickness) / 2;
                     const hh = (h + this._wallThickness) / 2;
-                    const cx = ((this.board.columnCount - 1) / 2) * constants_3.SPACING;
-                    const cy = ((this.board.rowCount - 1) / 2) * constants_3.SPACING;
-                    matter_js_3.Body.setPosition(this._top, { x: cx, y: cy - hh });
-                    matter_js_3.Body.setPosition(this._bottom, { x: cx, y: cy + hh });
-                    matter_js_3.Body.setPosition(this._left, { x: cx - hw, y: cy });
-                    matter_js_3.Body.setPosition(this._right, { x: cx + hw, y: cy });
+                    const cx = ((this.board.columnCount - 1) / 2) * constants_2.SPACING;
+                    const cy = ((this.board.rowCount - 1) / 2) * constants_2.SPACING;
+                    matter_js_2.Body.setPosition(this._top, { x: cx, y: cy - hh });
+                    matter_js_2.Body.setPosition(this._bottom, { x: cx, y: cy + hh });
+                    matter_js_2.Body.setPosition(this._left, { x: cx - hw, y: cy });
+                    matter_js_2.Body.setPosition(this._right, { x: cx + hw, y: cy });
                     const sx = w / this._wallWidth;
                     const sy = h / this._wallHeight;
                     if (sx != 1.0) {
-                        matter_js_3.Body.scale(this._top, sx, 1.0);
-                        matter_js_3.Body.scale(this._bottom, sx, 1.0);
+                        matter_js_2.Body.scale(this._top, sx, 1.0);
+                        matter_js_2.Body.scale(this._bottom, sx, 1.0);
                     }
                     if (sy != 1.0) {
-                        matter_js_3.Body.scale(this._left, 1.0, sy);
-                        matter_js_3.Body.scale(this._right, 1.0, sy);
+                        matter_js_2.Body.scale(this._left, 1.0, sy);
+                        matter_js_2.Body.scale(this._right, 1.0, sy);
                     }
                     this._wallWidth = w;
                     this._wallHeight = h;
@@ -2630,31 +2741,17 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                 addPart(part) {
                     if (this._parts.has(part))
                         return; // make it idempotent
-                    this._parts.add(part);
-                    const body = part.getBody();
-                    if (body) {
-                        matter_js_3.World.add(this.engine.world, body);
-                        if (!body.isStatic)
-                            this._dynamicParts.add(part);
-                    }
-                    const constraints = part.constraints;
-                    if (constraints)
-                        matter_js_3.World.add(this.engine.world, constraints);
+                    const partBody = this.partBodyPool.make(part);
+                    this._parts.set(part, partBody);
+                    partBody.addToWorld(this.engine.world);
                 }
                 removePart(part) {
                     if (!this._parts.has(part))
                         return; // make it idempotent
+                    const partBody = this._parts.get(part);
+                    partBody.removeFromWorld(this.engine.world);
+                    this.partBodyPool.release(partBody);
                     this._parts.delete(part);
-                    this._dynamicParts.delete(part);
-                    const body = part.getBody();
-                    if (body)
-                        matter_js_3.World.remove(this.engine.world, body);
-                    const constraints = part.constraints;
-                    if (constraints) {
-                        for (const constraint of constraints) {
-                            matter_js_3.World.remove(this.engine.world, constraint);
-                        }
-                    }
                     this._restoreRestingRotation(part);
                 }
                 // restore the rotation of the part if it has one
@@ -2663,15 +2760,13 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                         return;
                     // ensure we don't "restore" a gear that's still connected
                     //  to a chain that's being simulated
-                    if (part instanceof gearbit_3.GearBase) {
+                    if (part instanceof gearbit_3.Gearbit) {
                         for (const gear of part.connected) {
-                            if (this._dynamicParts.has(gear))
+                            if ((gear instanceof gearbit_3.Gearbit) && (this._parts.has(gear)))
                                 return;
                         }
                     }
-                    // !!! investigate why these have a different effect
-                    //part.animateRotation(part.restingRotation, 0.1);
-                    part.rotation = part.restingRotation;
+                    animator_3.Animator.current.animate(part, 'rotation', part.rotation, part.restingRotation, 0.1);
                 }
                 // WIREFRAME PREVIEW ********************************************************
                 get showWireframe() {
@@ -2699,9 +2794,9 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                     // setup
                     const g = this._wireframeGraphics;
                     g.clear();
-                    const scale = this.board.spacing / constants_3.SPACING;
+                    const scale = this.board.spacing / constants_2.SPACING;
                     // draw all bodies
-                    var bodies = matter_js_3.Composite.allBodies(this.engine.world);
+                    var bodies = matter_js_2.Composite.allBodies(this.engine.world);
                     for (const body of bodies) {
                         this._drawBody(g, body, scale);
                     }
@@ -2738,13 +2833,13 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                     g.endFill();
                 }
             };
-            exports_24("PhysicalBallRouter", PhysicalBallRouter);
+            exports_25("PhysicalBallRouter", PhysicalBallRouter);
         }
     };
 });
-System.register("ui/keyboard", [], function (exports_25, context_25) {
+System.register("ui/keyboard", [], function (exports_26, context_26) {
     "use strict";
-    var __moduleName = context_25 && context_25.id;
+    var __moduleName = context_26 && context_26.id;
     function makeKeyHandler(key) {
         const handler = {
             key: key,
@@ -2774,17 +2869,17 @@ System.register("ui/keyboard", [], function (exports_25, context_25) {
         window.addEventListener('keyup', handler.upHandler.bind(handler), false);
         return (handler);
     }
-    exports_25("makeKeyHandler", makeKeyHandler);
+    exports_26("makeKeyHandler", makeKeyHandler);
     return {
         setters: [],
         execute: function () {
         }
     };
 });
-System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "ui/animator", "board/physics", "ui/keyboard"], function (exports_26, context_26) {
+System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "ui/animator", "board/physics", "ui/keyboard"], function (exports_27, context_27) {
     "use strict";
-    var __moduleName = context_26 && context_26.id;
-    var PIXI, board_3, factory_1, toolbar_1, actionbar_1, renderer_7, animator_3, physics_1, keyboard_1, SimulatorApp;
+    var __moduleName = context_27 && context_27.id;
+    var PIXI, board_3, factory_2, toolbar_1, actionbar_1, renderer_7, animator_4, physics_1, keyboard_1, SimulatorApp;
     return {
         setters: [
             function (PIXI_7) {
@@ -2793,8 +2888,8 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
             function (board_3_1) {
                 board_3 = board_3_1;
             },
-            function (factory_1_1) {
-                factory_1 = factory_1_1;
+            function (factory_2_1) {
+                factory_2 = factory_2_1;
             },
             function (toolbar_1_1) {
                 toolbar_1 = toolbar_1_1;
@@ -2805,8 +2900,8 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
             function (renderer_7_1) {
                 renderer_7 = renderer_7_1;
             },
-            function (animator_3_1) {
-                animator_3 = animator_3_1;
+            function (animator_4_1) {
+                animator_4 = animator_4_1;
             },
             function (physics_1_1) {
                 physics_1 = physics_1_1;
@@ -2822,7 +2917,7 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     this.textures = textures;
                     this._width = 0;
                     this._height = 0;
-                    this.partFactory = new factory_1.PartFactory(textures);
+                    this.partFactory = new factory_2.PartFactory(textures);
                     this.board = new board_3.Board(this.partFactory);
                     this.toolbar = new toolbar_1.Toolbar(this.board);
                     this.toolbar.width = 64;
@@ -2841,7 +2936,7 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     this._addKeyHandlers();
                 }
                 update(delta) {
-                    animator_3.Animator.current.update(delta);
+                    animator_4.Animator.current.update(delta);
                     if (this.board.router)
                         this.board.router.update(delta);
                     renderer_7.Renderer.render();
@@ -2875,13 +2970,13 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     w.release = () => { this.physicalRouter.showWireframe = false; };
                 }
             };
-            exports_26("SimulatorApp", SimulatorApp);
+            exports_27("SimulatorApp", SimulatorApp);
         }
     };
 });
-System.register("board/builder", ["parts/fence"], function (exports_27, context_27) {
+System.register("board/builder", ["parts/fence"], function (exports_28, context_28) {
     "use strict";
-    var __moduleName = context_27 && context_27.id;
+    var __moduleName = context_28 && context_28.id;
     var fence_3, BoardBuilder;
     return {
         setters: [
@@ -2974,13 +3069,13 @@ System.register("board/builder", ["parts/fence"], function (exports_27, context_
                     board.setPart(redDrop, redColumn + 1, dropLevel);
                 }
             };
-            exports_27("BoardBuilder", BoardBuilder);
+            exports_28("BoardBuilder", BoardBuilder);
         }
     };
 });
-System.register("index", ["pixi.js", "app", "renderer", "board/builder"], function (exports_28, context_28) {
+System.register("index", ["pixi.js", "app", "renderer", "board/builder"], function (exports_29, context_29) {
     "use strict";
-    var __moduleName = context_28 && context_28.id;
+    var __moduleName = context_29 && context_29.id;
     var PIXI, app_1, renderer_8, builder_1, sim, container, resizeApp, loader;
     return {
         setters: [

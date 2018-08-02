@@ -48,11 +48,11 @@ node_modules: package.json
 
 # PHYSICS BODIES
 
-physics: src/parts/bodies.ts
+physics: src/parts/partvertices.ts
 
-src/parts/bodies.ts: src/svg/parts.svg \
-										 src/svg/physics.py src/svg/parser.py
-	src/svg/physics.py src/svg/parts.svg src/parts/bodies.ts
+src/parts/partvertices.ts: src/svg/parts.svg \
+										 			 src/svg/physics.py src/svg/parser.py
+	src/svg/physics.py src/svg/parts.svg src/parts/partvertices.ts
 
 # GRAPHICS
 

@@ -60,22 +60,22 @@ export class Gear extends GearBase {
   //  so we can ignore their rotation
   public get bodyCanRotate():boolean { return(false); }
   
-  protected _angleForRotation(r:number, layer:Layer):number {
+  public angleForRotation(r:number, layer:Layer):number {
     // gears on a regular-part location need to be rotated by 1/16 turn 
     //  to mesh with neighbors
     if (this.isOnPartLocation) {
       if (layer == Layer.SCHEMATIC) {
-        return(super._angleForRotation(r, layer));
+        return(super.angleForRotation(r, layer));
       }
       else {
-        return(super._angleForRotation(r, layer) + (Math.PI * 0.125));
+        return(super.angleForRotation(r, layer) + (Math.PI * 0.125));
       }
     }
     // gears rotate in the reverse direction from their gearbits when placed
     //  on a gear-only location, but making them have the same rotation value 
     //  is convenient
     else {
-      return(- super._angleForRotation(r, layer));
+      return(- super.angleForRotation(r, layer));
     }
   }
 

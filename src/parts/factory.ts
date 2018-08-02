@@ -25,29 +25,37 @@ export const enum PartType {
   FENCE,      TOOLBOX_MAX = FENCE
 }
 
+type PartConstructor = { new(textures:PIXI.loaders.TextureDictionary):Part };
+
 export class PartFactory {
 
   constructor(public readonly textures:PIXI.loaders.TextureDictionary) {
 
   }
 
-  // make a new part of the given type
-  public make(type:PartType):Part {
+  public static constructorForType(type:PartType):PartConstructor {
     switch(type) {
-      case PartType.BLANK: return(new Blank(this.textures));
-      case PartType.PARTLOC: return(new PartLocation(this.textures));
-      case PartType.GEARLOC: return(new GearLocation(this.textures));
-      case PartType.RAMP: return(new Ramp(this.textures));
-      case PartType.CROSSOVER: return(new Crossover(this.textures));
-      case PartType.INTERCEPTOR: return(new Interceptor(this.textures));
-      case PartType.BIT: return(new Bit(this.textures));
-      case PartType.GEAR: return(new Gear(this.textures));
-      case PartType.GEARBIT: return(new Gearbit(this.textures));
-      case PartType.BALL: return(new Ball(this.textures));
-      case PartType.DROP: return(new Drop(this.textures));
-      case PartType.FENCE: return(new Fence(this.textures));
+      case PartType.BLANK: return(Blank);
+      case PartType.PARTLOC: return(PartLocation);
+      case PartType.GEARLOC: return(GearLocation);
+      case PartType.RAMP: return(Ramp);
+      case PartType.CROSSOVER: return(Crossover);
+      case PartType.INTERCEPTOR: return(Interceptor);
+      case PartType.BIT: return(Bit);
+      case PartType.GEAR: return(Gear);
+      case PartType.GEARBIT: return(Gearbit);
+      case PartType.BALL: return(Ball);
+      case PartType.DROP: return(Drop);
+      case PartType.FENCE: return(Fence);
       default: return(null);
     }
+  }
+
+  // make a new part of the given type
+  public make(type:PartType):Part {
+    const constructor = PartFactory.constructorForType(type);
+    if (! constructor) return(null);
+    return(new constructor(this.textures));
   }
 
   // make a copy of the given part with the same basic state

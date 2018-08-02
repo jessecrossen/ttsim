@@ -7,9 +7,11 @@ import { Renderer } from 'renderer';
 import { Part } from 'parts/part';
 import { Ball } from 'parts/ball';
 import { Colors, Alphas } from 'ui/config';
-import { GearBase } from 'parts/gearbit';
+import { Gearbit } from 'parts/gearbit';
+import { PartBody, PartBodyPool } from 'parts/partbody';
 
 import { SPACING } from './constants';
+import { Animator } from 'ui/animator';
 
 export class PhysicalBallRouter implements IBallRouter {
 
@@ -31,6 +33,8 @@ export class PhysicalBallRouter implements IBallRouter {
     this.beforeUpdate();
   }
 
+  public partBodyPool:PartBodyPool = new PartBodyPool();
+
   // UPDATING *****************************************************************
 
   public update(correction:number):void {
@@ -42,13 +46,16 @@ export class PhysicalBallRouter implements IBallRouter {
   public beforeUpdate():void {
     this.addNeighborParts(this._boardChangeCounter !== this.board.changeCounter);
     this._boardChangeCounter = this.board.changeCounter;
+    for (const partBody of this._parts.values()) {
+      partBody.updateBodyFromPart();
+    }
   }
   private _boardChangeCounter:number = -1;
 
   public afterUpdate():void {
     // transfer part positions
-    for (const part of this._dynamicParts) {
-      part.readBody();
+    for (const [ part, partBody ] of this._parts.entries()) {
+      partBody.updatePartFromBody();
       if (part.bodyCanMove) {
         this.board.layoutPart(part, part.column, part.row);
       }
@@ -152,45 +159,32 @@ export class PhysicalBallRouter implements IBallRouter {
 
   protected addPart(part:Part):void {
     if (this._parts.has(part)) return; // make it idempotent
-    this._parts.add(part);
-    const body = part.getBody();
-    if (body) {
-      World.add(this.engine.world, body);
-      if (! body.isStatic) this._dynamicParts.add(part);
-    }
-    const constraints = part.constraints;
-    if (constraints) World.add(this.engine.world, constraints);
+    const partBody = this.partBodyPool.make(part);
+    this._parts.set(part, partBody);
+    partBody.addToWorld(this.engine.world);
   }
   protected removePart(part:Part):void {
     if (! this._parts.has(part)) return; // make it idempotent
+    const partBody = this._parts.get(part);
+    partBody.removeFromWorld(this.engine.world);
+    this.partBodyPool.release(partBody);
     this._parts.delete(part);
-    this._dynamicParts.delete(part);
-    const body = part.getBody();
-    if (body) World.remove(this.engine.world, body);
-    const constraints = part.constraints;
-    if (constraints) {
-      for (const constraint of constraints) {
-        World.remove(this.engine.world, constraint);
-      }
-    }
     this._restoreRestingRotation(part);
   }
-  private _parts:Set<Part> = new Set();
-  private _dynamicParts:Set<Part> = new Set();
+  private _parts:Map<Part,PartBody> = new Map();
 
   // restore the rotation of the part if it has one
   protected _restoreRestingRotation(part:Part):void {
     if (part.rotation === part.restingRotation) return;
     // ensure we don't "restore" a gear that's still connected
     //  to a chain that's being simulated
-    if (part instanceof GearBase) {
+    if (part instanceof Gearbit) {
       for (const gear of part.connected) {
-        if (this._dynamicParts.has(gear)) return;
+        if ((gear instanceof Gearbit) && (this._parts.has(gear))) return;
       }
     }
-    // !!! investigate why these have a different effect
-    //part.animateRotation(part.restingRotation, 0.1);
-    part.rotation = part.restingRotation;
+    Animator.current.animate(part, 'rotation', 
+      part.rotation, part.restingRotation, 0.1);
   }
 
   // WIREFRAME PREVIEW ********************************************************

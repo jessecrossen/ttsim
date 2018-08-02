@@ -3,6 +3,7 @@ import { Body, Vector, Vertices, Constraint } from 'matter-js';
 
 import { PartType } from './factory';
 import { Renderer } from 'renderer';
+import { Animator } from 'ui/animator';
 import { SPACING } from 'board/constants';
 import { getVertexSets } from './bodies';
 
@@ -77,10 +78,7 @@ export abstract class Part {
 
   // whether the part is pointing right (or will be when animations finish)
   public get bitValue():boolean {
-    // handle animation
-    if (this._rv !== 0.0) return(this._rv > 0);
-    // handle static position
-    return(this.rotation >= 0.5);
+    return(Animator.current.getEndValue(this, 'rotation') >= 0.5);
   }
 
   // whether the part is flipped to its left/right variant
@@ -97,7 +95,9 @@ export abstract class Part {
   public flip(time:number=0.0):void {
     if (this.canFlip) this.isFlipped = ! this.isFlipped;
     else if (this.canRotate) {
-      this.animateRotation((this.bitValue) ? 0.0 : 1.0, time);
+      const bitValue = this.bitValue;
+      Animator.current.animate(this, 'rotation',
+        bitValue ? 1.0 : 0.0, bitValue ? 0.0 : 1.0, time);
     }
   }
 
@@ -145,39 +145,6 @@ export abstract class Part {
            (this.bitValue === part.bitValue));
   }
 
-  // ANIMATION ****************************************************************
-
-  public animateRotation(target:number, time:number):void {
-    if (time == 0.0) {
-      this.rotation = target;
-      return;
-    }
-    this._rv = (target < this.rotation ? - 1.0 : 1.0) / (time * 60.0);
-    PIXI.ticker.shared.add(this.tickRotation);
-  }
-  private _rv:number = 0.0;
-  public isAnimatingRotation():boolean {
-    return(this._rv !== 0.0);
-  }
-  public cancelRotationAnimation():void {
-    if (this._rv !== 0) {
-      this._rv = 0.0;
-      PIXI.ticker.shared.remove(this.tickRotation);
-    }
-  }
-  protected _tickRotation(delta:number):void {
-    if (this._rv === 0.0) {
-      this.cancelRotationAnimation();
-      return;
-    }
-    this.rotation += this._rv * delta;
-    if (((this._rv > 0) && (this.rotation >= 1.0)) ||
-        ((this._rv < 0) && (this.rotation <= 0))) {
-      this.cancelRotationAnimation();
-    }
-  }
-  protected tickRotation = this._tickRotation.bind(this);
-
   // SPRITES ******************************************************************
 
   // the prefix to append before texture names for this part
@@ -215,6 +182,15 @@ export abstract class Part {
     return(this._sprites.get(layer));
   }
   private _sprites:LayerToSpriteMap = new Map();
+
+  // destroy all cached sprites for the part
+  public destroySprites():void {
+    for (const layer of this._sprites.keys()) {
+      const sprite = this._sprites.get(layer);
+      if (sprite) sprite.destroy();
+    }
+    this._sprites.clear();
+  }
 
   // set initial properties for a newly-created sprite
   protected _initSprite(layer:Layer):void {
@@ -324,7 +300,7 @@ export abstract class Part {
         bodyA: this._body,
         pointB: { x:0, y:0 },
         length: 0,
-        stiffness: 1
+        stiffness: 0.7
       });
       if (! this._constraints) this._constraints = [ ];
       this._constraints.push(this._rotationConstraint);
@@ -353,9 +329,8 @@ export abstract class Part {
       this._bodyColumn = this.column;
     }
     let desiredAngle:number = this._angleForRotation(this.rotation);
-    if (this._bodyAngle != desiredAngle) {
+    if (this._body.angle != desiredAngle) {
       Body.setAngle(this._body, desiredAngle);
-      this._bodyAngle = desiredAngle;
     }
     this._bodyFlipped = this.isFlipped;
   }
@@ -363,7 +338,6 @@ export abstract class Part {
   private _bodyRow:number;
   private _bodyColumn:number;
   private _bodyFlipped:boolean = false;
-  private _bodyAngle:number = 0.0;
 
   // tranfer relevant properties from the body
   public readBody():void {

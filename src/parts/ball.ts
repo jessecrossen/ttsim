@@ -36,12 +36,13 @@ export class Ball extends Part {
   }
 
   public get bodyCanMove():boolean { return(true); }
+  public get bodyRestitution():number { return(0.5); }
 
   public getBody():Body {
     if (! this._body) {
       this._body = Bodies.circle(0, 0, (5 * PART_SIZE) / 32,
         { restitution: this.bodyRestitution,
-          density: .003, friction: 0 });
+          density: .005, friction: 0 });
       this.initBody();
       this.writeBody();
     }

@@ -1,5 +1,6 @@
 import { Part, Layer } from './part';
 import { PartType } from './factory';
+import { Animator } from 'ui/animator';
 
 export abstract class GearBase extends Part {
 
@@ -20,7 +21,7 @@ export abstract class GearBase extends Part {
     }
     if ((GearBase._settingConnectedRotation) && 
         (GearBase._settingConnectedRotation !== this)) {
-      this.cancelRotationAnimation();
+      Animator.current.stopAnimating(this, 'rotation');
     }
     super.rotation = v;
   }

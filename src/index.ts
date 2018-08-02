@@ -4,13 +4,11 @@ import { SimulatorApp } from 'app';
 import { Renderer } from 'renderer';
 import { BoardBuilder } from 'board/builder';
 
-const container = document.getElementById('container');
-container.appendChild(Renderer.instance.view);
-
 // the simulator, which will be initialized once resources have loaded
 let sim:SimulatorApp;
 
 // dynamically resize the app to track the size of the browser window
+const container = document.getElementById('container');
 container.style.overflow = 'hidden';
 const resizeApp = () => {
   const r = container.getBoundingClientRect();
@@ -23,8 +21,6 @@ const resizeApp = () => {
 resizeApp();
 window.addEventListener('resize', resizeApp);
 
-Renderer.start();
-
 // load sprites
 const loader = PIXI.loader;
 loader.add('images/parts.json').load(() => {
@@ -36,4 +32,8 @@ loader.add('images/parts.json').load(() => {
   // set up the standard board
   BoardBuilder.initStandardBoard(sim.board);
   sim.actionbar.zoomToFit();
+  // attach the stage to the document
+  container.appendChild(Renderer.instance.view);
+  // start the game loop
+  PIXI.ticker.shared.add(sim.update, sim);
 });

@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
 
-import { Engine, Composite, World, Events, Body, Bodies, Vector } from 'matter-js';
+import { Engine, Composite, World, Events, Body, Bodies, Vector, Render } from 'matter-js';
 import { IBallRouter } from './router';
 import { Board } from './board';
 import { Renderer } from 'renderer';
@@ -15,10 +15,6 @@ export class PhysicalBallRouter implements IBallRouter {
 
   constructor(public readonly board:Board) {
     this.engine = Engine.create();
-    this.engine.enabled = false;
-    Events.on(this.engine, 'beforeUpdate', this.beforeUpdate.bind(this));
-    Events.on(this.engine, 'afterUpdate', this.afterUpdate.bind(this));
-    Engine.run(this.engine);
     // make walls to catch stray balls
     this._createWalls();
     // capture initial board state
@@ -37,12 +33,10 @@ export class PhysicalBallRouter implements IBallRouter {
 
   // UPDATING *****************************************************************
 
-  public start():void {
-    this.engine.enabled = true;
-  }
-
-  public stop():void {
-    this.engine.enabled = false;
+  public update(correction:number):void {
+    this.beforeUpdate();
+    Engine.update(this.engine, 1000 / 60, correction);
+    this.afterUpdate();
   }
 
   public beforeUpdate():void {
@@ -122,7 +116,8 @@ export class PhysicalBallRouter implements IBallRouter {
       removedBalls.delete(ball);
       // don't update for balls in the same locality (unless forced to)
       if ((! force) && (ball.lastColumn === column) && 
-                       (ball.lastRow === row)) continue;
+                       ((ball.lastRow === row) || 
+                        (ball.lastRow === row + 1))) continue;
       if (! this._ballNeighbors.has(ball)) {
         this.addPart(ball);
         this._ballNeighbors.set(ball, new Set());
@@ -193,7 +188,9 @@ export class PhysicalBallRouter implements IBallRouter {
         if (this._dynamicParts.has(gear)) return;
       }
     }
-    part.animateRotation(part.restingRotation, 0.1);
+    // !!! investigate why these have a different effect
+    //part.animateRotation(part.restingRotation, 0.1);
+    part.rotation = part.restingRotation;
   }
 
   // WIREFRAME PREVIEW ********************************************************

@@ -5,6 +5,7 @@ import { PartFactory } from 'parts/factory';
 import { Toolbar } from 'ui/toolbar';
 import { Actionbar } from 'ui/actionbar';
 import { Renderer } from 'renderer';
+import { Animator } from 'ui/animator';
 import { PhysicalBallRouter } from 'board/physics';
 import { makeKeyHandler } from 'ui/keyboard';
 
@@ -27,7 +28,6 @@ export class SimulatorApp extends PIXI.Container {
     // set up ball routers
     this.physicalRouter = new PhysicalBallRouter(this.board);
     this.board.router = this.physicalRouter;
-    this.physicalRouter.start();
     // add event listeners
     this._addKeyHandlers();
   }
@@ -36,6 +36,12 @@ export class SimulatorApp extends PIXI.Container {
   public readonly toolbar:Toolbar;
   public readonly actionbar:Actionbar;
   public readonly physicalRouter:PhysicalBallRouter;
+
+  public update(delta:number):void {
+    Animator.current.update(delta);
+    if (this.board.router) this.board.router.update(delta);
+    Renderer.render();
+  }
 
   public get width():number { return(this._width); }
   public set width(v:number) {

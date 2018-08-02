@@ -479,6 +479,7 @@ export class Board {
       const container = this._containers.get(layer);
       if (sprite.parent === container) container.removeChild(sprite);
     }
+    part.destroySprites();
   }
 
   // connect adjacent sets of gears

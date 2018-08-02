@@ -66,6 +66,7 @@ System.register("parts/crossover", ["parts/part"], function (exports_3, context_
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
                 get type() { return (4 /* CROSSOVER */); }
+                get bodyRestitution() { return (0.75); }
             };
             exports_3("Crossover", Crossover);
         }
@@ -113,14 +114,124 @@ System.register("parts/bit", ["parts/part"], function (exports_5, context_5) {
         }
     };
 });
-System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6) {
+System.register("ui/animator", [], function (exports_6, context_6) {
     "use strict";
     var __moduleName = context_6 && context_6.id;
-    var part_6, GearBase, Gearbit, Gear;
+    var Animator;
+    return {
+        setters: [],
+        execute: function () {
+            // centrally manage animations of properties
+            Animator = class Animator {
+                constructor() {
+                    this._subjects = new Map();
+                }
+                // a singleton instance of the class
+                static get current() {
+                    if (!Animator._current)
+                        Animator._current = new Animator();
+                    return (Animator._current);
+                }
+                // animate the given property of the given subject from its current value
+                //  to the given end point, at a speed which would take the given time to 
+                //  traverse the range from start to end
+                animate(subject, property, start, end, time) {
+                    // handle the edge-cases of zero or negative time
+                    if (!(time > 0.0)) {
+                        this.stopAnimating(subject, property);
+                        subject[property] = end;
+                        return (null);
+                    }
+                    if (!this._subjects.has(subject))
+                        this._subjects.set(subject, new Map());
+                    const properties = this._subjects.get(subject);
+                    // calculate a delta to traverse the property's entire range in the given time
+                    const delta = (end - start) / (time * 60);
+                    // update an existing animation
+                    let animation = null;
+                    if (properties.has(property)) {
+                        animation = properties.get(property);
+                        animation.start = start;
+                        animation.end = end;
+                        animation.time = time;
+                        animation.delta = delta;
+                    }
+                    else {
+                        animation = {
+                            subject: subject,
+                            property: property,
+                            start: start,
+                            end: end,
+                            time: time,
+                            delta: delta
+                        };
+                        properties.set(property, animation);
+                    }
+                    return (animation);
+                }
+                // get the end value for the given property, or the current value if it's
+                //  not currently being animated
+                getEndValue(subject, property) {
+                    const current = subject[property];
+                    if (!this._subjects.has(subject))
+                        return (current);
+                    const properties = this._subjects.get(subject);
+                    if (!properties.has(property))
+                        return (current);
+                    return (properties.get(property).end);
+                }
+                // stop animating the given property, leaving the current value as-is
+                stopAnimating(subject, property) {
+                    if (!this._subjects.has(subject))
+                        return;
+                    const properties = this._subjects.get(subject);
+                    properties.delete(property);
+                    // remove entries for subjects with no animations
+                    if (properties.size == 0) {
+                        this._subjects.delete(subject);
+                    }
+                }
+                // advance all animations by one tick
+                update(correction) {
+                    for (const [subject, properties] of this._subjects.entries()) {
+                        for (const [property, animation] of properties) {
+                            let current = subject[property];
+                            current += (animation.delta * Math.abs(correction));
+                            if (animation.delta > 0) {
+                                if (current >= animation.end) {
+                                    current = animation.end;
+                                    this.stopAnimating(subject, property);
+                                }
+                            }
+                            else if (animation.delta < 0) {
+                                if (current <= animation.end) {
+                                    current = animation.end;
+                                    this.stopAnimating(subject, property);
+                                }
+                            }
+                            else {
+                                current = animation.end;
+                            }
+                            subject[property] = current;
+                        }
+                    }
+                }
+            };
+            exports_6("Animator", Animator);
+        }
+    };
+});
+System.register("parts/gearbit", ["parts/part", "ui/animator"], function (exports_7, context_7) {
+    "use strict";
+    var __moduleName = context_7 && context_7.id;
+    var part_6, animator_1, GearBase, Gearbit, Gear;
     return {
         setters: [
             function (part_6_1) {
                 part_6 = part_6_1;
+            },
+            function (animator_1_1) {
+                animator_1 = animator_1_1;
             }
         ],
         execute: function () {
@@ -145,13 +256,13 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
                     }
                     if ((GearBase._settingConnectedRotation) &&
                         (GearBase._settingConnectedRotation !== this)) {
-                        this.cancelRotationAnimation();
+                        animator_1.Animator.current.stopAnimating(this, 'rotation');
                     }
                     super.rotation = v;
                 }
             };
             GearBase._settingConnectedRotation = null;
-            exports_6("GearBase", GearBase);
+            exports_7("GearBase", GearBase);
             Gearbit = class Gearbit extends GearBase {
                 get canRotate() { return (true); }
                 get canMirror() { return (true); }
@@ -160,7 +271,7 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
                 // return the bit to whichever side it's closest to, preventing stuck bits
                 get restingRotation() { return (this.bitValue ? 1.0 : 0.0); }
             };
-            exports_6("Gearbit", Gearbit);
+            exports_7("Gearbit", Gearbit);
             Gear = class Gear extends GearBase {
                 constructor() {
                     super(...arguments);
@@ -196,13 +307,13 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
                     }
                 }
             };
-            exports_6("Gear", Gear);
+            exports_7("Gear", Gear);
         }
     };
 });
-System.register("parts/fence", ["parts/part", "board/board"], function (exports_7, context_7) {
+System.register("parts/fence", ["parts/part", "board/board"], function (exports_8, context_8) {
     "use strict";
-    var __moduleName = context_7 && context_7.id;
+    var __moduleName = context_8 && context_8.id;
     var part_7, board_1, Fence;
     return {
         setters: [
@@ -277,13 +388,13 @@ System.register("parts/fence", ["parts/part", "board/board"], function (exports_
                     this._updateSprites();
                 }
             };
-            exports_7("Fence", Fence);
+            exports_8("Fence", Fence);
         }
     };
 });
-System.register("parts/blank", ["parts/part"], function (exports_8, context_8) {
+System.register("parts/blank", ["parts/part"], function (exports_9, context_9) {
     "use strict";
-    var __moduleName = context_8 && context_8.id;
+    var __moduleName = context_9 && context_9.id;
     var part_8, Blank;
     return {
         setters: [
@@ -298,13 +409,13 @@ System.register("parts/blank", ["parts/part"], function (exports_8, context_8) {
                 get canFlip() { return (false); }
                 get type() { return (0 /* BLANK */); }
             };
-            exports_8("Blank", Blank);
+            exports_9("Blank", Blank);
         }
     };
 });
-System.register("parts/drop", ["parts/part"], function (exports_9, context_9) {
+System.register("parts/drop", ["parts/part"], function (exports_10, context_10) {
     "use strict";
-    var __moduleName = context_9 && context_9.id;
+    var __moduleName = context_10 && context_10.id;
     var part_9, Drop;
     return {
         setters: [
@@ -319,26 +430,26 @@ System.register("parts/drop", ["parts/part"], function (exports_9, context_9) {
                 get canFlip() { return (true); }
                 get type() { return (10 /* DROP */); }
             };
-            exports_9("Drop", Drop);
+            exports_10("Drop", Drop);
         }
     };
 });
-System.register("board/constants", [], function (exports_10, context_10) {
+System.register("board/constants", [], function (exports_11, context_11) {
     "use strict";
-    var __moduleName = context_10 && context_10.id;
+    var __moduleName = context_11 && context_11.id;
     var PART_SIZE, SPACING;
     return {
         setters: [],
         execute: function () {
             // the canonical part size the simulator runs at
-            exports_10("PART_SIZE", PART_SIZE = 64);
-            exports_10("SPACING", SPACING = 68);
+            exports_11("PART_SIZE", PART_SIZE = 64);
+            exports_11("SPACING", SPACING = 68);
         }
     };
 });
-System.register("parts/ball", ["matter-js", "parts/part", "board/constants"], function (exports_11, context_11) {
+System.register("parts/ball", ["matter-js", "parts/part", "board/constants"], function (exports_12, context_12) {
     "use strict";
-    var __moduleName = context_11 && context_11.id;
+    var __moduleName = context_12 && context_12.id;
     var matter_js_1, part_10, constants_1, Ball;
     return {
         setters: [
@@ -382,10 +493,11 @@ System.register("parts/ball", ["matter-js", "parts/part", "board/constants"], fu
                     }
                 }
                 get bodyCanMove() { return (true); }
+                get bodyRestitution() { return (0.5); }
                 getBody() {
                     if (!this._body) {
                         this._body = matter_js_1.Bodies.circle(0, 0, (5 * constants_1.PART_SIZE) / 32, { restitution: this.bodyRestitution,
-                            density: .003, friction: 0 });
+                            density: .005, friction: 0 });
                         this.initBody();
                         this.writeBody();
                     }
@@ -395,13 +507,13 @@ System.register("parts/ball", ["matter-js", "parts/part", "board/constants"], fu
                     super.writeBody();
                 }
             };
-            exports_11("Ball", Ball);
+            exports_12("Ball", Ball);
         }
     };
 });
-System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit", "parts/fence", "parts/blank", "parts/drop", "parts/ball"], function (exports_12, context_12) {
+System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit", "parts/fence", "parts/blank", "parts/drop", "parts/ball"], function (exports_13, context_13) {
     "use strict";
-    var __moduleName = context_12 && context_12.id;
+    var __moduleName = context_13 && context_13.id;
     var location_1, ramp_1, crossover_1, interceptor_1, bit_1, gearbit_1, fence_1, blank_1, drop_1, ball_1, PartFactory;
     return {
         setters: [
@@ -472,22 +584,22 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
                     return (newPart);
                 }
             };
-            exports_12("PartFactory", PartFactory);
+            exports_13("PartFactory", PartFactory);
         }
     };
 });
-System.register("ui/config", [], function (exports_13, context_13) {
+System.register("ui/config", [], function (exports_14, context_14) {
     "use strict";
-    var __moduleName = context_13 && context_13.id;
+    var __moduleName = context_14 && context_14.id;
     return {
         setters: [],
         execute: function () {
         }
     };
 });
-System.register("renderer", ["pixi.js"], function (exports_14, context_14) {
+System.register("renderer", ["pixi.js"], function (exports_15, context_15) {
     "use strict";
-    var __moduleName = context_14 && context_14.id;
+    var __moduleName = context_15 && context_15.id;
     var PIXI, Renderer;
     return {
         setters: [
@@ -499,9 +611,6 @@ System.register("renderer", ["pixi.js"], function (exports_14, context_14) {
             Renderer = class Renderer {
                 static needsUpdate() {
                     Renderer._needsUpdate = true;
-                }
-                static start() {
-                    PIXI.ticker.shared.add(Renderer.render, Renderer, PIXI.UPDATE_PRIORITY.INTERACTION);
                 }
                 static render() {
                     if (Renderer._needsUpdate) {
@@ -516,48 +625,46 @@ System.register("renderer", ["pixi.js"], function (exports_14, context_14) {
                 backgroundColor: 16777215 /* BACKGROUND */
             });
             Renderer.stage = new PIXI.Container();
-            exports_14("Renderer", Renderer);
+            exports_15("Renderer", Renderer);
         }
     };
 });
 // WARNING: this file is autogenerated from src/svg/parts.svg
 //  (any changes you make will be overwritten)
-System.register("parts/bodies", [], function (exports_15, context_15) {
+System.register("parts/bodies", [], function (exports_16, context_16) {
     "use strict";
-    var __moduleName = context_15 && context_15.id;
+    var __moduleName = context_16 && context_16.id;
     function getVertexSets(name) {
         switch (name) {
             case 'Bit':
-                return ([[{ x: -31.902757, y: -34.167318 }, { x: -1.055229, y: -32.311155 }, { x: 0.889319, y: -31.073699 }, { x: 1.066087, y: -29.217536 }, { x: 0.270595, y: -27.714947 }, { x: -28.278844, y: 0.569336 }, { x: -29.869833, y: 1.099641 }, { x: -31.284045, y: 0.569336 }, { x: -32.256313, y: -0.579716 }, { x: -34.554409, y: -31.692408 }, { x: -33.847309, y: -33.283400 }, { x: -32.875029, y: -34.078915 }], [{ x: -18.644511, y: -8.976617 }, { x: -0.082950, y: 12.855295 }, { x: 11.053980, y: 14.888227 }, { x: 13.528849, y: 14.181153 }, { x: 14.854680, y: 11.971414 }, { x: 13.175300, y: 0.038993 }, { x: -9.275339, y: -18.699338 }], [{ x: 13.251941, y: 0.139112 }, { x: 16.699082, y: 0.315994 }, { x: 16.610679, y: 6.591597 }, { x: 13.605463, y: 5.884485 }], [{ x: 16.699097, y: 0.139112 }, { x: 19.439138, y: -0.125833 }, { x: 22.002379, y: 6.326539 }, { x: 19.173970, y: 6.679925 }, { x: 16.433926, y: 6.591484 }], [{ x: 19.439115, y: -0.302828 }, { x: 22.621114, y: -1.452031 }, { x: 26.863758, y: 4.204826 }, { x: 22.002379, y: 6.237758 }], [{ x: 22.797868, y: -1.451842 }, { x: 25.714688, y: -4.015155 }, { x: 31.636735, y: -1.982185 }, { x: 29.426996, y: 1.730104 }, { x: 26.686990, y: 4.028208 }], [{ x: 25.714688, y: -4.191886 }, { x: 26.333415, y: -7.108698 }, { x: 32.785787, y: -7.197139 }, { x: 31.636735, y: -1.893858 }], [{ x: 26.420847, y: -7.162746 }, { x: 27.625371, y: -30.038638 }, { x: 27.844206, y: -31.163652 }, { x: 28.781680, y: -32.163640 }, { x: 30.000426, y: -32.538569 }, { x: 31.156697, y: -32.288364 }, { x: 32.156684, y: -31.507136 }, { x: 32.625459, y: -30.163362 }, { x: 32.835185, y: -6.980308 }], [{ x: -0.224629, y: 13.353078 }, { x: -0.021683, y: 16.798782 }, { x: 6.253072, y: 16.662922 }, { x: 5.523253, y: 13.663140 }], [{ x: -0.198560, y: 16.800135 }, { x: -0.442775, y: 19.542101 }, { x: 6.028796, y: 22.056472 }, { x: 6.360782, y: 19.225471 }, { x: 6.251622, y: 16.486174 }], [{ x: -0.619766, y: 19.543417 }, { x: -1.744872, y: 22.734016 }, { x: 3.943909, y: 26.933758 }, { x: 5.940018, y: 22.057144 }], [{ x: -1.743346, y: 22.910763 }, { x: -4.284527, y: 25.846885 }, { x: -2.206829, y: 31.753388 }, { x: 1.488643, y: 29.515638 }, { x: 3.765959, y: 26.758331 }], [{ x: -4.461253, y: 25.848221 }, { x: -7.373303, y: 26.488990 }, { x: -7.412945, y: 32.941846 }, { x: -2.118504, y: 31.752720 }], [{ x: -7.426687, y: 26.576828 }, { x: -30.292816, y: 27.954319 }, { x: -31.416143, y: 28.181656 }, { x: -32.409012, y: 29.126665 }, { x: -32.774714, y: 30.348212 }, { x: -32.515772, y: 31.502558 }, { x: -31.727003, y: 32.496608 }, { x: -30.379723, y: 32.955207 }, { x: -7.195746, y: 32.989603 }]]);
+                return ([[{ x: -1.055229, y: -32.311155 }, { x: 0.083096, y: -27.714947 }, { x: -27.716345, y: 0.194331 }, { x: -32.193815, y: -1.017234 }, { x: -34.041082, y: -34.054877 }], [{ x: -18.644511, y: -8.976617 }, { x: -0.082950, y: 12.855295 }, { x: 12.203028, y: 15.153399 }, { x: 15.296620, y: 11.971414 }, { x: 13.175300, y: 0.038993 }, { x: -9.275339, y: -18.699338 }], [{ x: 26.420847, y: -7.162746 }, { x: 27.625371, y: -30.038638 }, { x: 27.844206, y: -31.163652 }, { x: 28.781680, y: -32.163640 }, { x: 30.000426, y: -32.538569 }, { x: 31.156697, y: -32.288364 }, { x: 32.156684, y: -31.507136 }, { x: 32.625459, y: -30.163362 }, { x: 32.835185, y: -6.980308 }], [{ x: -7.426689, y: 26.576831 }, { x: -30.292815, y: 27.954318 }, { x: -31.416143, y: 28.181468 }, { x: -32.409014, y: 29.126463 }, { x: -32.774721, y: 30.348006 }, { x: -32.515785, y: 31.502387 }, { x: -31.727017, y: 32.496403 }, { x: -30.379740, y: 32.955011 }, { x: -7.195759, y: 32.989026 }], [{ x: 26.521942, y: -7.474028 }, { x: 13.086908, y: 0.304164 }, { x: 15.385009, y: 12.059818 }, { x: 28.731650, y: 2.602268 }, { x: 32.797511, y: -6.766916 }], [{ x: -7.574706, y: 26.497612 }, { x: 0.203486, y: 13.062564 }, { x: 11.959139, y: 15.360668 }, { x: 2.501590, y: 28.707313 }, { x: -6.867594, y: 32.773178 }]]);
             case 'Crossover':
-                return ([[{ x: -2.562501, y: -15.812515 }, { x: -2.562501, y: -45.750000 }, { x: -1.875001, y: -47.312495 }, { x: -0.749998, y: -47.999991 }, { x: 0.687500, y: -48.062353 }, { x: 1.937499, y: -47.187355 }, { x: 2.562500, y: -45.687336 }, { x: 2.562500, y: -15.874839 }], [{ x: -2.499999, y: -15.781258 }, { x: -5.062500, y: -15.250008 }, { x: -8.062500, y: -13.968748 }, { x: -11.281251, y: -11.624987 }, { x: -12.343752, y: -10.374984 }, { x: -12.562511, y: -9.312483 }, { x: -12.250019, y: -8.343753 }, { x: -11.750018, y: -7.625000 }, { x: -3.187518, y: 3.218767 }, { x: -1.093769, y: 4.375000 }, { x: 0.062479, y: 4.500102 }, { x: 2.062480, y: 4.031365 }, { x: 3.749983, y: 2.531346 }, { x: 12.062483, y: -8.031148 }, { x: 12.499982, y: -9.187381 }, { x: 12.156234, y: -10.656143 }, { x: 11.124986, y: -11.718644 }, { x: 9.312483, y: -13.093636 }, { x: 7.812483, y: -14.062404 }, { x: 5.656236, y: -14.968622 }, { x: 3.718734, y: -15.593642 }, { x: 2.468734, y: -15.781107 }], [{ x: -30.930489, y: 31.659824 }, { x: -20.898410, y: 30.422369 }, { x: -10.689558, y: 29.759478 }, { x: -3.927851, y: 29.538376 }, { x: 3.982911, y: 29.449935 }, { x: 12.158830, y: 29.803320 }, { x: 20.113779, y: 30.333626 }, { x: 28.068728, y: 31.261727 }, { x: 30.941358, y: 31.659446 }, { x: 32.178791, y: 32.454961 }, { x: 32.532366, y: 33.515610 }, { x: 32.355597, y: 34.974016 }, { x: 31.736877, y: 35.990482 }, { x: 30.455247, y: 36.565008 }, { x: -30.046601, y: 36.565008 }, { x: -31.814369, y: 35.902117 }, { x: -32.433089, y: 34.753065 }, { x: -32.565675, y: 33.559793 }, { x: -31.814373, y: 32.101386 }], [{ x: -31.968752, y: -35.937516 }, { x: -33.031249, y: -36.593755 }, { x: -34.062500, y: -36.593755 }, { x: -35.062499, y: -36.187494 }, { x: -36.031248, y: -35.343752 }, { x: -38.000001, y: -33.062505 }, { x: -33.843749, y: -29.875002 }, { x: -31.968752, y: -32.031261 }, { x: -31.187501, y: -33.031248 }, { x: -31.062512, y: -34.093749 }, { x: -31.250014, y: -35.031261 }], [{ x: -38.031250, y: -33.062505 }, { x: -33.812500, y: -29.906259 }, { x: -36.718748, y: -25.843758 }, { x: -41.000000, y: -28.843758 }], [{ x: -36.687499, y: -25.906234 }, { x: -39.343751, y: -20.499998 }, { x: -44.156250, y: -22.562486 }, { x: -40.968751, y: -28.875015 }], [{ x: -39.406249, y: -20.468741 }, { x: -41.343748, y: -14.000004 }, { x: -46.437501, y: -14.968735 }, { x: -44.156250, y: -22.593743 }], [{ x: -41.343748, y: -13.937491 }, { x: -42.843748, y: -4.656257 }, { x: -48.093750, y: -4.468792 }, { x: -47.187499, y: -11.093775 }, { x: -46.406252, y: -15.093800 }], [{ x: -42.812499, y: -4.687513 }, { x: -33.375000, y: 6.593734 }, { x: -32.812501, y: 7.812518 }, { x: -33.124992, y: 9.124997 }, { x: -33.749994, y: 9.937482 }, { x: -34.874993, y: 10.593759 }, { x: -36.062494, y: 10.593759 }, { x: -36.968741, y: 10.156241 }, { x: -47.656243, y: -2.531255 }, { x: -48.062493, y: -3.625013 }, { x: -48.031123, y: -4.593743 }], [{ x: 31.840243, y: -35.937516 }, { x: 32.902740, y: -36.593755 }, { x: 33.933992, y: -36.593755 }, { x: 34.933991, y: -36.187494 }, { x: 35.902740, y: -35.343752 }, { x: 37.871492, y: -33.062505 }, { x: 33.715240, y: -29.875002 }, { x: 31.840243, y: -32.031261 }, { x: 31.058992, y: -33.031248 }, { x: 30.934003, y: -34.093749 }, { x: 31.121506, y: -35.031261 }], [{ x: 37.902741, y: -33.062505 }, { x: 33.683991, y: -29.906259 }, { x: 36.590240, y: -25.843758 }, { x: 40.871492, y: -28.843758 }], [{ x: 36.558991, y: -25.906234 }, { x: 39.215243, y: -20.499998 }, { x: 44.027742, y: -22.562486 }, { x: 40.840243, y: -28.875015 }], [{ x: 39.277741, y: -20.468741 }, { x: 41.215240, y: -14.000004 }, { x: 46.308993, y: -14.968735 }, { x: 44.027742, y: -22.593743 }], [{ x: 41.215240, y: -13.937491 }, { x: 42.715240, y: -4.656257 }, { x: 47.965242, y: -4.468792 }, { x: 47.058991, y: -11.093775 }, { x: 46.277743, y: -15.093800 }], [{ x: 42.683991, y: -4.687513 }, { x: 33.246492, y: 6.593734 }, { x: 32.683993, y: 7.812518 }, { x: 32.996484, y: 9.124997 }, { x: 33.621486, y: 9.937482 }, { x: 34.746485, y: 10.593759 }, { x: 35.933986, y: 10.593759 }, { x: 36.840233, y: 10.156241 }, { x: 47.527735, y: -2.531255 }, { x: 47.933985, y: -3.625013 }, { x: 47.902615, y: -4.593743 }]]);
-            case 'Gear':
-                return ([[{ x: -0.845361, y: -8.600842 }, { x: -5.529949, y: -6.479521 }, { x: -8.004822, y: -3.297541 }, { x: -8.535150, y: 0.679939 }, { x: -6.502221, y: 5.452912 }, { x: -3.408629, y: 8.016168 }, { x: 1.099179, y: 8.634888 }, { x: 5.518600, y: 6.690340 }, { x: 8.258640, y: 2.889640 }, { x: 8.612177, y: -1.087829 }, { x: 6.667640, y: -5.507249 }, { x: 3.308880, y: -8.070510 }]]);
+                return ([[{ x: -0.125001, y: -48.250007 }, { x: -2.750000, y: -46.000016 }, { x: -2.750000, y: -15.874990 }, { x: 3.000000, y: -15.874990 }, { x: 3.000000, y: -46.374983 }], [{ x: -3.500001, y: -16.125006 }, { x: -12.750002, y: -10.000017 }, { x: -2.249998, y: 4.250011 }, { x: 2.374998, y: 4.250011 }, { x: 12.750001, y: -10.125006 }, { x: 3.749998, y: -16.000017 }], [{ x: -31.249999, y: -32.999991 }, { x: -40.000002, y: -18.750001 }, { x: -44.999999, y: -20.499998 }, { x: -35.749999, y: -35.875002 }, { x: -32.125001, y: -36.625012 }], [{ x: -44.874999, y: -20.124993 }, { x: -48.124999, y: -3.374997 }, { x: -42.500000, y: -4.875016 }, { x: -40.249999, y: -18.625012 }], [{ x: -43.000002, y: -4.625000 }, { x: -32.624998, y: 7.499989 }, { x: -34.000002, y: 10.124984 }, { x: -37.249999, y: 10.374811 }, { x: -48.375000, y: -3.000181 }], [{ x: 30.750039, y: -32.999991 }, { x: 39.500042, y: -18.750001 }, { x: 44.500039, y: -20.499998 }, { x: 35.250039, y: -35.875002 }, { x: 31.625041, y: -36.625012 }], [{ x: 44.375039, y: -20.124993 }, { x: 47.625039, y: -3.374997 }, { x: 42.000040, y: -4.875016 }, { x: 39.750038, y: -18.625012 }], [{ x: 42.500042, y: -4.625000 }, { x: 32.125038, y: 7.499989 }, { x: 33.500042, y: 10.124984 }, { x: 36.750039, y: 10.374811 }, { x: 47.875040, y: -3.000181 }], [{ x: -32.250001, y: 31.999982 }, { x: -0.051776, y: 29.502583 }, { x: 31.124998, y: 31.499988 }, { x: 32.874999, y: 34.374999 }, { x: 30.375000, y: 36.999994 }, { x: -30.250000, y: 36.999994 }, { x: -32.749999, y: 35.125008 }]]);
             case 'GearLocation':
                 return ([[{ x: -0.015621, y: -4.546895 }, { x: 2.093748, y: -4.046864 }, { x: 4.046880, y: -2.046889 }, { x: 4.562502, y: 0.015637 }, { x: 4.031251, y: 2.062516 }, { x: 2.093748, y: 4.015624 }, { x: -0.015621, y: 4.468752 }, { x: -2.031251, y: 4.000015 }, { x: -4.015620, y: 2.015612 }, { x: -4.546870, y: -0.031267 }, { x: -4.031252, y: -2.031242 }, { x: -2.046871, y: -3.999997 }]]);
             case 'Gearbit':
-                return ([[{ x: 16.733914, y: -20.240208 }, { x: 20.296414, y: -20.333940 }, { x: 21.921414, y: -15.615200 }, { x: 18.608915, y: -15.115206 }, { x: 15.452666, y: -15.365033 }], [{ x: 20.296414, y: -20.365197 }, { x: 23.546414, y: -21.708932 }, { x: 26.796415, y: -17.833934 }, { x: 24.577662, y: -16.521455 }, { x: 22.046414, y: -15.615200 }], [{ x: 23.608913, y: -21.708932 }, { x: 26.046413, y: -24.208939 }, { x: 30.640164, y: -21.865216 }, { x: 28.921413, y: -19.708958 }, { x: 26.765166, y: -17.833934 }], [{ x: 26.108915, y: -24.208939 }, { x: 27.577666, y: -27.583943 }, { x: 32.546414, y: -26.646431 }, { x: 31.765163, y: -24.271452 }, { x: 30.577666, y: -21.833959 }], [{ x: 27.546413, y: -27.646457 }, { x: 27.796429, y: -30.146463 }, { x: 28.608929, y: -31.583968 }, { x: 30.296427, y: -32.271464 }, { x: 32.108930, y: -31.552712 }, { x: 32.858928, y: -29.677688 }, { x: 32.483923, y: -26.583956 }], [{ x: -20.447867, y: 17.081212 }, { x: -20.553619, y: 20.643379 }, { x: -15.840389, y: 22.284299 }, { x: -15.329223, y: 18.973508 }, { x: -15.568392, y: 15.816431 }], [{ x: -20.584872, y: 20.643266 }, { x: -21.939564, y: 23.888746 }, { x: -18.075549, y: 27.151801 }, { x: -16.755594, y: 24.937489 }, { x: -15.840805, y: 22.409288 }], [{ x: -21.939775, y: 23.951222 }, { x: -24.447987, y: 26.380286 }, { x: -22.119775, y: 30.981898 }, { x: -19.957731, y: 29.270453 }, { x: -18.075443, y: 27.120544 }], [{ x: -24.448199, y: 26.442799 }, { x: -27.828139, y: 27.900147 }, { x: -26.907394, y: 32.872040 }, { x: -24.529791, y: 32.098787 }, { x: -22.088307, y: 30.919536 }], [{ x: -27.890547, y: 27.868664 }, { x: -30.391381, y: 28.110176 }, { x: -31.831619, y: 28.917823 }, { x: -32.524803, y: 30.603001 }, { x: -31.812169, y: 32.417930 }, { x: -29.939686, y: 33.174251 }, { x: -26.844706, y: 32.809527 }], [{ x: -20.250002, y: 16.375008 }, { x: -32.250001, y: -29.625001 }, { x: -32.125012, y: -32.125000 }, { x: -30.000011, y: -32.125000 }, { x: 16.124987, y: -20.500001 }, { x: 15.749982, y: -15.124999 }, { x: 6.124981, y: 6.000001 }, { x: -15.500020, y: 15.875014 }]]);
+                return ([[{ x: -20.250002, y: 16.375008 }, { x: -32.250001, y: -29.625001 }, { x: -32.125012, y: -32.125000 }, { x: -30.000011, y: -32.125000 }, { x: 16.124987, y: -20.500001 }, { x: 15.749982, y: -15.124999 }, { x: 6.124981, y: 6.000001 }, { x: -15.500020, y: 15.875014 }], [{ x: -20.147112, y: 16.711310 }, { x: -22.887152, y: 25.108210 }, { x: -19.351612, y: 28.643732 }, { x: -15.108971, y: 22.191398 }, { x: -14.932203, y: 15.915833 }], [{ x: -22.887152, y: 25.019807 }, { x: -31.107261, y: 28.201791 }, { x: -31.195664, y: 32.444424 }, { x: -24.212984, y: 32.091039 }, { x: -18.998075, y: 28.201943 }], [{ x: 16.521191, y: -20.448456 }, { x: 24.918092, y: -23.188496 }, { x: 28.453613, y: -19.652956 }, { x: 22.001279, y: -15.410316 }, { x: 15.725714, y: -15.233547 }], [{ x: 24.829689, y: -23.188496 }, { x: 28.011673, y: -31.408606 }, { x: 32.254306, y: -31.497009 }, { x: 31.900920, y: -24.514328 }, { x: 28.011824, y: -19.299419 }]]);
             case 'Interceptor':
-                return ([[{ x: -36.145402, y: -19.903674 }, { x: -30.134989, y: -28.212171 }, { x: -29.251109, y: -30.068335 }, { x: -30.046601, y: -32.278036 }, { x: -31.372429, y: -32.896782 }, { x: -33.582141, y: -32.189671 }, { x: -36.675730, y: -28.477343 }, { x: -40.564822, y: -22.201778 }], [{ x: -40.564822, y: -22.290181 }, { x: -36.145402, y: -19.992077 }, { x: -40.388038, y: -8.501596 }, { x: -46.044899, y: -8.590037 }, { x: -43.039690, y: -17.605646 }], [{ x: 36.230705, y: -19.903674 }, { x: 30.220293, y: -28.212171 }, { x: 29.336412, y: -30.068335 }, { x: 30.131904, y: -32.278036 }, { x: 31.457732, y: -32.896782 }, { x: 33.667445, y: -32.189671 }, { x: 36.761033, y: -28.477343 }, { x: 40.650125, y: -22.201778 }], [{ x: 40.650125, y: -22.290181 }, { x: 36.230705, y: -19.992077 }, { x: 40.473342, y: -8.501596 }, { x: 46.130202, y: -8.590037 }, { x: 43.124994, y: -17.605646 }], [{ x: -45.691339, y: -8.678364 }, { x: 45.525429, y: -8.678364 }, { x: 46.409320, y: -5.761552 }, { x: 45.437048, y: -3.816985 }, { x: 43.757672, y: -3.375045 }, { x: -44.100351, y: -3.375045 }, { x: -45.868119, y: -4.258925 }, { x: -46.398451, y: -6.026723 }], [{ x: -5.474638, y: -3.463448 }, { x: -6.712082, y: 0.072073 }, { x: -5.121090, y: 4.226341 }, { x: -1.850721, y: 6.347676 }, { x: 2.480311, y: 6.259236 }, { x: 5.397120, y: 4.137900 }, { x: 6.722948, y: -0.104733 }, { x: 5.573899, y: -3.551889 }]]);
+                return ([[{ x: -45.691339, y: -8.678364 }, { x: 45.525429, y: -8.678364 }, { x: 46.507671, y: -3.375045 }, { x: -46.600349, y: -3.375045 }], [{ x: -40.374999, y: -8.249992 }, { x: -28.500000, y: -30.875000 }, { x: -33.125000, y: -33.624984 }, { x: -41.999999, y: -20.749986 }, { x: -45.625001, y: -9.124991 }], [{ x: 40.624999, y: -8.249992 }, { x: 28.750000, y: -30.875000 }, { x: 33.375000, y: -33.624984 }, { x: 42.249999, y: -20.749986 }, { x: 45.875001, y: -9.124991 }], [{ x: -6.999999, y: -3.499996 }, { x: -6.500009, y: 3.625018 }, { x: -0.000012, y: 6.999985 }, { x: 6.374989, y: 3.624980 }, { x: 6.499978, y: -3.499996 }]]);
             case 'PartLocation':
                 return ([[{ x: -0.015621, y: -4.546889 }, { x: 2.093748, y: -4.046857 }, { x: 4.046880, y: -2.046883 }, { x: 4.562502, y: 0.015643 }, { x: 4.031251, y: 2.062522 }, { x: 2.093748, y: 4.015631 }, { x: -0.015621, y: 4.468758 }, { x: -2.031251, y: 4.000021 }, { x: -4.015620, y: 2.015618 }, { x: -4.546870, y: -0.031261 }, { x: -4.031252, y: -2.031235 }, { x: -2.046871, y: -3.999991 }]]);
             case 'Ramp':
-                return ([[{ x: 14.677897, y: -16.036782 }, { x: -30.974694, y: -27.659887 }, { x: -31.991164, y: -28.455364 }, { x: -32.477295, y: -29.339245 }, { x: -32.565698, y: -30.532517 }, { x: -31.946978, y: -31.637348 }, { x: -31.239877, y: -32.256057 }, { x: -30.002437, y: -32.565600 }, { x: 16.534034, y: -20.633141 }], [{ x: 16.468750, y: -20.593758 }, { x: 20.031250, y: -20.687490 }, { x: 21.656250, y: -15.968750 }, { x: 18.343751, y: -15.468757 }, { x: 15.187502, y: -15.718583 }], [{ x: 20.031250, y: -20.718747 }, { x: 23.281250, y: -22.062483 }, { x: 26.531251, y: -18.187484 }, { x: 24.312498, y: -16.875005 }, { x: 21.781250, y: -15.968750 }], [{ x: 23.343748, y: -22.062483 }, { x: 25.781249, y: -24.562489 }, { x: 30.375000, y: -22.218766 }, { x: 28.656248, y: -20.062508 }, { x: 26.500002, y: -18.187484 }], [{ x: 25.843751, y: -24.562489 }, { x: 27.312502, y: -27.937493 }, { x: 32.281250, y: -26.999982 }, { x: 31.499999, y: -24.625002 }, { x: 30.312502, y: -22.187509 }], [{ x: 27.281249, y: -28.000007 }, { x: 27.531265, y: -30.500013 }, { x: 28.343765, y: -31.937518 }, { x: 30.031263, y: -32.625015 }, { x: 31.843766, y: -31.906262 }, { x: 32.593764, y: -30.031238 }, { x: 32.218759, y: -26.937506 }], [{ x: -4.500000, y: -20.874993 }, { x: -4.437487, y: -7.187510 }, { x: 6.187513, y: -5.750004 }, { x: 14.937516, y: -16.187509 }], [{ x: -4.437502, y: -7.312499 }, { x: -7.312501, y: -4.687503 }, { x: -8.687501, y: -0.875018 }, { x: -8.125002, y: 2.687489 }, { x: -5.062500, y: 6.937492 }, { x: 0.062498, y: 8.562499 }, { x: 4.500000, y: 7.437485 }, { x: 7.625000, y: 3.875016 }, { x: 8.624999, y: -0.687516 }, { x: 7.062500, y: -4.937519 }, { x: 6.000000, y: -5.812518 }], [{ x: 7.500000, y: 4.000005 }, { x: 13.750000, y: 8.687488 }, { x: 14.687500, y: 11.499986 }, { x: 12.937500, y: 14.187495 }, { x: 9.937500, y: 14.562424 }, { x: 8.000001, y: 13.062443 }, { x: 3.812500, y: 7.312421 }], [{ x: -17.374998, y: 12.562487 }, { x: -21.250000, y: 11.437510 }, { x: -25.937499, y: 12.000017 }, { x: -29.812501, y: 14.625013 }, { x: -32.250001, y: 19.249983 }, { x: -32.437504, y: 23.750001 }, { x: -30.375004, y: 28.437485 }, { x: -26.812505, y: 31.437485 }, { x: -21.312502, y: 32.562499 }, { x: -16.375003, y: 30.875015 }, { x: -12.312503, y: 26.187494 }, { x: -11.750003, y: 20.250008 }, { x: -13.937503, y: 15.937491 }], [{ x: -8.000001, y: 2.562500 }, { x: -17.499999, y: 12.875016 }, { x: -13.812499, y: 16.249983 }, { x: -4.937499, y: 6.625000 }]]);
+                return ([[{ x: -32.521481, y: -31.327994 }, { x: -30.046601, y: -32.742218 }, { x: 17.594721, y: -20.279453 }, { x: 6.015840, y: -5.783755 }, { x: -4.413982, y: -7.021210 }, { x: -31.814369, y: -28.499585 }], [{ x: 17.417941, y: -20.279453 }, { x: 25.196110, y: -23.903377 }, { x: 29.438751, y: -20.809796 }, { x: 22.809629, y: -16.125185 }, { x: 14.235960, y: -15.594880 }], [{ x: 25.461282, y: -24.522086 }, { x: 27.759382, y: -30.974457 }, { x: 30.057470, y: -32.830583 }, { x: 32.797511, y: -30.886054 }, { x: 29.527139, y: -21.074968 }], [{ x: -6.093362, y: -7.905091 }, { x: -17.495459, y: 12.601000 }, { x: -13.517979, y: 16.048156 }, { x: 12.203028, y: 14.191992 }, { x: 14.677900, y: 10.214531 }, { x: 6.369399, y: -5.872159 }], [{ x: -18.290952, y: 11.363583 }, { x: -26.422681, y: 11.363583 }, { x: -33.272779, y: 18.213674 }, { x: -33.272779, y: 25.594108 }, { x: -26.444779, y: 32.422089 }, { x: -17.760620, y: 32.422089 }, { x: -11.297231, y: 25.958682 }, { x: -11.485036, y: 15.959753 }]]);
             default:
                 return (null);
         }
     }
-    exports_15("getVertexSets", getVertexSets);
+    exports_16("getVertexSets", getVertexSets);
     return {
         setters: [],
         execute: function () {
         }
     };
 });
-System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/constants", "parts/bodies"], function (exports_16, context_16) {
+System.register("parts/part", ["pixi.js", "matter-js", "renderer", "ui/animator", "board/constants", "parts/bodies"], function (exports_17, context_17) {
     "use strict";
-    var __moduleName = context_16 && context_16.id;
-    var PIXI, matter_js_2, renderer_1, constants_2, bodies_1, Part;
+    var __moduleName = context_17 && context_17.id;
+    var PIXI, matter_js_2, renderer_1, animator_2, constants_2, bodies_1, Part;
     return {
         setters: [
             function (PIXI_2) {
@@ -568,6 +675,9 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/consta
             },
             function (renderer_1_1) {
                 renderer_1 = renderer_1_1;
+            },
+            function (animator_2_1) {
+                animator_2 = animator_2_1;
             },
             function (constants_2_1) {
                 constants_2 = constants_2_1;
@@ -593,8 +703,6 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/consta
                     this._y = 0;
                     this._alpha = 1;
                     this._visible = true;
-                    this._rv = 0.0;
-                    this.tickRotation = this._tickRotation.bind(this);
                     this._sprites = new Map();
                     // adjustable offsets for textures (as a fraction of the size)
                     this._xOffset = 0.0;
@@ -603,7 +711,6 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/consta
                     this._constraints = null;
                     this._bodyOffset = { x: 0.0, y: 0.0 };
                     this._bodyFlipped = false;
-                    this._bodyAngle = 0.0;
                     this._readingBody = false;
                 }
                 // the current position of the ball in grid units
@@ -643,11 +750,7 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/consta
                 }
                 // whether the part is pointing right (or will be when animations finish)
                 get bitValue() {
-                    // handle animation
-                    if (this._rv !== 0.0)
-                        return (this._rv > 0);
-                    // handle static position
-                    return (this.rotation >= 0.5);
+                    return (animator_2.Animator.current.getEndValue(this, 'rotation') >= 0.5);
                 }
                 // whether the part is flipped to its left/right variant
                 get isFlipped() { return (this._isFlipped); }
@@ -663,7 +766,8 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/consta
                     if (this.canFlip)
                         this.isFlipped = !this.isFlipped;
                     else if (this.canRotate) {
-                        this.animateRotation((this.bitValue) ? 0.0 : 1.0, time);
+                        const bitValue = this.bitValue;
+                        animator_2.Animator.current.animate(this, 'rotation', bitValue ? 1.0 : 0.0, bitValue ? 0.0 : 1.0, time);
                     }
                 }
                 // the part's horizontal position in the parent
@@ -705,35 +809,6 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/consta
                         (this.isFlipped === part.isFlipped) &&
                         (this.bitValue === part.bitValue));
                 }
-                // ANIMATION ****************************************************************
-                animateRotation(target, time) {
-                    if (time == 0.0) {
-                        this.rotation = target;
-                        return;
-                    }
-                    this._rv = (target < this.rotation ? -1.0 : 1.0) / (time * 60.0);
-                    PIXI.ticker.shared.add(this.tickRotation);
-                }
-                isAnimatingRotation() {
-                    return (this._rv !== 0.0);
-                }
-                cancelRotationAnimation() {
-                    if (this._rv !== 0) {
-                        this._rv = 0.0;
-                        PIXI.ticker.shared.remove(this.tickRotation);
-                    }
-                }
-                _tickRotation(delta) {
-                    if (this._rv === 0.0) {
-                        this.cancelRotationAnimation();
-                        return;
-                    }
-                    this.rotation += this._rv * delta;
-                    if (((this._rv > 0) && (this.rotation >= 1.0)) ||
-                        ((this._rv < 0) && (this.rotation <= 0))) {
-                        this.cancelRotationAnimation();
-                    }
-                }
                 // SPRITES ******************************************************************
                 // the prefix to append before texture names for this part
                 get texturePrefix() { return (this.constructor.name); }
@@ -774,6 +849,15 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/consta
                         }
                     }
                     return (this._sprites.get(layer));
+                }
+                // destroy all cached sprites for the part
+                destroySprites() {
+                    for (const layer of this._sprites.keys()) {
+                        const sprite = this._sprites.get(layer);
+                        if (sprite)
+                            sprite.destroy();
+                    }
+                    this._sprites.clear();
                 }
                 // set initial properties for a newly-created sprite
                 _initSprite(layer) {
@@ -872,7 +956,7 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/consta
                             bodyA: this._body,
                             pointB: { x: 0, y: 0 },
                             length: 0,
-                            stiffness: 1
+                            stiffness: 0.7
                         });
                         if (!this._constraints)
                             this._constraints = [];
@@ -900,9 +984,8 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/consta
                         this._bodyColumn = this.column;
                     }
                     let desiredAngle = this._angleForRotation(this.rotation);
-                    if (this._bodyAngle != desiredAngle) {
+                    if (this._body.angle != desiredAngle) {
                         matter_js_2.Body.setAngle(this._body, desiredAngle);
-                        this._bodyAngle = desiredAngle;
                     }
                     this._bodyFlipped = this.isFlipped;
                 }
@@ -947,7 +1030,7 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/consta
                     return (body);
                 }
             };
-            exports_16("Part", Part);
+            exports_17("Part", Part);
         }
     };
 });
@@ -973,9 +1056,9 @@ System.register("parts/part", ["pixi.js", "matter-js", "renderer", "board/consta
  *   out of or in connection with the Software or the use or other dealings in the
  *   Software.
  */
-System.register("util/disjoint", [], function (exports_17, context_17) {
+System.register("util/disjoint", [], function (exports_18, context_18) {
     "use strict";
-    var __moduleName = context_17 && context_17.id;
+    var __moduleName = context_18 && context_18.id;
     var DisjointSet;
     return {
         setters: [],
@@ -1066,22 +1149,22 @@ System.register("util/disjoint", [], function (exports_17, context_17) {
                     }
                 }
             };
-            exports_17("DisjointSet", DisjointSet);
+            exports_18("DisjointSet", DisjointSet);
         }
     };
 });
-System.register("board/router", [], function (exports_18, context_18) {
+System.register("board/router", [], function (exports_19, context_19) {
     "use strict";
-    var __moduleName = context_18 && context_18.id;
+    var __moduleName = context_19 && context_19.id;
     return {
         setters: [],
         execute: function () {
         }
     };
 });
-System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball"], function (exports_19, context_19) {
+System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball"], function (exports_20, context_20) {
     "use strict";
-    var __moduleName = context_19 && context_19.id;
+    var __moduleName = context_20 && context_20.id;
     var filter, fence_2, gearbit_2, disjoint_1, renderer_2, ball_2, PartSizes, SPACING_FACTOR, Board;
     return {
         setters: [
@@ -1105,8 +1188,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             }
         ],
         execute: function () {
-            exports_19("PartSizes", PartSizes = [2, 4, 6, 8, 12, 16, 24, 32, 48, 64]);
-            exports_19("SPACING_FACTOR", SPACING_FACTOR = 1.0625);
+            exports_20("PartSizes", PartSizes = [2, 4, 6, 8, 12, 16, 24, 32, 48, 64]);
+            exports_20("SPACING_FACTOR", SPACING_FACTOR = 1.0625);
             Board = class Board {
                 constructor(partFactory) {
                     this.partFactory = partFactory;
@@ -1549,6 +1632,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         if (sprite.parent === container)
                             container.removeChild(sprite);
                     }
+                    part.destroySprites();
                 }
                 // connect adjacent sets of gears
                 //  see: https://en.wikipedia.org/wiki/Connected-component_labeling
@@ -1888,13 +1972,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                 }
             };
-            exports_19("Board", Board);
+            exports_20("Board", Board);
         }
     };
 });
-System.register("ui/button", ["pixi.js", "renderer"], function (exports_20, context_20) {
+System.register("ui/button", ["pixi.js", "renderer"], function (exports_21, context_21) {
     "use strict";
-    var __moduleName = context_20 && context_20.id;
+    var __moduleName = context_21 && context_21.id;
     var PIXI, renderer_3, Button, PartButton, SpriteButton, ButtonBar;
     return {
         setters: [
@@ -2003,7 +2087,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_20, cont
                     renderer_3.Renderer.needsUpdate();
                 }
             };
-            exports_20("Button", Button);
+            exports_21("Button", Button);
             PartButton = class PartButton extends Button {
                 constructor(part) {
                     super();
@@ -2050,7 +2134,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_20, cont
                         this.part.size = Math.floor(this.size * 0.5);
                 }
             };
-            exports_20("PartButton", PartButton);
+            exports_21("PartButton", PartButton);
             SpriteButton = class SpriteButton extends Button {
                 constructor(sprite) {
                     super();
@@ -2070,7 +2154,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_20, cont
                     }
                 }
             };
-            exports_20("SpriteButton", SpriteButton);
+            exports_21("SpriteButton", SpriteButton);
             ButtonBar = class ButtonBar extends PIXI.Container {
                 constructor() {
                     super();
@@ -2158,13 +2242,13 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_20, cont
                     renderer_3.Renderer.needsUpdate();
                 }
             };
-            exports_20("ButtonBar", ButtonBar);
+            exports_21("ButtonBar", ButtonBar);
         }
     };
 });
-System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (exports_21, context_21) {
+System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (exports_22, context_22) {
     "use strict";
-    var __moduleName = context_21 && context_21.id;
+    var __moduleName = context_22 && context_22.id;
     var PIXI, button_1, renderer_4, Toolbar;
     return {
         setters: [
@@ -2240,13 +2324,13 @@ System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (ex
                     renderer_4.Renderer.needsUpdate();
                 }
             };
-            exports_21("Toolbar", Toolbar);
+            exports_22("Toolbar", Toolbar);
         }
     };
 });
-System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "renderer"], function (exports_22, context_22) {
+System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "renderer"], function (exports_23, context_23) {
     "use strict";
-    var __moduleName = context_22 && context_22.id;
+    var __moduleName = context_23 && context_23.id;
     var PIXI, board_2, button_2, renderer_5, Actionbar;
     return {
         setters: [
@@ -2385,13 +2469,13 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "rendere
                     return (board_2.PartSizes.indexOf(this.board.partSize));
                 }
             };
-            exports_22("Actionbar", Actionbar);
+            exports_23("Actionbar", Actionbar);
         }
     };
 });
-System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gearbit", "board/constants"], function (exports_23, context_23) {
+System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gearbit", "board/constants"], function (exports_24, context_24) {
     "use strict";
-    var __moduleName = context_23 && context_23.id;
+    var __moduleName = context_24 && context_24.id;
     var PIXI, matter_js_3, renderer_6, gearbit_3, constants_3, PhysicalBallRouter;
     return {
         setters: [
@@ -2423,10 +2507,6 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                     this._parts = new Set();
                     this._dynamicParts = new Set();
                     this.engine = matter_js_3.Engine.create();
-                    this.engine.enabled = false;
-                    matter_js_3.Events.on(this.engine, 'beforeUpdate', this.beforeUpdate.bind(this));
-                    matter_js_3.Events.on(this.engine, 'afterUpdate', this.afterUpdate.bind(this));
-                    matter_js_3.Engine.run(this.engine);
                     // make walls to catch stray balls
                     this._createWalls();
                     // capture initial board state
@@ -2441,11 +2521,10 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                     this.beforeUpdate();
                 }
                 // UPDATING *****************************************************************
-                start() {
-                    this.engine.enabled = true;
-                }
-                stop() {
-                    this.engine.enabled = false;
+                update(correction) {
+                    this.beforeUpdate();
+                    matter_js_3.Engine.update(this.engine, 1000 / 60, correction);
+                    this.afterUpdate();
                 }
                 beforeUpdate() {
                     this.addNeighborParts(this._boardChangeCounter !== this.board.changeCounter);
@@ -2512,7 +2591,8 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                         removedBalls.delete(ball);
                         // don't update for balls in the same locality (unless forced to)
                         if ((!force) && (ball.lastColumn === column) &&
-                            (ball.lastRow === row))
+                            ((ball.lastRow === row) ||
+                                (ball.lastRow === row + 1)))
                             continue;
                         if (!this._ballNeighbors.has(ball)) {
                             this.addPart(ball);
@@ -2589,7 +2669,9 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                                 return;
                         }
                     }
-                    part.animateRotation(part.restingRotation, 0.1);
+                    // !!! investigate why these have a different effect
+                    //part.animateRotation(part.restingRotation, 0.1);
+                    part.rotation = part.restingRotation;
                 }
                 // WIREFRAME PREVIEW ********************************************************
                 get showWireframe() {
@@ -2656,13 +2738,13 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                     g.endFill();
                 }
             };
-            exports_23("PhysicalBallRouter", PhysicalBallRouter);
+            exports_24("PhysicalBallRouter", PhysicalBallRouter);
         }
     };
 });
-System.register("ui/keyboard", [], function (exports_24, context_24) {
+System.register("ui/keyboard", [], function (exports_25, context_25) {
     "use strict";
-    var __moduleName = context_24 && context_24.id;
+    var __moduleName = context_25 && context_25.id;
     function makeKeyHandler(key) {
         const handler = {
             key: key,
@@ -2692,17 +2774,17 @@ System.register("ui/keyboard", [], function (exports_24, context_24) {
         window.addEventListener('keyup', handler.upHandler.bind(handler), false);
         return (handler);
     }
-    exports_24("makeKeyHandler", makeKeyHandler);
+    exports_25("makeKeyHandler", makeKeyHandler);
     return {
         setters: [],
         execute: function () {
         }
     };
 });
-System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "board/physics", "ui/keyboard"], function (exports_25, context_25) {
+System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "ui/animator", "board/physics", "ui/keyboard"], function (exports_26, context_26) {
     "use strict";
-    var __moduleName = context_25 && context_25.id;
-    var PIXI, board_3, factory_1, toolbar_1, actionbar_1, renderer_7, physics_1, keyboard_1, SimulatorApp;
+    var __moduleName = context_26 && context_26.id;
+    var PIXI, board_3, factory_1, toolbar_1, actionbar_1, renderer_7, animator_3, physics_1, keyboard_1, SimulatorApp;
     return {
         setters: [
             function (PIXI_7) {
@@ -2722,6 +2804,9 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
             },
             function (renderer_7_1) {
                 renderer_7 = renderer_7_1;
+            },
+            function (animator_3_1) {
+                animator_3 = animator_3_1;
             },
             function (physics_1_1) {
                 physics_1 = physics_1_1;
@@ -2752,9 +2837,14 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     // set up ball routers
                     this.physicalRouter = new physics_1.PhysicalBallRouter(this.board);
                     this.board.router = this.physicalRouter;
-                    this.physicalRouter.start();
                     // add event listeners
                     this._addKeyHandlers();
+                }
+                update(delta) {
+                    animator_3.Animator.current.update(delta);
+                    if (this.board.router)
+                        this.board.router.update(delta);
+                    renderer_7.Renderer.render();
                 }
                 get width() { return (this._width); }
                 set width(v) {
@@ -2785,13 +2875,13 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     w.release = () => { this.physicalRouter.showWireframe = false; };
                 }
             };
-            exports_25("SimulatorApp", SimulatorApp);
+            exports_26("SimulatorApp", SimulatorApp);
         }
     };
 });
-System.register("board/builder", ["parts/fence"], function (exports_26, context_26) {
+System.register("board/builder", ["parts/fence"], function (exports_27, context_27) {
     "use strict";
-    var __moduleName = context_26 && context_26.id;
+    var __moduleName = context_27 && context_27.id;
     var fence_3, BoardBuilder;
     return {
         setters: [
@@ -2884,14 +2974,14 @@ System.register("board/builder", ["parts/fence"], function (exports_26, context_
                     board.setPart(redDrop, redColumn + 1, dropLevel);
                 }
             };
-            exports_26("BoardBuilder", BoardBuilder);
+            exports_27("BoardBuilder", BoardBuilder);
         }
     };
 });
-System.register("index", ["pixi.js", "app", "renderer", "board/builder"], function (exports_27, context_27) {
+System.register("index", ["pixi.js", "app", "renderer", "board/builder"], function (exports_28, context_28) {
     "use strict";
-    var __moduleName = context_27 && context_27.id;
-    var PIXI, app_1, renderer_8, builder_1, container, sim, resizeApp, loader;
+    var __moduleName = context_28 && context_28.id;
+    var PIXI, app_1, renderer_8, builder_1, sim, container, resizeApp, loader;
     return {
         setters: [
             function (PIXI_8) {
@@ -2908,9 +2998,8 @@ System.register("index", ["pixi.js", "app", "renderer", "board/builder"], functi
             }
         ],
         execute: function () {
-            container = document.getElementById('container');
-            container.appendChild(renderer_8.Renderer.instance.view);
             // dynamically resize the app to track the size of the browser window
+            container = document.getElementById('container');
             container.style.overflow = 'hidden';
             resizeApp = () => {
                 const r = container.getBoundingClientRect();
@@ -2922,7 +3011,6 @@ System.register("index", ["pixi.js", "app", "renderer", "board/builder"], functi
             };
             resizeApp();
             window.addEventListener('resize', resizeApp);
-            renderer_8.Renderer.start();
             // load sprites
             loader = PIXI.loader;
             loader.add('images/parts.json').load(() => {
@@ -2933,6 +3021,10 @@ System.register("index", ["pixi.js", "app", "renderer", "board/builder"], functi
                 // set up the standard board
                 builder_1.BoardBuilder.initStandardBoard(sim.board);
                 sim.actionbar.zoomToFit();
+                // attach the stage to the document
+                container.appendChild(renderer_8.Renderer.instance.view);
+                // start the game loop
+                PIXI.ticker.shared.add(sim.update, sim);
             });
         }
     };

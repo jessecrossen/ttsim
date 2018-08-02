@@ -265,7 +265,9 @@ export abstract class Part {
   public get bodyCanRotate():boolean { return(this.canRotate); }
   // the rotation to return the body to when not active
   public get restingRotation():number { return(this.rotation); }
+  // whether the body has a counterweight (like a ramp)
+  public get isCounterWeighted():boolean { return(false); }
   // the amount the body will bounce in a collision (0.0 - 1.0)
-  public get bodyRestitution():number { return(0.25); }
+  public get bodyRestitution():number { return(0.1); }
 
 }

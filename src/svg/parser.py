@@ -126,6 +126,13 @@ class SVGParser(object):
     rects = list()
     self._getRectsIn(group, ctm, rects)
     return(rects)
+    
+  # get a list of circles inside the given group, 
+  #  with the given transform applied
+  def getCirclesInGroup(self, group, ctm=Transform()):
+    circles = list()
+    self._getCirclesIn(group, ctm, circles)
+    return(circles)
   
   # get a list of paths inside the given group as lists of (x, y) tuples, 
   #  with the given base transform applied
@@ -179,6 +186,26 @@ class SVGParser(object):
     else:
       for child in el:
         self._getRectsIn(child, ctm, rects)
+  
+  # get circles inside the given group, transforming their 
+  #  coordinates to document coordinates
+  def _getCirclesIn(self, el, ctm=Transform(), circles=list()):
+    # apply a transform matrix if there is one
+    ctm = self._applyTransform(el, ctm)
+    # find circles
+    if (self._tagWithoutNamespace(el) in ('circle', 'ellipse')):
+      x = float(el.attrib['cx'])
+      y = float(el.attrib['cy'])
+      if ('r' in el.attrib):
+        r = float(el.attrib['r'])
+      else:
+        r = (float(el.attrib['rx']) + float(el.attrib['ry'])) / 2
+      (x, y) = ctm.apply((x, y))
+      (r, _y) = ctm.apply((r, 0))
+      circles.append({ 'x': x, 'y': y, 'r': r })
+    else:
+      for child in el:
+        self._getCirclesIn(child, ctm, circles)
   
   # get paths inside the given group, transforming their coordinates to 
   #  document coordinates

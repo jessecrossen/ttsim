@@ -4,6 +4,7 @@ export const enum Colors {
   HIGHLIGHT = 0xFFAA00,   // general-purpose highlight color
   WIREFRAME = 0xFF0000,   // physice engine wireframe (debugging only)
   WIREFRAME_HULL = 0x00FF00,
+  WIREFRAME_CONSTRAINT = 0x0000FF,
 }
 
 export const enum Alphas {

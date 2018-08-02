@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
 
-import { Engine, Composite, World, Events, Body, Bodies, Vector, Render } from 'matter-js';
+import { Engine, Composite, World, Constraint, Body, Bodies, Vector } from 'matter-js';
 import { IBallRouter } from './router';
 import { Board } from './board';
 import { Renderer } from 'renderer';
@@ -8,7 +8,7 @@ import { Part } from 'parts/part';
 import { Ball } from 'parts/ball';
 import { Colors, Alphas } from 'ui/config';
 import { Gearbit } from 'parts/gearbit';
-import { PartBody, PartBodyPool } from 'parts/partbody';
+import { PartBody, PartBodyFactory } from 'parts/partbody';
 
 import { SPACING } from './constants';
 import { Animator } from 'ui/animator';
@@ -33,7 +33,7 @@ export class PhysicalBallRouter implements IBallRouter {
     this.beforeUpdate();
   }
 
-  public partBodyPool:PartBodyPool = new PartBodyPool();
+  public partBodyFactory:PartBodyFactory = new PartBodyFactory();
 
   // UPDATING *****************************************************************
 
@@ -110,9 +110,12 @@ export class PhysicalBallRouter implements IBallRouter {
   private _left:Body;
 
   protected addNeighborParts(force:boolean = false):void {
-    // track any balls that may have been removed from the board
-    const removedBalls:Set<Ball> = new Set(this._ballNeighbors.keys());
+    // track parts to add and remove
+    const addParts:Set<Part> = new Set();
+    const removeParts:Set<Part> = new Set(this._parts.keys());
+    // update for all balls on the board
     for (const ball of this.board.balls) {
+      // get the ball's current location
       const column = Math.round(ball.column);
       const row = Math.round(ball.row);
       // remove balls that drop off the board
@@ -120,46 +123,48 @@ export class PhysicalBallRouter implements IBallRouter {
         this.board.removeBall(ball);
         continue;
       }
-      removedBalls.delete(ball);
       // don't update for balls in the same locality (unless forced to)
-      if ((! force) && (ball.lastColumn === column) && 
-                       ((ball.lastRow === row) || 
-                        (ball.lastRow === row + 1))) continue;
+      if ((! force) && (this._ballNeighbors.has(ball)) && 
+          (ball.lastColumn === column) && 
+          ((ball.lastRow === row) || (ball.lastRow === row + 1))) {
+        removeParts.delete(ball);
+        for (const part of this._ballNeighbors.get(ball)) {
+          removeParts.delete(part);
+        }
+        continue;
+      }
+      // add the ball itself
+      addParts.add(ball);
+      removeParts.delete(ball);
+      // reset the list of neighbors
       if (! this._ballNeighbors.has(ball)) {
-        this.addPart(ball);
         this._ballNeighbors.set(ball, new Set());
       }
-      const newNeighbors:Set<Part> = new Set();
-      const oldNeighbors:Set<Part> = this._ballNeighbors.get(ball);
+      const neighbors = this._ballNeighbors.get(ball);
+      neighbors.clear();
+      // update the neighborhood of parts around the ball
       for (let c:number = -1; c <= 1; c++) {
         for (let r:number = -1; r <= 1; r++) {
           const part = this.board.getPart(column + c, row + r);
           if (! part) continue;
-          newNeighbors.add(part);
-          oldNeighbors.delete(part);
+          addParts.add(part);
+          removeParts.delete(part);
+          neighbors.add(part);
         }
       }
-      for (const part of newNeighbors) this.addPart(part);
-      for (const part of oldNeighbors) this.removePart(part);
-      this._ballNeighbors.set(ball, newNeighbors);
+      // store the last place we updated the ball
       ball.lastColumn = column;
       ball.lastRow = row;
     }
-    // remove balls and neighbors for any balls no longer on the board
-    for (const ball of removedBalls) {
-      this.removePart(ball);
-      if (this._ballNeighbors.has(ball)) {
-        for (const part of this._ballNeighbors.get(ball)) {
-          this.removePart(part);
-        }
-      }
-    }
+    // add new parts and remove old ones
+    for (const part of addParts) this.addPart(part);
+    for (const part of removeParts) this.removePart(part);
   }
-  protected _ballNeighbors:Map<Ball,Set<Part>> = new Map();
+  private _ballNeighbors:Map<Ball,Set<Part>> = new Map();
 
   protected addPart(part:Part):void {
     if (this._parts.has(part)) return; // make it idempotent
-    const partBody = this.partBodyPool.make(part);
+    const partBody = this.partBodyFactory.make(part);
     this._parts.set(part, partBody);
     partBody.addToWorld(this.engine.world);
   }
@@ -167,7 +172,7 @@ export class PhysicalBallRouter implements IBallRouter {
     if (! this._parts.has(part)) return; // make it idempotent
     const partBody = this._parts.get(part);
     partBody.removeFromWorld(this.engine.world);
-    this.partBodyPool.release(partBody);
+    this.partBodyFactory.release(partBody);
     this._parts.delete(part);
     this._restoreRestingRotation(part);
   }
@@ -217,6 +222,11 @@ export class PhysicalBallRouter implements IBallRouter {
     const g = this._wireframeGraphics;
     g.clear();
     const scale = this.board.spacing / SPACING;
+    // draw all constraints
+    var constraints = (Composite.allConstraints(this.engine.world) as any) as Constraint[];
+    for (const constraint of constraints) {
+      this._drawConstraint(g, constraint, scale);
+    }
     // draw all bodies
     var bodies = Composite.allBodies(this.engine.world);
     for (const body of bodies) {
@@ -254,6 +264,25 @@ export class PhysicalBallRouter implements IBallRouter {
     }
     g.closePath();
     g.endFill();
+  }
+
+  protected _drawConstraint(g:PIXI.Graphics, c:Constraint, scale:number) {
+    if ((! c.pointA) || (! c.pointB)) return;
+    g.lineStyle(2, Colors.WIREFRAME_CONSTRAINT, 0.5);
+    if (c.bodyA) {
+      g.moveTo((c.bodyA.position.x + c.pointA.x) * scale, 
+               (c.bodyA.position.y + c.pointA.y) * scale);
+    }
+    else {
+      g.moveTo(c.pointA.x * scale, c.pointA.y * scale);
+    }
+    if (c.bodyB) {
+      g.lineTo((c.bodyB.position.x + c.pointB.x) * scale, 
+               (c.bodyB.position.y + c.pointB.y) * scale);
+    }
+    else {
+      g.lineTo(c.pointB.x * scale, c.pointB.y * scale);
+    }
   }
 
 }

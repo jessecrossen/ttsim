@@ -14,6 +14,8 @@ System.register("parts/location", ["parts/part"], function (exports_1, context_1
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
                 get type() { return (1 /* PARTLOC */); }
+                // make the pins bouncy so it's more fun when the ball goes off track
+                get bodyRestitution() { return (0.5); }
             };
             exports_1("PartLocation", PartLocation);
             GearLocation = class GearLocation extends part_1.Part {
@@ -21,6 +23,8 @@ System.register("parts/location", ["parts/part"], function (exports_1, context_1
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
                 get type() { return (2 /* GEARLOC */); }
+                // make the pins bouncy so it's more fun when the ball goes off track
+                get bodyRestitution() { return (0.5); }
             };
             exports_1("GearLocation", GearLocation);
         }
@@ -42,8 +46,10 @@ System.register("parts/ramp", ["parts/part"], function (exports_2, context_2) {
                 get canMirror() { return (false); }
                 get canFlip() { return (true); }
                 get type() { return (3 /* RAMP */); }
-                get bodyRestitution() { return (0.05); }
-                // return ramps to zero (simulating counterweight)
+                get bodyRestitution() { return (0.0); }
+                // simulate the counterweight when doing physics
+                get isCounterWeighted() { return (true); }
+                // return ramps to zero (simulating counterweight when not doing physics)
                 get restingRotation() { return (0.0); }
             };
             exports_2("Ramp", Ramp);
@@ -109,6 +115,8 @@ System.register("parts/bit", ["parts/part"], function (exports_5, context_5) {
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
                 get type() { return (6 /* BIT */); }
+                // return the bit to whichever side it's closest to, preventing stuck bits
+                get restingRotation() { return (this.bitValue ? 1.0 : 0.0); }
             };
             exports_5("Bit", Bit);
         }
@@ -437,13 +445,28 @@ System.register("parts/drop", ["parts/part"], function (exports_10, context_10) 
 System.register("board/constants", [], function (exports_11, context_11) {
     "use strict";
     var __moduleName = context_11 && context_11.id;
-    var PART_SIZE, SPACING;
+    var PART_SIZE, SPACING, BALL_DENSITY, DAMPER_RADIUS, BIAS_STIFFNESS, BIAS_DAMPING, COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, DEFAULT_MASK, PART_CATEGORY, PART_MASK, BALL_CATEGORY, BALL_MASK, PIN_CATEGORY, PIN_MASK;
     return {
         setters: [],
         execute: function () {
             // the canonical part size the simulator runs at
             exports_11("PART_SIZE", PART_SIZE = 64);
             exports_11("SPACING", SPACING = 68);
+            exports_11("BALL_DENSITY", BALL_DENSITY = 0.008);
+            // damping/counterweight constraint parameters
+            exports_11("DAMPER_RADIUS", DAMPER_RADIUS = PART_SIZE / 2);
+            exports_11("BIAS_STIFFNESS", BIAS_STIFFNESS = BALL_DENSITY / 16);
+            exports_11("BIAS_DAMPING", BIAS_DAMPING = 0.3);
+            exports_11("COUNTERWEIGHT_STIFFNESS", COUNTERWEIGHT_STIFFNESS = BALL_DENSITY / 8);
+            exports_11("COUNTERWEIGHT_DAMPING", COUNTERWEIGHT_DAMPING = 0.3);
+            // collision filtering categories
+            exports_11("DEFAULT_MASK", DEFAULT_MASK = 0xFFFFFF);
+            exports_11("PART_CATEGORY", PART_CATEGORY = 0x0001);
+            exports_11("PART_MASK", PART_MASK = DEFAULT_MASK);
+            exports_11("BALL_CATEGORY", BALL_CATEGORY = 0x0002);
+            exports_11("BALL_MASK", BALL_MASK = DEFAULT_MASK);
+            exports_11("PIN_CATEGORY", PIN_CATEGORY = 0x0004);
+            exports_11("PIN_MASK", PIN_MASK = PART_CATEGORY);
         }
     };
 });
@@ -487,7 +510,7 @@ System.register("parts/ball", ["parts/part"], function (exports_12, context_12) 
                     }
                 }
                 get bodyCanMove() { return (true); }
-                get bodyRestitution() { return (0.5); }
+                get bodyRestitution() { return (0.1); }
             };
             exports_12("Ball", Ball);
         }
@@ -871,8 +894,10 @@ System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (
                 get bodyCanRotate() { return (this.canRotate); }
                 // the rotation to return the body to when not active
                 get restingRotation() { return (this.rotation); }
+                // whether the body has a counterweight (like a ramp)
+                get isCounterWeighted() { return (false); }
                 // the amount the body will bounce in a collision (0.0 - 1.0)
-                get bodyRestitution() { return (0.25); }
+                get bodyRestitution() { return (0.1); }
             };
             exports_16("Part", Part);
         }
@@ -2325,7 +2350,7 @@ System.register("parts/partvertices", [], function (exports_23, context_23) {
     function getVertexSets(name) {
         switch (name) {
             case 'Bit':
-                return ([[{ x: -1.055229, y: -32.311155 }, { x: 0.083096, y: -27.714947 }, { x: -27.716345, y: 0.194331 }, { x: -32.193815, y: -1.017234 }, { x: -34.041082, y: -34.054877 }], [{ x: -18.644511, y: -8.976617 }, { x: -0.082950, y: 12.855295 }, { x: 12.203028, y: 15.153399 }, { x: 15.296620, y: 11.971414 }, { x: 13.175300, y: 0.038993 }, { x: -9.275339, y: -18.699338 }], [{ x: 26.420847, y: -7.162746 }, { x: 27.625371, y: -30.038638 }, { x: 27.844206, y: -31.163652 }, { x: 28.781680, y: -32.163640 }, { x: 30.000426, y: -32.538569 }, { x: 31.156697, y: -32.288364 }, { x: 32.156684, y: -31.507136 }, { x: 32.625459, y: -30.163362 }, { x: 32.835185, y: -6.980308 }], [{ x: -7.426689, y: 26.576831 }, { x: -30.292815, y: 27.954318 }, { x: -31.416143, y: 28.181468 }, { x: -32.409014, y: 29.126463 }, { x: -32.774721, y: 30.348006 }, { x: -32.515785, y: 31.502387 }, { x: -31.727017, y: 32.496403 }, { x: -30.379740, y: 32.955011 }, { x: -7.195759, y: 32.989026 }], [{ x: 26.521942, y: -7.474028 }, { x: 13.086908, y: 0.304164 }, { x: 15.385009, y: 12.059818 }, { x: 28.731650, y: 2.602268 }, { x: 32.797511, y: -6.766916 }], [{ x: -7.574706, y: 26.497612 }, { x: 0.203486, y: 13.062564 }, { x: 11.959139, y: 15.360668 }, { x: 2.501590, y: 28.707313 }, { x: -6.867594, y: 32.773178 }]]);
+                return ([[{ x: -1.055229, y: -32.311155 }, { x: 0.083096, y: -27.714947 }, { x: -27.716345, y: 0.194331 }, { x: -32.193815, y: -1.017234 }, { x: -34.041082, y: -34.054877 }], [{ x: -18.644511, y: -8.976617 }, { x: 2.000001, y: 17.000000 }, { x: 12.203028, y: 15.153399 }, { x: 15.296620, y: 11.971414 }, { x: 17.000001, y: 2.000000 }, { x: -9.275339, y: -18.699338 }], [{ x: 26.420847, y: -7.162746 }, { x: 27.625371, y: -30.038638 }, { x: 27.844206, y: -31.163652 }, { x: 28.781680, y: -32.163640 }, { x: 30.000426, y: -32.538569 }, { x: 31.156697, y: -32.288364 }, { x: 32.156684, y: -31.507136 }, { x: 32.625459, y: -30.163362 }, { x: 32.835185, y: -6.980308 }], [{ x: -7.426689, y: 26.576831 }, { x: -30.292815, y: 27.954318 }, { x: -31.416143, y: 28.181468 }, { x: -32.409014, y: 29.126463 }, { x: -32.774721, y: 30.348006 }, { x: -32.515785, y: 31.502387 }, { x: -31.727017, y: 32.496403 }, { x: -30.379740, y: 32.955011 }, { x: -7.195759, y: 32.989026 }], [{ x: 26.521942, y: -7.474028 }, { x: 17.000001, y: 2.000000 }, { x: 15.385009, y: 12.059818 }, { x: 28.731650, y: 2.602268 }, { x: 32.797511, y: -6.766916 }], [{ x: -7.574706, y: 26.497612 }, { x: 2.000001, y: 17.000000 }, { x: 11.959139, y: 15.360668 }, { x: 2.501590, y: 28.707313 }, { x: -6.867594, y: 32.773178 }]]);
             case 'Crossover':
                 return ([[{ x: -0.125001, y: -48.250007 }, { x: -2.750000, y: -46.000016 }, { x: -2.750000, y: -15.874990 }, { x: 3.000000, y: -15.874990 }, { x: 3.000000, y: -46.374983 }], [{ x: -3.500001, y: -16.125006 }, { x: -12.750002, y: -10.000017 }, { x: -2.249998, y: 4.250011 }, { x: 2.374998, y: 4.250011 }, { x: 12.750001, y: -10.125006 }, { x: 3.749998, y: -16.000017 }], [{ x: -31.249999, y: -32.999991 }, { x: -40.000002, y: -18.750001 }, { x: -44.999999, y: -20.499998 }, { x: -35.749999, y: -35.875002 }, { x: -32.125001, y: -36.625012 }], [{ x: -44.874999, y: -20.124993 }, { x: -48.124999, y: -3.374997 }, { x: -42.500000, y: -4.875016 }, { x: -40.249999, y: -18.625012 }], [{ x: -43.000002, y: -4.625000 }, { x: -32.624998, y: 7.499989 }, { x: -34.000002, y: 10.124984 }, { x: -37.249999, y: 10.374811 }, { x: -48.375000, y: -3.000181 }], [{ x: 30.750039, y: -32.999991 }, { x: 39.500042, y: -18.750001 }, { x: 44.500039, y: -20.499998 }, { x: 35.250039, y: -35.875002 }, { x: 31.625041, y: -36.625012 }], [{ x: 44.375039, y: -20.124993 }, { x: 47.625039, y: -3.374997 }, { x: 42.000040, y: -4.875016 }, { x: 39.750038, y: -18.625012 }], [{ x: 42.500042, y: -4.625000 }, { x: 32.125038, y: 7.499989 }, { x: 33.500042, y: 10.124984 }, { x: 36.750039, y: 10.374811 }, { x: 47.875040, y: -3.000181 }], [{ x: -32.250001, y: 31.999982 }, { x: -0.051776, y: 29.502583 }, { x: 31.124998, y: 31.499988 }, { x: 32.874999, y: 34.374999 }, { x: 30.375000, y: 36.999994 }, { x: -30.250000, y: 36.999994 }, { x: -32.749999, y: 35.125008 }]]);
             case 'GearLocation':
@@ -2343,23 +2368,31 @@ System.register("parts/partvertices", [], function (exports_23, context_23) {
         }
     }
     exports_23("getVertexSets", getVertexSets);
+    function getPinLocations(name) {
+        switch (name) {
+            case 'Bit':
+                return ([{ x: -18.000000, y: -3.999999, r: 2.499999 }, { x: 18.000003, y: -3.999999, r: 2.499999 }]);
+            case 'Ramp':
+                return ([{ x: -10.999994, y: 31.999992, r: 4.000000 }, { x: 15.000003, y: 29.000030, r: 4.000000 }]);
+            default:
+                return (null);
+        }
+    }
+    exports_23("getPinLocations", getPinLocations);
     return {
         setters: [],
         execute: function () {
         }
     };
 });
-System.register("parts/partbody", ["matter-js", "parts/part", "parts/factory", "parts/partvertices", "board/constants"], function (exports_24, context_24) {
+System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvertices", "board/constants"], function (exports_24, context_24) {
     "use strict";
     var __moduleName = context_24 && context_24.id;
-    var matter_js_1, part_11, factory_1, partvertices_1, constants_1, PartBody, PartBodyPool;
+    var matter_js_1, factory_1, partvertices_1, constants_1, PartBody, PartBodyFactory;
     return {
         setters: [
             function (matter_js_1_1) {
                 matter_js_1 = matter_js_1_1;
-            },
-            function (part_11_1) {
-                part_11 = part_11_1;
             },
             function (factory_1_1) {
                 factory_1 = factory_1_1;
@@ -2374,32 +2407,31 @@ System.register("parts/partbody", ["matter-js", "parts/part", "parts/factory", "
         execute: function () {
             // this composes a part with a matter.js body which simulates it
             PartBody = class PartBody {
-                constructor(partOrType) {
+                constructor(part) {
                     this._body = undefined;
-                    this._constraints = null;
+                    this._composite = matter_js_1.Composite.create();
+                    this._compositePosition = { x: 0.0, y: 0.0 };
                     this._bodyOffset = { x: 0.0, y: 0.0 };
                     this._bodyFlipped = false;
                     this._partChangeCounter = NaN;
-                    if (partOrType instanceof part_11.Part) {
-                        this.type = partOrType.type;
-                        this.part = partOrType;
-                    }
-                    else
-                        this.type = partOrType;
+                    this.type = part.type;
+                    this.part = part;
                 }
                 get part() { return (this._part); }
                 set part(part) {
                     if (part === this._part)
                         return;
-                    this._partChangeCounter = NaN;
                     if (part) {
                         if (part.type !== this.type)
                             throw ('Part type must match PartBody type');
                         this._part = part;
                         this.initBodyFromPart();
                     }
-                    else
+                    else {
+                        this.resetBody();
                         this._part = null;
+                        this._partChangeCounter = NaN;
+                    }
                 }
                 // a body representing the physical form of the part
                 get body() {
@@ -2409,18 +2441,23 @@ System.register("parts/partbody", ["matter-js", "parts/part", "parts/factory", "
                         const constructor = factory_1.PartFactory.constructorForType(this.type);
                         // construct the ball as a circle
                         if (this.type == 9 /* BALL */) {
-                            this._body = matter_js_1.Bodies.circle(0, 0, (5 * constants_1.PART_SIZE) / 32, { density: .005, friction: 0 });
+                            this._body = matter_js_1.Bodies.circle(0, 0, (5 * constants_1.PART_SIZE) / 32, { density: constants_1.BALL_DENSITY, friction: 0.05,
+                                collisionFilter: { category: constants_1.BALL_CATEGORY, mask: constants_1.BALL_MASK, group: 0 } });
                         }
                         else {
                             this._body = this._bodyFromVertexSets(partvertices_1.getVertexSets(constructor.name));
+                        }
+                        if (this._body) {
+                            matter_js_1.Body.setPosition(this._body, { x: 0.0, y: 0.0 });
+                            matter_js_1.Composite.add(this._composite, this._body);
                         }
                         this.initBodyFromPart();
                     }
                     return (this._body);
                 }
                 ;
-                // get constraints to apply to the body
-                get constraints() { return (this._constraints); }
+                // a composite representing the body and related constraints, etc.
+                get composite() { return (this._composite); }
                 // initialize the body after creation
                 initBodyFromPart() {
                     if ((!this._body) || (!this._part))
@@ -2434,19 +2471,66 @@ System.register("parts/partbody", ["matter-js", "parts/part", "parts/factory", "
                     }
                     // parts that can rotate need to be placed in a composite 
                     //  to simulate the pin joint attaching them to the board
-                    if ((this._part.bodyCanRotate) && (!this._rotationConstraint)) {
-                        this._rotationConstraint = matter_js_1.Constraint.create({
-                            bodyA: this._body,
-                            pointB: { x: 0, y: 0 },
-                            length: 0,
-                            stiffness: 0.7
-                        });
-                        if (!this._constraints)
-                            this._constraints = [];
-                        this._constraints.push(this._rotationConstraint);
+                    if ((this._part.bodyCanRotate) && (!this._pivot)) {
+                        this._makeRotationConstraints();
                     }
+                    // set restitution
+                    this._body.restitution = this._part.bodyRestitution;
                     // perform a first update of properties from the part
                     this.updateBodyFromPart();
+                }
+                _makeRotationConstraints() {
+                    if (this._pivot)
+                        return; // don't do this twice
+                    // make a location around which the body will rotate
+                    this._pivot = { x: 0, y: 0 };
+                    matter_js_1.Composite.add(this._composite, matter_js_1.Constraint.create({
+                        bodyA: this._body,
+                        pointB: this._pivot,
+                        length: 0,
+                        stiffness: 1.0
+                    }));
+                    // make constraints that bias parts and keep them from bouncing at the 
+                    //  ends of their range
+                    if (this._part.isCounterWeighted) {
+                        this._counterweightDamper = this._makeDamper(false, true, constants_1.COUNTERWEIGHT_STIFFNESS, constants_1.COUNTERWEIGHT_DAMPING);
+                    }
+                    else {
+                        this._biasDamper = this._makeDamper(false, false, constants_1.BIAS_STIFFNESS, constants_1.BIAS_DAMPING);
+                    }
+                    // make stops to confine the body's rotation
+                    const constructor = factory_1.PartFactory.constructorForType(this.type);
+                    this._pinLocations = partvertices_1.getPinLocations(constructor.name);
+                    if (this._pinLocations) {
+                        this._pins = [];
+                        const options = { isStatic: true, restitution: 0,
+                            collisionFilter: { category: constants_1.PIN_CATEGORY, mask: constants_1.PIN_MASK, group: 0 } };
+                        for (const pinLocation of this._pinLocations) {
+                            const pin = matter_js_1.Bodies.circle(pinLocation.x, pinLocation.y, pinLocation.r, options);
+                            this._pins.push(pin);
+                            matter_js_1.Composite.add(this._composite, pin);
+                        }
+                    }
+                }
+                _makeDamper(flipped, counterweighted, stiffness, damping) {
+                    const constraint = matter_js_1.Constraint.create({
+                        bodyA: this._body,
+                        pointA: this._damperAttachmentVector(flipped),
+                        pointB: this._damperAnchorVector(flipped, counterweighted),
+                        stiffness: stiffness,
+                        damping: damping
+                    });
+                    matter_js_1.Composite.add(this._composite, constraint);
+                    return (constraint);
+                }
+                _damperAttachmentVector(flipped) {
+                    return ({ x: flipped ? constants_1.DAMPER_RADIUS : -constants_1.DAMPER_RADIUS,
+                        y: -constants_1.DAMPER_RADIUS });
+                }
+                _damperAnchorVector(flipped, counterweighted) {
+                    return (counterweighted ?
+                        { x: flipped ? constants_1.DAMPER_RADIUS : -constants_1.DAMPER_RADIUS, y: 0 } :
+                        { x: 0, y: constants_1.DAMPER_RADIUS });
                 }
                 // transfer relevant properties to the body
                 updateBodyFromPart() {
@@ -2456,19 +2540,36 @@ System.register("parts/partbody", ["matter-js", "parts/part", "parts/factory", "
                         return;
                     // update mirroring
                     if (this._bodyFlipped !== this._part.isFlipped) {
-                        matter_js_1.Body.scale(this._body, -1, 1);
+                        matter_js_1.Composite.scale(this._composite, -1, 1, this._body.position, true);
                         this._bodyOffset.x *= -1;
+                        if (this._counterweightDamper) {
+                            const attachment = this._counterweightDamper.pointA;
+                            attachment.x = this._body.position.x - attachment.x;
+                        }
                         this._bodyFlipped = this._part.isFlipped;
                     }
                     // update position
-                    const x = (this._part.column * constants_1.SPACING) + this._bodyOffset.x;
-                    const y = (this._part.row * constants_1.SPACING) + this._bodyOffset.y;
-                    matter_js_1.Body.setPosition(this._body, { x: x, y: y });
-                    if (this._rotationConstraint) {
-                        this._rotationConstraint.pointB = { x: x, y: y };
+                    const position = { x: (this._part.column * constants_1.SPACING) + this._bodyOffset.x,
+                        y: (this._part.row * constants_1.SPACING) + this._bodyOffset.y };
+                    const positionDelta = matter_js_1.Vector.sub(position, this._compositePosition);
+                    matter_js_1.Composite.translate(this._composite, positionDelta, true);
+                    this._compositePosition = position;
+                    matter_js_1.Body.setVelocity(this._body, { x: 0, y: 0 });
+                    // update the pivot location
+                    if (this._pivot) {
+                        this._pivot.x = position.x;
+                        this._pivot.y = position.y;
+                        // move damper anchor points
+                        if (this._counterweightDamper) {
+                            matter_js_1.Vector.add(this._body.position, this._damperAnchorVector(this._part.isFlipped, true), this._counterweightDamper.pointB);
+                        }
+                        if (this._biasDamper) {
+                            matter_js_1.Vector.add(this._body.position, this._damperAnchorVector(this._part.isFlipped, false), this._biasDamper.pointB);
+                        }
                     }
                     // update rotation
                     matter_js_1.Body.setAngle(this._body, this._part.angleForRotation(this._part.rotation));
+                    matter_js_1.Body.setAngularVelocity(this._body, 0);
                     // record that we've synced with the part
                     this._partChangeCounter = this._part.changeCounter;
                 }
@@ -2483,33 +2584,30 @@ System.register("parts/partbody", ["matter-js", "parts/part", "parts/factory", "
                     if (this._part.bodyCanRotate) {
                         const r = this._part.rotationForAngle(this._body.angle);
                         this._part.rotation = r;
-                        // TODO: use constraints instead
-                        if ((r < 0) || (r > 1)) {
-                            matter_js_1.Body.setAngularVelocity(this._body, 0.0);
-                            matter_js_1.Body.setAngle(this._body, this._part.angleForRotation(this._part.rotation));
-                        }
                     }
                     // record that we've synced with the part
                     this._partChangeCounter = this._part.changeCounter;
                 }
+                // reset the body to remove energy from it
+                resetBody() {
+                    if (!this._body)
+                        return;
+                    // reposition to the origin
+                    matter_js_1.Composite.translate(this._composite, matter_js_1.Vector.mult(this._compositePosition, -1), true);
+                    this._compositePosition = { x: 0, y: 0 };
+                    // clear rotation
+                    matter_js_1.Body.setAngle(this._body, 0);
+                    matter_js_1.Body.setAngularVelocity(this._body, 0);
+                }
                 // add the body to the given world, creating the body if needed
                 addToWorld(world) {
                     const body = this.body;
-                    if (body) {
-                        matter_js_1.World.add(world, body);
-                    }
-                    if (this._constraints)
-                        matter_js_1.World.add(world, this._constraints);
+                    if (body)
+                        matter_js_1.World.add(world, this._composite);
                 }
                 // remove the body from the given world
                 removeFromWorld(world) {
-                    if (this._body)
-                        matter_js_1.World.remove(world, this._body);
-                    if (this._constraints) {
-                        for (const constraint of this._constraints) {
-                            matter_js_1.World.remove(world, constraint);
-                        }
-                    }
+                    matter_js_1.World.remove(world, this._composite);
                 }
                 // construct a body from a set of vertex lists
                 _bodyFromVertexSets(vertexSets) {
@@ -2520,7 +2618,8 @@ System.register("parts/partbody", ["matter-js", "parts/part", "parts/factory", "
                         const center = matter_js_1.Vertices.centre(vertices);
                         parts.push(matter_js_1.Body.create({ position: center, vertices: vertices }));
                     }
-                    const body = matter_js_1.Body.create({ parts: parts, friction: 0 });
+                    const body = matter_js_1.Body.create({ parts: parts, friction: 0.05,
+                        collisionFilter: { category: constants_1.PART_CATEGORY, mask: constants_1.PART_MASK, group: 0 } });
                     // this is a hack to prevent matter.js from placing the body's center 
                     //  of mass over the origin, which complicates our ability to precisely
                     //  position parts of an arbitrary shape
@@ -2534,26 +2633,26 @@ System.register("parts/partbody", ["matter-js", "parts/part", "parts/factory", "
             exports_24("PartBody", PartBody);
             // maintain a pool of PartBody instances grouped by type to avoid 
             //  creation/destruction penalties
-            PartBodyPool = class PartBodyPool {
+            PartBodyFactory = class PartBodyFactory {
                 constructor() {
+                    // temporarily turning this off as there's too much physical state
+                    //  in the body instances
+                    this.reuse = false;
                     // instances that are available for use
                     this._unused = new Map();
                     // instances that have been made but not released
                     this._used = new Set();
                 }
-                // make or fetch a part body of the given type from the pool
-                make(partOrType) {
-                    const part = (partOrType instanceof part_11.Part) ? partOrType : null;
-                    const type = (partOrType instanceof part_11.Part) ? part.type : partOrType;
-                    if (!this._unused.has(type)) {
-                        this._unused.set(type, []);
+                // make or reuse a part body from the pool
+                make(part) {
+                    if (!this._unused.has(part.type)) {
+                        this._unused.set(part.type, []);
                     }
-                    const available = this._unused.get(type);
-                    let instance = (available.length > 0) ?
-                        available.pop() : new PartBody(type);
+                    const available = this._unused.get(part.type);
+                    let instance = ((available.length > 0) && (this.reuse)) ?
+                        available.pop() : new PartBody(part);
                     this._used.add(instance);
-                    if (part)
-                        instance.part = part;
+                    instance.part = part;
                     return (instance);
                 }
                 release(instance) {
@@ -2568,10 +2667,11 @@ System.register("parts/partbody", ["matter-js", "parts/part", "parts/factory", "
                     if (!this._unused.has(instance.type)) {
                         this._unused.set(instance.type, []);
                     }
-                    this._unused.get(instance.type).push(instance);
+                    if (this.reuse)
+                        this._unused.get(instance.type).push(instance);
                 }
             };
-            exports_24("PartBodyPool", PartBodyPool);
+            exports_24("PartBodyFactory", PartBodyFactory);
         }
     };
 });
@@ -2607,7 +2707,7 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
             PhysicalBallRouter = class PhysicalBallRouter {
                 constructor(board) {
                     this.board = board;
-                    this.partBodyPool = new partbody_1.PartBodyPool();
+                    this.partBodyFactory = new partbody_1.PartBodyFactory();
                     this._boardChangeCounter = -1;
                     this._wallWidth = 16;
                     this._wallHeight = 16;
@@ -2689,9 +2789,12 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                     this._wallHeight = h;
                 }
                 addNeighborParts(force = false) {
-                    // track any balls that may have been removed from the board
-                    const removedBalls = new Set(this._ballNeighbors.keys());
+                    // track parts to add and remove
+                    const addParts = new Set();
+                    const removeParts = new Set(this._parts.keys());
+                    // update for all balls on the board
                     for (const ball of this.board.balls) {
+                        // get the ball's current location
                         const column = Math.round(ball.column);
                         const row = Math.round(ball.row);
                         // remove balls that drop off the board
@@ -2699,49 +2802,50 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                             this.board.removeBall(ball);
                             continue;
                         }
-                        removedBalls.delete(ball);
                         // don't update for balls in the same locality (unless forced to)
-                        if ((!force) && (ball.lastColumn === column) &&
-                            ((ball.lastRow === row) ||
-                                (ball.lastRow === row + 1)))
+                        if ((!force) && (this._ballNeighbors.has(ball)) &&
+                            (ball.lastColumn === column) &&
+                            ((ball.lastRow === row) || (ball.lastRow === row + 1))) {
+                            removeParts.delete(ball);
+                            for (const part of this._ballNeighbors.get(ball)) {
+                                removeParts.delete(part);
+                            }
                             continue;
+                        }
+                        // add the ball itself
+                        addParts.add(ball);
+                        removeParts.delete(ball);
+                        // reset the list of neighbors
                         if (!this._ballNeighbors.has(ball)) {
-                            this.addPart(ball);
                             this._ballNeighbors.set(ball, new Set());
                         }
-                        const newNeighbors = new Set();
-                        const oldNeighbors = this._ballNeighbors.get(ball);
+                        const neighbors = this._ballNeighbors.get(ball);
+                        neighbors.clear();
+                        // update the neighborhood of parts around the ball
                         for (let c = -1; c <= 1; c++) {
                             for (let r = -1; r <= 1; r++) {
                                 const part = this.board.getPart(column + c, row + r);
                                 if (!part)
                                     continue;
-                                newNeighbors.add(part);
-                                oldNeighbors.delete(part);
+                                addParts.add(part);
+                                removeParts.delete(part);
+                                neighbors.add(part);
                             }
                         }
-                        for (const part of newNeighbors)
-                            this.addPart(part);
-                        for (const part of oldNeighbors)
-                            this.removePart(part);
-                        this._ballNeighbors.set(ball, newNeighbors);
+                        // store the last place we updated the ball
                         ball.lastColumn = column;
                         ball.lastRow = row;
                     }
-                    // remove balls and neighbors for any balls no longer on the board
-                    for (const ball of removedBalls) {
-                        this.removePart(ball);
-                        if (this._ballNeighbors.has(ball)) {
-                            for (const part of this._ballNeighbors.get(ball)) {
-                                this.removePart(part);
-                            }
-                        }
-                    }
+                    // add new parts and remove old ones
+                    for (const part of addParts)
+                        this.addPart(part);
+                    for (const part of removeParts)
+                        this.removePart(part);
                 }
                 addPart(part) {
                     if (this._parts.has(part))
                         return; // make it idempotent
-                    const partBody = this.partBodyPool.make(part);
+                    const partBody = this.partBodyFactory.make(part);
                     this._parts.set(part, partBody);
                     partBody.addToWorld(this.engine.world);
                 }
@@ -2750,7 +2854,7 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                         return; // make it idempotent
                     const partBody = this._parts.get(part);
                     partBody.removeFromWorld(this.engine.world);
-                    this.partBodyPool.release(partBody);
+                    this.partBodyFactory.release(partBody);
                     this._parts.delete(part);
                     this._restoreRestingRotation(part);
                 }
@@ -2795,6 +2899,11 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                     const g = this._wireframeGraphics;
                     g.clear();
                     const scale = this.board.spacing / constants_2.SPACING;
+                    // draw all constraints
+                    var constraints = matter_js_2.Composite.allConstraints(this.engine.world);
+                    for (const constraint of constraints) {
+                        this._drawConstraint(g, constraint, scale);
+                    }
                     // draw all bodies
                     var bodies = matter_js_2.Composite.allBodies(this.engine.world);
                     for (const body of bodies) {
@@ -2831,6 +2940,23 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                     }
                     g.closePath();
                     g.endFill();
+                }
+                _drawConstraint(g, c, scale) {
+                    if ((!c.pointA) || (!c.pointB))
+                        return;
+                    g.lineStyle(2, 255 /* WIREFRAME_CONSTRAINT */, 0.5);
+                    if (c.bodyA) {
+                        g.moveTo((c.bodyA.position.x + c.pointA.x) * scale, (c.bodyA.position.y + c.pointA.y) * scale);
+                    }
+                    else {
+                        g.moveTo(c.pointA.x * scale, c.pointA.y * scale);
+                    }
+                    if (c.bodyB) {
+                        g.lineTo((c.bodyB.position.x + c.pointB.x) * scale, (c.bodyB.position.y + c.pointB.y) * scale);
+                    }
+                    else {
+                        g.lineTo(c.pointB.x * scale, c.pointB.y * scale);
+                    }
                 }
             };
             exports_25("PhysicalBallRouter", PhysicalBallRouter);

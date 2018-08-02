@@ -11,7 +11,8 @@ parser = argparse.ArgumentParser(description=
   'Add bodies by making a group with a pixel-aligned rectangle whose center is '+
   'the part\'s origin, paths to define the body vertices '+
   '(must be convex, curves are ignored) '+
-  'and a text element to define the class name (with "~" prepended to it).')
+  'and a text element to define the class name (with "~" prepended to it). '+
+  'Circles can be used to create rotation stops.')
 parser.add_argument('svg', type=str,
                     help='the SVG file to take as input')
 parser.add_argument('ts', type=str, 
@@ -37,6 +38,7 @@ def largestRect(rects):
 groups.sort(key=lambda g: g[0])
 
 bodies = list()
+pins = list()
 for (name, group, ctm) in groups:
   # get the bounding box
   rects = parser.getRectsInGroup(group, ctm)
@@ -46,6 +48,11 @@ for (name, group, ctm) in groups:
     sys.exit(1)
   cx = (round(rect['x']) + round(rect['x'] + rect['w'])) / 2
   cy = (round(rect['y']) + round(rect['y'] + rect['h'])) / 2
+  # get circles
+  circles = parser.getCirclesInGroup(group, ctm)
+  if (len(circles) > 0):
+    circles = [ (c['x'] - cx, c['y'] - cy, c['r']) for c in circles ]
+    pins.append((name, circles))
   # get paths
   paths = parser.getPathsInGroup(group, ctm)
   # offset path points from the center point
@@ -61,10 +68,11 @@ code = '''
 
 import { Vector } from 'matter-js';
 
+export type PinLocation = { x:number, y:number, r:number };
+
 export function getVertexSets(name:string):Vector[][] {
   switch (name) {
 ''' % args.svg
-
 for (name, body) in bodies:
   parts = list()
   for vertices in body:
@@ -75,6 +83,19 @@ code += '''    default:
       return(null);
   }
 }
+
+export function getPinLocations(name:string):PinLocation[] {
+  switch (name) {
+'''
+for (name, circles) in pins:
+  ret = ','.join([ '{x:%f,y:%f,r:%f}' % c for c in circles ])
+  code += '''    case '%s':\n''' % name
+  code += '''      return([%s]);\n''' % ret
+code += '''    default:
+      return(null);
+  }
+}
+
 '''
 
 with open(args.ts, 'wb') as f:

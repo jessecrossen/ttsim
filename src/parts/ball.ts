@@ -36,6 +36,6 @@ export class Ball extends Part {
   }
 
   public get bodyCanMove():boolean { return(true); }
-  public get bodyRestitution():number { return(0.5); }
+  public get bodyRestitution():number { return(0.1); }
 
 }

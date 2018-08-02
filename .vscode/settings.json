@@ -1,6 +1,7 @@
 {
   "files.exclude": {
     "**/.git": true,
+    "**/*.pyc": true,
     "docs/**/*.js": true,
     "**/node_modules/**": true
   }

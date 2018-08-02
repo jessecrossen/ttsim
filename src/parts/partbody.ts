@@ -1,32 +1,35 @@
-import { Body, Bodies, Constraint, Vector, Vertices, World } from 'matter-js';
+import { Body, Bodies, Composite, Constraint, Vector, Vertices, World, IBodyDefinition } from 'matter-js';
 
 import { Part } from './part';
 import { PartType, PartFactory } from './factory';
-import { getVertexSets } from './partvertices';
-import { SPACING, PART_SIZE } from 'board/constants';
+import { getVertexSets, getPinLocations, PinLocation } from './partvertices';
+import { SPACING, PART_SIZE, BALL_MASK, BALL_CATEGORY, PART_CATEGORY, 
+         PART_MASK, PIN_CATEGORY, PIN_MASK, DAMPER_RADIUS, BALL_DENSITY, 
+         COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, BIAS_STIFFNESS, 
+         BIAS_DAMPING } from 'board/constants';
 
 // this composes a part with a matter.js body which simulates it
 export class PartBody {
 
-  constructor(partOrType:Part|PartType) {
-    if (partOrType instanceof Part) {
-      this.type = partOrType.type;
-      this.part = partOrType;
-    }
-    else this.type = partOrType;
+  constructor(part:Part) {
+    this.type = part.type;
+    this.part = part;
   }
   public readonly type:PartType;
 
   public get part():Part { return(this._part); }
   public set part(part:Part) {
     if (part === this._part) return;
-    this._partChangeCounter = NaN;
     if (part) {
       if (part.type !== this.type) throw('Part type must match PartBody type');
       this._part = part;
       this.initBodyFromPart();
     }
-    else this._part = null;
+    else {
+      this.resetBody();
+      this._part = null;
+      this._partChangeCounter = NaN;
+    }
   }
   private _part:Part;
 
@@ -39,11 +42,16 @@ export class PartBody {
       // construct the ball as a circle
       if (this.type == PartType.BALL) {
         this._body = Bodies.circle(0, 0, (5 * PART_SIZE) / 32,
-        { density: .005, friction: 0 });
+        { density: BALL_DENSITY, friction: 0.05,
+          collisionFilter: { category: BALL_CATEGORY, mask: BALL_MASK, group: 0 } });
       }
       // construct other parts from stored vertices
       else {
         this._body = this._bodyFromVertexSets(getVertexSets(constructor.name));
+      }
+      if (this._body) {
+        Body.setPosition(this._body, { x: 0.0, y: 0.0 });
+        Composite.add(this._composite, this._body);
       }
       this.initBodyFromPart();
     }
@@ -51,9 +59,9 @@ export class PartBody {
   };
   protected _body:Body = undefined;
 
-  // get constraints to apply to the body
-  public get constraints():Constraint[] { return(this._constraints); }
-  private _constraints:Constraint[] = null;
+  // a composite representing the body and related constraints, etc.
+  public get composite():Composite { return(this._composite); }
+  private _composite:Composite = Composite.create();
 
   // initialize the body after creation
   protected initBodyFromPart():void {
@@ -67,20 +75,74 @@ export class PartBody {
     }
     // parts that can rotate need to be placed in a composite 
     //  to simulate the pin joint attaching them to the board
-    if ((this._part.bodyCanRotate) && (! this._rotationConstraint)) {
-      this._rotationConstraint = Constraint.create({
-        bodyA: this._body,
-        pointB: { x:0, y:0 },
-        length: 0,
-        stiffness: 0.7
-      });
-      if (! this._constraints) this._constraints = [ ];
-      this._constraints.push(this._rotationConstraint);
+    if ((this._part.bodyCanRotate) && (! this._pivot)) {
+      this._makeRotationConstraints();
     }
+    // set restitution
+    this._body.restitution = this._part.bodyRestitution;
     // perform a first update of properties from the part
     this.updateBodyFromPart();
   }
-  private _rotationConstraint:Constraint;
+  protected _makeRotationConstraints():void {
+    if (this._pivot) return; // don't do this twice
+    // make a location around which the body will rotate
+    this._pivot = { x: 0, y: 0 };
+    Composite.add(this._composite, Constraint.create({
+      bodyA: this._body,
+      pointB: this._pivot,
+      length: 0,
+      stiffness: 1.0
+    }));
+    // make constraints that bias parts and keep them from bouncing at the 
+    //  ends of their range
+    if (this._part.isCounterWeighted) {
+      this._counterweightDamper = this._makeDamper(false, true, 
+        COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING);
+    }
+    else {
+      this._biasDamper = this._makeDamper(false, false,
+        BIAS_STIFFNESS, BIAS_DAMPING);
+    }
+    // make stops to confine the body's rotation
+    const constructor = PartFactory.constructorForType(this.type);
+    this._pinLocations = getPinLocations(constructor.name);
+    if (this._pinLocations) {
+      this._pins = [ ];
+      const options = { isStatic: true, restitution: 0,
+        collisionFilter: { category: PIN_CATEGORY, mask: PIN_MASK, group: 0 } };
+      for (const pinLocation of this._pinLocations) {
+        const pin = Bodies.circle(pinLocation.x, pinLocation.y, pinLocation.r, options);
+        this._pins.push(pin);
+        Composite.add(this._composite, pin);
+      }
+    }
+  }
+  private _makeDamper(flipped:boolean, counterweighted:boolean, 
+                      stiffness:number, damping:number):Constraint {
+    const constraint = Constraint.create({
+      bodyA: this._body,
+      pointA: this._damperAttachmentVector(flipped),
+      pointB: this._damperAnchorVector(flipped, counterweighted),
+      stiffness: stiffness,
+      damping: damping
+    });
+    Composite.add(this._composite, constraint);
+    return(constraint);
+  }
+  private _damperAttachmentVector(flipped:boolean):Vector {
+    return({ x: flipped ? DAMPER_RADIUS : - DAMPER_RADIUS, 
+             y: - DAMPER_RADIUS });
+  }
+  private _damperAnchorVector(flipped:boolean, counterweighted:boolean):Vector {
+    return(counterweighted ?
+      { x: flipped ? DAMPER_RADIUS : - DAMPER_RADIUS, y: 0 } : 
+      { x: 0, y: DAMPER_RADIUS });
+  }
+  private _pivot:Vector;
+  private _pinLocations:PinLocation[];
+  private _pins:Body[];
+  private _counterweightDamper:Constraint;
+  private _biasDamper:Constraint;
 
   // transfer relevant properties to the body
   public updateBodyFromPart():void {
@@ -89,23 +151,44 @@ export class PartBody {
         (this._part.changeCounter === this._partChangeCounter)) return;
     // update mirroring
     if (this._bodyFlipped !== this._part.isFlipped) {
-      Body.scale(this._body, -1, 1);
+      Composite.scale(this._composite, -1, 1, this._body.position, true);
       this._bodyOffset.x *= -1;
+      if (this._counterweightDamper) {
+        const attachment = this._counterweightDamper.pointA;
+        attachment.x =  this._body.position.x - attachment.x;
+      }
       this._bodyFlipped = this._part.isFlipped;
     }
     // update position
-    const x:number = (this._part.column * SPACING) + this._bodyOffset.x;
-    const y:number = (this._part.row * SPACING) + this._bodyOffset.y;
-    Body.setPosition(this._body, { x: x, y: y });
-    if (this._rotationConstraint) {
-      this._rotationConstraint.pointB = { x: x, y: y };
+    const position = { x: (this._part.column * SPACING) + this._bodyOffset.x,
+                       y: (this._part.row * SPACING) + this._bodyOffset.y };
+    const positionDelta = Vector.sub(position, this._compositePosition);
+    Composite.translate(this._composite, positionDelta, true);
+    this._compositePosition = position;
+    Body.setVelocity(this._body, { x: 0, y: 0 });
+    // update the pivot location
+    if (this._pivot) {
+      this._pivot.x = position.x;
+      this._pivot.y = position.y;
+      // move damper anchor points
+      if (this._counterweightDamper) {
+        Vector.add(this._body.position, 
+          this._damperAnchorVector(this._part.isFlipped, true), 
+          this._counterweightDamper.pointB);
+      }
+      if (this._biasDamper) {
+        Vector.add(this._body.position, 
+          this._damperAnchorVector(this._part.isFlipped, false), 
+          this._biasDamper.pointB);
+      }
     }
     // update rotation
-    Body.setAngle(this._body, 
-      this._part.angleForRotation(this._part.rotation));
+    Body.setAngle(this._body, this._part.angleForRotation(this._part.rotation));
+    Body.setAngularVelocity(this._body, 0);
     // record that we've synced with the part
     this._partChangeCounter = this._part.changeCounter;
   }
+  protected _compositePosition:Vector = { x: 0.0, y: 0.0 };
   protected _bodyOffset:Vector = { x: 0.0, y: 0.0 };
   private _bodyFlipped:boolean = false;
   private _partChangeCounter:number = NaN;
@@ -120,34 +203,32 @@ export class PartBody {
     if (this._part.bodyCanRotate) {
       const r:number = this._part.rotationForAngle(this._body.angle);
       this._part.rotation = r;
-      // TODO: use constraints instead
-      if ((r < 0) || (r > 1)) {
-        Body.setAngularVelocity(this._body, 0.0);
-        Body.setAngle(this._body, 
-          this._part.angleForRotation(this._part.rotation));
-      }
     }
     // record that we've synced with the part
     this._partChangeCounter = this._part.changeCounter;
   }
 
+  // reset the body to remove energy from it
+  public resetBody():void {
+    if (! this._body) return;
+    // reposition to the origin
+    Composite.translate(this._composite, 
+      Vector.mult(this._compositePosition, -1), true);
+    this._compositePosition = { x: 0, y: 0 };
+    // clear rotation
+    Body.setAngle(this._body, 0);
+    Body.setAngularVelocity(this._body, 0);
+  }
+
   // add the body to the given world, creating the body if needed
   public addToWorld(world:World):void {
     const body = this.body;
-    if (body) {
-      World.add(world, body);
-    }
-    if (this._constraints) World.add(world, this._constraints);
+    if (body) World.add(world, this._composite);
   }
 
   // remove the body from the given world
   public removeFromWorld(world:World):void {
-    if (this._body) World.remove(world, this._body);
-    if (this._constraints) {
-      for (const constraint of this._constraints) {
-        World.remove(world, constraint);
-      }
-    }
+    World.remove(world, this._composite);
   }
 
   // construct a body from a set of vertex lists
@@ -158,7 +239,8 @@ export class PartBody {
       const center = Vertices.centre(vertices);
       parts.push(Body.create({ position: center, vertices: vertices }));
     }
-    const body = Body.create({ parts: parts, friction: 0 });
+    const body = Body.create({ parts: parts, friction: 0.05,
+      collisionFilter: { category: PART_CATEGORY, mask: PART_MASK, group: 0 } });
     // this is a hack to prevent matter.js from placing the body's center 
     //  of mass over the origin, which complicates our ability to precisely
     //  position parts of an arbitrary shape
@@ -173,20 +255,22 @@ export class PartBody {
 
 // maintain a pool of PartBody instances grouped by type to avoid 
 //  creation/destruction penalties
-export class PartBodyPool {
+export class PartBodyFactory {
 
-  // make or fetch a part body of the given type from the pool
-  public make(partOrType:PartType|Part):PartBody {
-    const part = (partOrType instanceof Part) ? partOrType : null;
-    const type = (partOrType instanceof Part) ? part.type : partOrType;
-    if (! this._unused.has(type)) {
-      this._unused.set(type, [ ]);
+  // temporarily turning this off as there's too much physical state
+  //  in the body instances
+  public reuse:boolean = false;
+
+  // make or reuse a part body from the pool
+  public make(part:Part):PartBody {
+    if (! this._unused.has(part.type)) {
+      this._unused.set(part.type, [ ]);
     }
-    const available = this._unused.get(type);
-    let instance:PartBody = (available.length > 0) ? 
-      available.pop() : new PartBody(type);
+    const available = this._unused.get(part.type);
+    let instance:PartBody = ((available.length > 0) && (this.reuse)) ? 
+      available.pop() : new PartBody(part);
     this._used.add(instance);
-    if (part) instance.part = part;
+    instance.part = part;
     return(instance);
   }
   // instances that are available for use
@@ -205,7 +289,7 @@ export class PartBodyPool {
     if (! this._unused.has(instance.type)) {
       this._unused.set(instance.type, [ ]);
     }
-    this._unused.get(instance.type).push(instance);
+    if (this.reuse) this._unused.get(instance.type).push(instance);
   }
 
 }

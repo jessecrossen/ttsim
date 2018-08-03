@@ -372,13 +372,15 @@ System.register("parts/drop", ["parts/part"], function (exports_9, context_9) {
 System.register("board/constants", [], function (exports_10, context_10) {
     "use strict";
     var __moduleName = context_10 && context_10.id;
-    var PART_SIZE, SPACING, PART_DENSITY, BALL_DENSITY, BALL_FRICTION, PART_FRICTION, BALL_FRICTION_STATIC, PART_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V, DAMPER_RADIUS, BIAS_STIFFNESS, BIAS_DAMPING, COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, DEFAULT_MASK, PART_CATEGORY, BALL_CATEGORY, PIN_CATEGORY, PART_MASK, BALL_MASK, PIN_MASK;
+    var PART_SIZE, SPACING, BALL_RADIUS, PART_DENSITY, BALL_DENSITY, BALL_FRICTION, PART_FRICTION, BALL_FRICTION_STATIC, PART_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V, DAMPER_RADIUS, BIAS_STIFFNESS, BIAS_DAMPING, COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, DEFAULT_MASK, PART_CATEGORY, BALL_CATEGORY, PIN_CATEGORY, PART_MASK, BALL_MASK, PIN_MASK;
     return {
         setters: [],
         execute: function () {
             // the canonical part size the simulator runs at
             exports_10("PART_SIZE", PART_SIZE = 64);
             exports_10("SPACING", SPACING = 68);
+            // the size of a ball in simulator units
+            exports_10("BALL_RADIUS", BALL_RADIUS = 10);
             exports_10("PART_DENSITY", PART_DENSITY = 0.100);
             exports_10("BALL_DENSITY", BALL_DENSITY = 0.008);
             exports_10("BALL_FRICTION", BALL_FRICTION = 0.03);
@@ -1099,10 +1101,10 @@ System.register("board/router", [], function (exports_18, context_18) {
         }
     };
 });
-System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball"], function (exports_19, context_19) {
+System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball", "board/constants"], function (exports_19, context_19) {
     "use strict";
     var __moduleName = context_19 && context_19.id;
-    var filter, fence_2, gearbit_2, disjoint_1, renderer_2, ball_2, PartSizes, SPACING_FACTOR, Board;
+    var filter, fence_2, gearbit_2, disjoint_1, renderer_2, ball_2, constants_1, PartSizes, SPACING_FACTOR, Board;
     return {
         setters: [
             function (filter_1) {
@@ -1122,6 +1124,9 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             },
             function (ball_2_1) {
                 ball_2 = ball_2_1;
+            },
+            function (constants_1_1) {
+                constants_1 = constants_1_1;
             }
         ],
         execute: function () {
@@ -1455,8 +1460,11 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 set partPrototype(p) {
                     if (p === this._partPrototype)
                         return;
-                    if (this._partPrototype)
+                    if (this._partPrototype) {
                         this.removePart(this._partPrototype);
+                        this._partPrototype.alpha = 1.0;
+                        this._partPrototype.visible = true;
+                    }
                     this._partPrototype = p;
                     if (this._partPrototype) {
                         this._partPrototype.alpha = 0.5 /* PREVIEW_ALPHA */;
@@ -1542,6 +1550,19 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         renderer_2.Renderer.needsUpdate();
                         this.onChange();
                     }
+                }
+                // get the ball under the given point in fractional column/row units
+                ballUnder(column, row) {
+                    const radius = constants_1.BALL_RADIUS / constants_1.SPACING;
+                    for (const ball of this.balls) {
+                        const dx = Math.abs(column - ball.column);
+                        const dy = Math.abs(row - ball.row);
+                        if ((dx > radius) || (dy > radius))
+                            continue;
+                        if (Math.sqrt((dx * dx) + (dy * dy)) <= radius)
+                            return (ball);
+                    }
+                    return (null);
                 }
                 // add a part to the board's layers
                 addPart(part) {
@@ -1788,7 +1809,6 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._lastMousePoint = p;
                 }
                 _onMouseUp(e) {
-                    this._updateAction(e);
                     this._isMouseDown = false;
                     if (this._dragging) {
                         this._dragging = false;
@@ -1796,10 +1816,34 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         // don't trigger a click
                         e.stopPropagation();
                     }
+                    this._updateAction(e);
                 }
                 _onDragStart(x, y) {
                     this._panStartColumn = this.centerColumn;
                     this._panStartRow = this.centerRow;
+                    if ((this._action === 4 /* FLIP_PART */) ||
+                        (this._action === 5 /* DRAG_PART */) ||
+                        (this._action === 0 /* PAN */)) {
+                        const c = this.columnForX(this._actionX);
+                        const r = this.rowForY(this._actionY);
+                        const column = Math.round(c);
+                        const row = Math.round(r);
+                        let part = this.ballUnder(c, r);
+                        if ((!part) && (!this.isBackgroundPart(column, row))) {
+                            part = this.getPart(column, row);
+                        }
+                        if (part) {
+                            if (part instanceof ball_2.Ball)
+                                this.removeBall(part);
+                            else
+                                this.clearPart(column, row);
+                            this.partPrototype = part;
+                            this._action = 5 /* DRAG_PART */;
+                            this.view.cursor = 'pointer';
+                            this._partDragStartColumn = this._actionColumn;
+                            this._partDragStartRow = this._actionRow;
+                        }
+                    }
                 }
                 _onDrag(startX, startY, lastX, lastY, currentX, currentY) {
                     const deltaColumn = this.columnForX(currentX) - this.columnForX(startX);
@@ -1838,9 +1882,30 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             this._dragFlippedParts.add(part);
                         }
                     }
+                    else if (this._action === 5 /* DRAG_PART */) {
+                        this._actionX += currentX - lastX;
+                        this._actionY += currentY - lastY;
+                        this._actionColumn = Math.round(this.columnForX(this._actionX));
+                        this._actionRow = Math.round(this.rowForY(this._actionY));
+                        this._updatePreview();
+                    }
                 }
                 _onDragFinish() {
                     this._dragFlippedParts.clear();
+                    if ((this._action === 5 /* DRAG_PART */) && (this.partPrototype)) {
+                        const part = this.partPrototype;
+                        this.partPrototype = null;
+                        if (part instanceof ball_2.Ball) {
+                            this.partPrototype = null;
+                            this.addBall(this.partFactory.copy(part), this._actionX, this._actionY);
+                        }
+                        else if (this.canPlacePart(part.type, this._actionColumn, this._actionRow)) {
+                            this.setPart(part, this._actionColumn, this._actionRow);
+                        }
+                        else {
+                            this.setPart(part, this._partDragStartColumn, this._partDragStartRow);
+                        }
+                    }
                 }
                 _updateAction(e) {
                     const p = e.data.getLocalPosition(this._layers);
@@ -1860,6 +1925,11 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this.view.cursor = 'pointer';
                     }
                     else if ((this.tool == 3 /* HAND */) &&
+                        (this.ballUnder(this.columnForX(p.x), this.rowForY(p.y)))) {
+                        this._action = 5 /* DRAG_PART */;
+                        this.view.cursor = 'pointer';
+                    }
+                    else if ((this.tool == 3 /* HAND */) &&
                         (this.canFlipPart(column, row))) {
                         this._action = 4 /* FLIP_PART */;
                         this.view.cursor = 'pointer';
@@ -1875,6 +1945,10 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         if (this._action === 1 /* PLACE_PART */) {
                             this.partPrototype.visible = true;
                             this.layoutPart(this.partPrototype, this._actionColumn, this._actionRow);
+                        }
+                        else if (this._action == 5 /* DRAG_PART */) {
+                            this.partPrototype.visible = true;
+                            this.layoutPart(this.partPrototype, this.columnForX(this._actionX), this.rowForY(this._actionY));
                         }
                         else if (this._action === 2 /* PLACE_BALL */) {
                             this.partPrototype.visible = true;
@@ -2468,7 +2542,7 @@ System.register("parts/partvertices", [], function (exports_23, context_23) {
 System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvertices", "board/constants", "parts/fence"], function (exports_24, context_24) {
     "use strict";
     var __moduleName = context_24 && context_24.id;
-    var matter_js_1, factory_1, partvertices_1, constants_1, fence_3, PartBody, PartBodyFactory;
+    var matter_js_1, factory_1, partvertices_1, constants_2, fence_3, PartBody, PartBodyFactory;
     return {
         setters: [
             function (matter_js_1_1) {
@@ -2480,8 +2554,8 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
             function (partvertices_1_1) {
                 partvertices_1 = partvertices_1_1;
             },
-            function (constants_1_1) {
-                constants_1 = constants_1_1;
+            function (constants_2_1) {
+                constants_2 = constants_2_1;
             },
             function (fence_3_1) {
                 fence_3 = fence_3_1;
@@ -2528,9 +2602,9 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     this._bodyFlipped = false;
                     // construct the ball as a circle
                     if (this.type == 9 /* BALL */) {
-                        this._body = matter_js_1.Bodies.circle(0, 0, (5 * constants_1.PART_SIZE) / 32, { density: constants_1.BALL_DENSITY, friction: constants_1.BALL_FRICTION,
-                            frictionStatic: constants_1.BALL_FRICTION_STATIC,
-                            collisionFilter: { category: constants_1.BALL_CATEGORY, mask: constants_1.BALL_MASK, group: 0 } });
+                        this._body = matter_js_1.Bodies.circle(0, 0, (5 * constants_2.PART_SIZE) / 32, { density: constants_2.BALL_DENSITY, friction: constants_2.BALL_FRICTION,
+                            frictionStatic: constants_2.BALL_FRICTION_STATIC,
+                            collisionFilter: { category: constants_2.BALL_CATEGORY, mask: constants_2.BALL_MASK, group: 0 } });
                     }
                     else if (this._part instanceof fence_3.Fence) {
                         this._body = this._bodyForFence(this._part);
@@ -2572,10 +2646,10 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     // make constraints that bias parts and keep them from bouncing at the 
                     //  ends of their range
                     if (this._part.isCounterWeighted) {
-                        this._counterweightDamper = this._makeDamper(false, true, constants_1.COUNTERWEIGHT_STIFFNESS, constants_1.COUNTERWEIGHT_DAMPING);
+                        this._counterweightDamper = this._makeDamper(false, true, constants_2.COUNTERWEIGHT_STIFFNESS, constants_2.COUNTERWEIGHT_DAMPING);
                     }
                     else {
-                        this._biasDamper = this._makeDamper(false, false, constants_1.BIAS_STIFFNESS, constants_1.BIAS_DAMPING);
+                        this._biasDamper = this._makeDamper(false, false, constants_2.BIAS_STIFFNESS, constants_2.BIAS_DAMPING);
                     }
                     // make stops to confine the body's rotation
                     const constructor = factory_1.PartFactory.constructorForType(this.type);
@@ -2583,7 +2657,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     if (this._pinLocations) {
                         this._pins = [];
                         const options = { isStatic: true, restitution: 0,
-                            collisionFilter: { category: constants_1.PIN_CATEGORY, mask: constants_1.PIN_MASK, group: 0 } };
+                            collisionFilter: { category: constants_2.PIN_CATEGORY, mask: constants_2.PIN_MASK, group: 0 } };
                         for (const pinLocation of this._pinLocations) {
                             const pin = matter_js_1.Bodies.circle(pinLocation.x, pinLocation.y, pinLocation.r, options);
                             this._pins.push(pin);
@@ -2603,13 +2677,13 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     return (constraint);
                 }
                 _damperAttachmentVector(flipped) {
-                    return ({ x: flipped ? constants_1.DAMPER_RADIUS : -constants_1.DAMPER_RADIUS,
-                        y: -constants_1.DAMPER_RADIUS });
+                    return ({ x: flipped ? constants_2.DAMPER_RADIUS : -constants_2.DAMPER_RADIUS,
+                        y: -constants_2.DAMPER_RADIUS });
                 }
                 _damperAnchorVector(flipped, counterweighted) {
                     return (counterweighted ?
-                        { x: flipped ? constants_1.DAMPER_RADIUS : -constants_1.DAMPER_RADIUS, y: 0 } :
-                        { x: 0, y: constants_1.DAMPER_RADIUS });
+                        { x: flipped ? constants_2.DAMPER_RADIUS : -constants_2.DAMPER_RADIUS, y: 0 } :
+                        { x: 0, y: constants_2.DAMPER_RADIUS });
                 }
                 // transfer relevant properties to the body
                 updateBodyFromPart() {
@@ -2637,8 +2711,8 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         this._bodyFlipped = this._part.isFlipped;
                     }
                     // update position
-                    const position = { x: (this._part.column * constants_1.SPACING) + this._bodyOffset.x,
-                        y: (this._part.row * constants_1.SPACING) + this._bodyOffset.y };
+                    const position = { x: (this._part.column * constants_2.SPACING) + this._bodyOffset.x,
+                        y: (this._part.row * constants_2.SPACING) + this._bodyOffset.y };
                     const positionDelta = matter_js_1.Vector.sub(position, this._compositePosition);
                     matter_js_1.Composite.translate(this._composite, positionDelta, true);
                     this._compositePosition = position;
@@ -2659,8 +2733,8 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     if ((!this._body) || (!this._part) || (this._body.isStatic))
                         return;
                     if (this._part.bodyCanMove) {
-                        this._part.column = this._body.position.x / constants_1.SPACING;
-                        this._part.row = this._body.position.y / constants_1.SPACING;
+                        this._part.column = this._body.position.x / constants_2.SPACING;
+                        this._part.row = this._body.position.y / constants_2.SPACING;
                     }
                     if (this._part.bodyCanRotate) {
                         const r = this._part.rotationForAngle(this._body.angle);
@@ -2687,7 +2761,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                 _bodyForFence(fence) {
                     const name = (fence.variant == 1 /* SIDE */) ?
                         'Fence-l' : 'Fence-s' + fence.modulus;
-                    const y = -((fence.sequence % fence.modulus) / fence.modulus) * constants_1.SPACING;
+                    const y = -((fence.sequence % fence.modulus) / fence.modulus) * constants_2.SPACING;
                     return (this._bodyFromVertexSets(partvertices_1.getVertexSets(name), 0, y));
                 }
                 // construct a body from a set of vertex lists
@@ -2701,9 +2775,9 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         parts.push(matter_js_1.Body.create({ position: center, vertices: vertices }));
                     }
                     const body = matter_js_1.Body.create({ parts: parts,
-                        friction: constants_1.PART_FRICTION, frictionStatic: constants_1.PART_FRICTION_STATIC,
-                        density: constants_1.PART_DENSITY,
-                        collisionFilter: { category: constants_1.PART_CATEGORY, mask: constants_1.PART_MASK, group: 0 } });
+                        friction: constants_2.PART_FRICTION, frictionStatic: constants_2.PART_FRICTION_STATIC,
+                        density: constants_2.PART_DENSITY,
+                        collisionFilter: { category: constants_2.PART_CATEGORY, mask: constants_2.PART_MASK, group: 0 } });
                     // this is a hack to prevent matter.js from placing the body's center 
                     //  of mass over the origin, which complicates our ability to precisely
                     //  position parts of an arbitrary shape
@@ -2762,8 +2836,8 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                 _controlVelocity() {
                     if ((!this._body) || (!this._part) || (!this._part.bodyCanMove))
                         return;
-                    if (matter_js_1.Vector.magnitude(this._body.velocity) > constants_1.MAX_V) {
-                        const v = matter_js_1.Vector.mult(matter_js_1.Vector.normalise(this._body.velocity), constants_1.MAX_V);
+                    if (matter_js_1.Vector.magnitude(this._body.velocity) > constants_2.MAX_V) {
+                        const v = matter_js_1.Vector.mult(matter_js_1.Vector.normalise(this._body.velocity), constants_2.MAX_V);
                         matter_js_1.Body.setVelocity(this._body, v);
                     }
                 }
@@ -2835,20 +2909,20 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         ((mag > 0) && (tangent.x < 0)))
                         tangent = matter_js_1.Vector.mult(tangent, -1);
                     // see how much and in which direction we need to correct the horizontal velocity
-                    const target = constants_1.IDEAL_VX * mag;
+                    const target = constants_2.IDEAL_VX * mag;
                     const current = body.velocity.x;
                     let accel = 0;
                     if (mag > 0) {
                         if (current < target)
-                            accel = constants_1.NUDGE_ACCEL; // too slow => right
+                            accel = constants_2.NUDGE_ACCEL; // too slow => right
                         else if (current > target)
-                            accel = -constants_1.NUDGE_ACCEL; // too fast => right
+                            accel = -constants_2.NUDGE_ACCEL; // too fast => right
                     }
                     else {
                         if (target < current)
-                            accel = constants_1.NUDGE_ACCEL; // too slow <= left
+                            accel = constants_2.NUDGE_ACCEL; // too slow <= left
                         else if (target > current)
-                            accel = -constants_1.NUDGE_ACCEL; // too fast <= left
+                            accel = -constants_2.NUDGE_ACCEL; // too fast <= left
                     }
                     if (accel == 0)
                         return;
@@ -2885,7 +2959,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
 System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gearbit", "parts/partbody", "board/constants", "ui/animator"], function (exports_25, context_25) {
     "use strict";
     var __moduleName = context_25 && context_25.id;
-    var PIXI, matter_js_2, renderer_6, gearbit_3, partbody_1, constants_2, animator_2, PhysicalBallRouter;
+    var PIXI, matter_js_2, renderer_6, gearbit_3, partbody_1, constants_3, animator_2, PhysicalBallRouter;
     return {
         setters: [
             function (PIXI_6) {
@@ -2903,8 +2977,8 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
             function (partbody_1_1) {
                 partbody_1 = partbody_1_1;
             },
-            function (constants_2_1) {
-                constants_2 = constants_2_1;
+            function (constants_3_1) {
+                constants_3 = constants_3_1;
             },
             function (animator_2_1) {
                 animator_2 = animator_2_1;
@@ -3042,12 +3116,12 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                     matter_js_2.World.add(this.engine.world, [this._top, this._right, this._bottom, this._left]);
                 }
                 _updateWalls() {
-                    const w = ((this.board.columnCount + 3) * constants_2.SPACING);
-                    const h = ((this.board.rowCount + 3) * constants_2.SPACING);
+                    const w = ((this.board.columnCount + 3) * constants_3.SPACING);
+                    const h = ((this.board.rowCount + 3) * constants_3.SPACING);
                     const hw = (w - this._wallThickness) / 2;
                     const hh = (h + this._wallThickness) / 2;
-                    const cx = ((this.board.columnCount - 1) / 2) * constants_2.SPACING;
-                    const cy = ((this.board.rowCount - 1) / 2) * constants_2.SPACING;
+                    const cx = ((this.board.columnCount - 1) / 2) * constants_3.SPACING;
+                    const cy = ((this.board.rowCount - 1) / 2) * constants_3.SPACING;
                     matter_js_2.Body.setPosition(this._top, { x: cx, y: cy - hh });
                     matter_js_2.Body.setPosition(this._bottom, { x: cx, y: cy + hh });
                     matter_js_2.Body.setPosition(this._left, { x: cx - hw, y: cy });
@@ -3185,7 +3259,7 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                     // setup
                     const g = this._wireframeGraphics;
                     g.clear();
-                    const scale = this.board.spacing / constants_2.SPACING;
+                    const scale = this.board.spacing / constants_3.SPACING;
                     // draw all constraints
                     var constraints = matter_js_2.Composite.allConstraints(this.engine.world);
                     for (const constraint of constraints) {

@@ -1,6 +1,8 @@
 // the canonical part size the simulator runs at
 export const PART_SIZE:number = 64;
 export const SPACING:number = 68;
+// the size of a ball in simulator units
+export const BALL_RADIUS = 10;
 
 export const PART_DENSITY:number = 0.100;
 export const BALL_DENSITY:number = 0.008;

@@ -32,8 +32,15 @@ loader.add('images/parts.json').load(() => {
   // set up the standard board
   BoardBuilder.initStandardBoard(sim.board);
   sim.actionbar.zoomToFit();
-  // attach the stage to the document
+  // remove the loading animation
+  const loading = document.getElementById('loading');
+  if (loading) {
+    loading.style.opacity = '0';
+    setTimeout(() => loading.style.display = 'none', 2000);
+  }
+  // attach the stage to the document and fade it in
   container.appendChild(Renderer.instance.view);
+  container.style.opacity = '1';
   // start the game loop
   PIXI.ticker.shared.add(sim.update, sim);
 });

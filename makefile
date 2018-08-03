@@ -56,17 +56,26 @@ src/parts/partvertices.ts: src/svg/parts.svg \
 
 # GRAPHICS
 
-graphics: docs/images/parts.png docs/images/parts.json
+# NOTE: you'll need Inkscape and ImageMagick to rebuild the graphics
+graphics: docs/images/parts.png docs/images/parts.json docs/images/loading.gif
 
 docs/images/parts.png: src/svg/parts.svg
 	mkdir -p docs/images
-	inkscape --export-png=docs/images/parts.png \
-					 --export-area-page src/svg/parts.svg
+	inkscape --export-id=parts --export-id-only --export-area-page \
+					 --export-png=docs/images/parts.png src/svg/parts.svg
 
 docs/images/parts.json: src/svg/parts.svg \
 												src/svg/spritesheet.py src/svg/parser.py
 	mkdir -p docs/images
 	src/svg/spritesheet.py src/svg/parts.svg docs/images/parts.json
+
+docs/images/loading.gif: src/svg/gear.svg
+	mkdir -p docs/images
+	mkdir -p /tmp/ttsim
+	inkscape --export-area-page --export-png=/tmp/ttsim/gear.png src/svg/gear.svg
+	convert -loop 0 -dispose Background \
+		/tmp/ttsim/gear.png -crop 84x84 +repage \
+		docs/images/loading.gif
 
 # CLEANUP
 

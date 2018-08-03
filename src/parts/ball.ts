@@ -14,6 +14,7 @@ export class Ball extends Part {
   // data used by ball routers
   public lastColumn:number;
   public lastRow:number;
+  public lastDistinctColumn:number = NaN;
 
   // the color of the ball
   public get color():number { return(this._color); }

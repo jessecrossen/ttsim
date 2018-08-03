@@ -52,7 +52,8 @@ export abstract class GearBase extends Part {
   private static _updating:boolean = false;
 
   public isBeingDriven():boolean {
-    return(GearBase._rotationElections.has(this.connected));
+    return(GearBase._rotationElections.has(this.connected) &&
+           (isNaN(this._rotationVote)));
   }
 
 }

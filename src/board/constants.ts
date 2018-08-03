@@ -5,6 +5,16 @@ export const SPACING:number = 68;
 export const PART_DENSITY:number = 0.100;
 export const BALL_DENSITY:number = 0.008;
 
+export const BALL_FRICTION:number = 0.03;
+export const PART_FRICTION:number = 0.03;
+export const BALL_FRICTION_STATIC:number = 0.03;
+export const PART_FRICTION_STATIC:number = 0.03;
+
+// the ideal horizontal velocity at which a ball should be moving
+export const IDEAL_VX:number = 1.0;
+// the maximum acceleration to use when nudging the ball
+export const NUDGE_ACCEL:number = 0.001;
+
 // damping/counterweight constraint parameters
 export const DAMPER_RADIUS:number = PART_SIZE / 2;
 export const BIAS_STIFFNESS:number = BALL_DENSITY / 16;
@@ -15,8 +25,8 @@ export const COUNTERWEIGHT_DAMPING:number = 0.3;
 // collision filtering categories
 export const DEFAULT_MASK:number = 0xFFFFFF;
 export const PART_CATEGORY:number = 0x0001;
-export const PART_MASK:number = DEFAULT_MASK;
 export const BALL_CATEGORY:number = 0x0002;
-export const BALL_MASK:number = DEFAULT_MASK;
 export const PIN_CATEGORY:number = 0x0004;
+export const PART_MASK:number = BALL_CATEGORY | PIN_CATEGORY;
+export const BALL_MASK:number = DEFAULT_MASK;
 export const PIN_MASK:number = PART_CATEGORY;

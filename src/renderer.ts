@@ -17,10 +17,13 @@ export class Renderer {
   public static readonly stage = new PIXI.Container();
 
   public static render():void {
+    // render at 30fps, it's good enough
+    if (Renderer._counter++ % 2 == 0) return;
     if (Renderer._needsUpdate) {
       Renderer.instance.render(Renderer.stage);
       Renderer._needsUpdate = false;
     }
   }
+  private static _counter:number = 0;
 
 }

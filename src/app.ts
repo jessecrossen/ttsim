@@ -40,8 +40,8 @@ export class SimulatorApp extends PIXI.Container {
 
   public update(delta:number):void {
     Animator.current.update(delta);
-    GearBase.update();
     if (this.board.router) this.board.router.update(delta);
+    GearBase.update();
     Renderer.render();
   }
 

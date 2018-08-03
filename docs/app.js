@@ -72,7 +72,7 @@ System.register("parts/crossover", ["parts/part"], function (exports_3, context_
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
                 get type() { return (4 /* CROSSOVER */); }
-                get bodyRestitution() { return (0.75); }
+                get bodyRestitution() { return (0.25); }
             };
             exports_3("Crossover", Crossover);
         }
@@ -183,7 +183,8 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
                     GearBase._updating = false;
                 }
                 isBeingDriven() {
-                    return (GearBase._rotationElections.has(this.connected));
+                    return (GearBase._rotationElections.has(this.connected) &&
+                        (isNaN(this._rotationVote)));
                 }
             };
             GearBase._rotationElections = new Set();
@@ -363,7 +364,7 @@ System.register("parts/drop", ["parts/part"], function (exports_9, context_9) {
 System.register("board/constants", [], function (exports_10, context_10) {
     "use strict";
     var __moduleName = context_10 && context_10.id;
-    var PART_SIZE, SPACING, PART_DENSITY, BALL_DENSITY, DAMPER_RADIUS, BIAS_STIFFNESS, BIAS_DAMPING, COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, DEFAULT_MASK, PART_CATEGORY, PART_MASK, BALL_CATEGORY, BALL_MASK, PIN_CATEGORY, PIN_MASK;
+    var PART_SIZE, SPACING, PART_DENSITY, BALL_DENSITY, BALL_FRICTION, PART_FRICTION, BALL_FRICTION_STATIC, PART_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, DAMPER_RADIUS, BIAS_STIFFNESS, BIAS_DAMPING, COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, DEFAULT_MASK, PART_CATEGORY, BALL_CATEGORY, PIN_CATEGORY, PART_MASK, BALL_MASK, PIN_MASK;
     return {
         setters: [],
         execute: function () {
@@ -372,6 +373,14 @@ System.register("board/constants", [], function (exports_10, context_10) {
             exports_10("SPACING", SPACING = 68);
             exports_10("PART_DENSITY", PART_DENSITY = 0.100);
             exports_10("BALL_DENSITY", BALL_DENSITY = 0.008);
+            exports_10("BALL_FRICTION", BALL_FRICTION = 0.03);
+            exports_10("PART_FRICTION", PART_FRICTION = 0.03);
+            exports_10("BALL_FRICTION_STATIC", BALL_FRICTION_STATIC = 0.03);
+            exports_10("PART_FRICTION_STATIC", PART_FRICTION_STATIC = 0.03);
+            // the ideal horizontal velocity at which a ball should be moving
+            exports_10("IDEAL_VX", IDEAL_VX = 1.0);
+            // the maximum acceleration to use when nudging the ball
+            exports_10("NUDGE_ACCEL", NUDGE_ACCEL = 0.001);
             // damping/counterweight constraint parameters
             exports_10("DAMPER_RADIUS", DAMPER_RADIUS = PART_SIZE / 2);
             exports_10("BIAS_STIFFNESS", BIAS_STIFFNESS = BALL_DENSITY / 16);
@@ -381,10 +390,10 @@ System.register("board/constants", [], function (exports_10, context_10) {
             // collision filtering categories
             exports_10("DEFAULT_MASK", DEFAULT_MASK = 0xFFFFFF);
             exports_10("PART_CATEGORY", PART_CATEGORY = 0x0001);
-            exports_10("PART_MASK", PART_MASK = DEFAULT_MASK);
             exports_10("BALL_CATEGORY", BALL_CATEGORY = 0x0002);
-            exports_10("BALL_MASK", BALL_MASK = DEFAULT_MASK);
             exports_10("PIN_CATEGORY", PIN_CATEGORY = 0x0004);
+            exports_10("PART_MASK", PART_MASK = BALL_CATEGORY | PIN_CATEGORY);
+            exports_10("BALL_MASK", BALL_MASK = DEFAULT_MASK);
             exports_10("PIN_MASK", PIN_MASK = PART_CATEGORY);
         }
     };
@@ -403,6 +412,7 @@ System.register("parts/ball", ["parts/part"], function (exports_11, context_11) 
             Ball = class Ball extends part_10.Part {
                 constructor() {
                     super(...arguments);
+                    this.lastDistinctColumn = NaN;
                     this._color = 0x0E63FF;
                 }
                 get canRotate() { return (false); }
@@ -543,6 +553,9 @@ System.register("renderer", ["pixi.js"], function (exports_14, context_14) {
                     Renderer._needsUpdate = true;
                 }
                 static render() {
+                    // render at 30fps, it's good enough
+                    if (Renderer._counter++ % 2 == 0)
+                        return;
                     if (Renderer._needsUpdate) {
                         Renderer.instance.render(Renderer.stage);
                         Renderer._needsUpdate = false;
@@ -555,6 +568,7 @@ System.register("renderer", ["pixi.js"], function (exports_14, context_14) {
                 backgroundColor: 16777215 /* BACKGROUND */
             });
             Renderer.stage = new PIXI.Container();
+            Renderer._counter = 0;
             exports_14("Renderer", Renderer);
         }
     };
@@ -2396,19 +2410,19 @@ System.register("parts/partvertices", [], function (exports_23, context_23) {
     function getVertexSets(name) {
         switch (name) {
             case 'Bit':
-                return ([[{ x: -1.055229, y: -32.311155 }, { x: 0.083096, y: -27.714947 }, { x: -27.716345, y: 0.194331 }, { x: -32.193815, y: -1.017234 }, { x: -34.041082, y: -34.054877 }], [{ x: -9.275339, y: -18.699338 }, { x: -18.644511, y: -8.976617 }, { x: 0.000004, y: 11.999988 }, { x: 2.000001, y: 17.000000 }, { x: 12.203028, y: 15.153399 }, { x: 15.296620, y: 11.971414 }, { x: 17.000001, y: 2.000000 }, { x: 11.999999, y: -0.000012 }], [{ x: 26.420847, y: -7.162746 }, { x: 27.625371, y: -30.038638 }, { x: 27.844206, y: -31.163652 }, { x: 28.781680, y: -32.163640 }, { x: 30.000426, y: -32.538569 }, { x: 31.156697, y: -32.288364 }, { x: 32.156684, y: -31.507136 }, { x: 32.625459, y: -30.163362 }, { x: 32.835185, y: -6.980308 }], [{ x: -7.426689, y: 26.576831 }, { x: -30.292815, y: 27.954318 }, { x: -31.416143, y: 28.181468 }, { x: -32.409014, y: 29.126463 }, { x: -32.774721, y: 30.348006 }, { x: -32.515785, y: 31.502387 }, { x: -31.727017, y: 32.496403 }, { x: -30.379740, y: 32.955011 }, { x: -7.195759, y: 32.989026 }], [{ x: 26.521942, y: -7.474028 }, { x: 17.000001, y: 2.000000 }, { x: 15.385009, y: 12.059818 }, { x: 28.731650, y: 2.602268 }, { x: 32.797511, y: -6.766916 }], [{ x: -7.574706, y: 26.497612 }, { x: 2.000001, y: 17.000000 }, { x: 11.959139, y: 15.360668 }, { x: 2.501590, y: 28.707313 }, { x: -6.867594, y: 32.773178 }]]);
+                return ([[{ x: -1.055229, y: -32.311155 }, { x: 0.083096, y: -27.714947 }, { x: -27.716345, y: 0.194331 }, { x: -32.193815, y: -1.017234 }, { x: -34.041082, y: -34.054877 }], [{ x: -9.275339, y: -18.699338 }, { x: -18.644511, y: -8.976617 }, { x: -0.000000, y: 14.000038 }, { x: 12.203028, y: 15.153399 }, { x: 15.296620, y: 11.971414 }, { x: 13.999993, y: 0.000026 }], [{ x: 26.999992, y: -2.999974 }, { x: 27.625371, y: -30.038638 }, { x: 27.844206, y: -31.163652 }, { x: 28.781680, y: -32.163640 }, { x: 30.000426, y: -32.538569 }, { x: 31.156697, y: -32.288364 }, { x: 32.156684, y: -31.507136 }, { x: 32.625459, y: -30.163362 }, { x: 31.999993, y: -2.999974 }], [{ x: -4.000006, y: 27.000025 }, { x: -30.292815, y: 27.954318 }, { x: -31.416143, y: 28.181468 }, { x: -32.409014, y: 29.126463 }, { x: -32.774721, y: 30.348006 }, { x: -32.515785, y: 31.502387 }, { x: -31.727017, y: 32.496403 }, { x: -30.379740, y: 32.955011 }, { x: -4.000006, y: 32.000038 }], [{ x: 26.999992, y: -2.999974 }, { x: 13.999993, y: 0.000026 }, { x: 15.385009, y: 12.059818 }, { x: 28.731650, y: 2.602268 }, { x: 31.999993, y: -2.999974 }], [{ x: -4.000006, y: 27.000025 }, { x: 0.000034, y: 14.000038 }, { x: 11.959139, y: 15.360668 }, { x: 2.501590, y: 28.707313 }, { x: -4.000006, y: 32.000038 }]]);
             case 'Crossover':
-                return ([[{ x: -0.125001, y: -48.250007 }, { x: -2.750000, y: -46.000016 }, { x: -2.750000, y: -15.874990 }, { x: 3.000000, y: -15.874990 }, { x: 3.000000, y: -46.374983 }], [{ x: -3.500001, y: -16.125006 }, { x: -12.750002, y: -10.000017 }, { x: -2.249998, y: 4.250011 }, { x: 2.374998, y: 4.250011 }, { x: 12.750001, y: -10.125006 }, { x: 3.749998, y: -16.000017 }], [{ x: -31.249999, y: -32.999991 }, { x: -40.000002, y: -18.750001 }, { x: -44.999999, y: -20.499998 }, { x: -35.749999, y: -35.875002 }, { x: -32.125001, y: -36.625012 }], [{ x: -44.874999, y: -20.124993 }, { x: -48.124999, y: -3.374997 }, { x: -42.500000, y: -4.875016 }, { x: -40.249999, y: -18.625012 }], [{ x: -43.000002, y: -4.625000 }, { x: -32.624998, y: 7.499989 }, { x: -34.000002, y: 10.124984 }, { x: -37.249999, y: 10.374811 }, { x: -48.375000, y: -3.000181 }], [{ x: 30.750039, y: -32.999991 }, { x: 39.500042, y: -18.750001 }, { x: 44.500039, y: -20.499998 }, { x: 35.250039, y: -35.875002 }, { x: 31.625041, y: -36.625012 }], [{ x: 44.375039, y: -20.124993 }, { x: 47.625039, y: -3.374997 }, { x: 42.000040, y: -4.875016 }, { x: 39.750038, y: -18.625012 }], [{ x: 42.500042, y: -4.625000 }, { x: 32.125038, y: 7.499989 }, { x: 33.500042, y: 10.124984 }, { x: 36.750039, y: 10.374811 }, { x: 47.875040, y: -3.000181 }], [{ x: -32.250001, y: 31.999982 }, { x: -0.051776, y: 29.502583 }, { x: 31.124998, y: 31.499988 }, { x: 32.874999, y: 34.374999 }, { x: 30.375000, y: 36.999994 }, { x: -30.250000, y: 36.999994 }, { x: -32.749999, y: 35.125008 }]]);
+                return ([[{ x: -0.125001, y: -48.250007 }, { x: -2.750000, y: -46.000016 }, { x: -2.750000, y: -15.874990 }, { x: 3.000000, y: -15.874990 }, { x: 3.000000, y: -46.374983 }], [{ x: -3.000008, y: -15.999979 }, { x: -12.000004, y: -9.999979 }, { x: -2.249998, y: 4.250011 }, { x: 2.374998, y: 4.250011 }, { x: 11.999992, y: -9.999979 }, { x: 2.999992, y: -15.999979 }], [{ x: -32.250001, y: 31.999982 }, { x: -0.051776, y: 29.502583 }, { x: 31.124998, y: 31.499988 }, { x: 32.874999, y: 34.374999 }, { x: 30.375000, y: 36.999994 }, { x: -30.250000, y: 36.999994 }, { x: -32.749999, y: 35.125008 }], [{ x: -36.000003, y: -27.999979 }, { x: -43.000005, y: -5.000005 }, { x: -48.000003, y: -2.999992 }, { x: -45.000003, y: -20.999992 }, { x: -36.000003, y: -35.999991 }], [{ x: -43.000005, y: -5.000005 }, { x: -33.000003, y: 6.999995 }, { x: -39.000003, y: 6.999995 }, { x: -48.000003, y: -2.999992 }], [{ x: -35.999992, y: -35.999991 }, { x: -24.000011, y: -35.999991 }, { x: -29.999999, y: -27.999979 }, { x: -35.999999, y: -27.999979 }], [{ x: 35.999938, y: -27.999979 }, { x: 42.999941, y: -5.000005 }, { x: 47.999938, y: -2.999992 }, { x: 44.999938, y: -20.999992 }, { x: 35.999938, y: -35.999991 }], [{ x: 42.999941, y: -5.000005 }, { x: 32.999938, y: 6.999995 }, { x: 38.999938, y: 6.999995 }, { x: 47.999938, y: -2.999992 }], [{ x: 35.999927, y: -35.999991 }, { x: 23.999946, y: -35.999991 }, { x: 29.999935, y: -27.999979 }, { x: 35.999935, y: -27.999979 }]]);
             case 'GearLocation':
                 return ([[{ x: -0.015621, y: -4.546895 }, { x: 2.093748, y: -4.046864 }, { x: 4.046880, y: -2.046889 }, { x: 4.562502, y: 0.015637 }, { x: 4.031251, y: 2.062516 }, { x: 2.093748, y: 4.015624 }, { x: -0.015621, y: 4.468752 }, { x: -2.031251, y: 4.000015 }, { x: -4.015620, y: 2.015612 }, { x: -4.546870, y: -0.031267 }, { x: -4.031252, y: -2.031242 }, { x: -2.046871, y: -3.999997 }]]);
             case 'Gearbit':
-                return ([[{ x: -25.749959, y: -25.875007 }, { x: -15.250000, y: 16.000003 }, { x: -19.999982, y: 16.499997 }, { x: -31.999982, y: -29.500005 }, { x: -31.874993, y: -32.000004 }], [{ x: -31.874993, y: -32.000004 }, { x: -29.749991, y: -32.000004 }, { x: 16.375007, y: -20.375005 }, { x: 16.000002, y: -15.000003 }, { x: -25.749981, y: -25.875007 }], [{ x: -19.897093, y: 16.836305 }, { x: -22.637133, y: 25.233206 }, { x: -19.101593, y: 28.768727 }, { x: -14.858953, y: 22.316393 }, { x: -14.682184, y: 16.040828 }], [{ x: -22.637133, y: 25.144803 }, { x: -30.857243, y: 28.326787 }, { x: -30.945646, y: 32.569420 }, { x: -23.962965, y: 32.216034 }, { x: -18.748056, y: 28.326938 }], [{ x: 16.771211, y: -20.323460 }, { x: 25.168111, y: -23.063500 }, { x: 28.703632, y: -19.527960 }, { x: 22.251299, y: -15.285319 }, { x: 15.975734, y: -15.108551 }], [{ x: 25.079708, y: -23.063500 }, { x: 28.261692, y: -31.283609 }, { x: 32.504325, y: -31.372012 }, { x: 32.150939, y: -24.389332 }, { x: 28.261843, y: -19.174423 }]]);
+                return ([[{ x: -19.999998, y: 16.000009 }, { x: -22.637133, y: 25.233206 }, { x: -19.101593, y: 28.768727 }, { x: -14.858953, y: 22.316393 }, { x: -14.682184, y: 16.040828 }], [{ x: -22.637133, y: 25.144803 }, { x: -30.857243, y: 28.326787 }, { x: -30.945646, y: 32.569420 }, { x: -23.962965, y: 32.216034 }, { x: -18.748056, y: 28.326938 }], [{ x: 15.999998, y: -20.000004 }, { x: 25.168111, y: -23.063500 }, { x: 28.703632, y: -19.527960 }, { x: 22.251299, y: -15.285319 }, { x: 15.975734, y: -15.108551 }], [{ x: 25.079708, y: -23.063500 }, { x: 28.261692, y: -31.283609 }, { x: 32.504325, y: -31.372012 }, { x: 32.150939, y: -24.389332 }, { x: 28.261843, y: -19.174423 }], [{ x: -27.999998, y: -32.000000 }, { x: 15.999998, y: -20.000000 }, { x: 6.999995, y: 7.000026 }, { x: -20.000001, y: 16.000003 }, { x: -32.000001, y: -28.000001 }, { x: -31.999993, y: -31.999985 }]]);
             case 'Interceptor':
                 return ([[{ x: -45.691339, y: -8.678364 }, { x: 45.525429, y: -8.678364 }, { x: 46.507671, y: -3.375045 }, { x: -46.600349, y: -3.375045 }], [{ x: -40.374999, y: -8.249992 }, { x: -28.500000, y: -30.875000 }, { x: -33.125000, y: -33.624984 }, { x: -41.999999, y: -20.749986 }, { x: -45.625001, y: -9.124991 }], [{ x: 40.624999, y: -8.249992 }, { x: 28.750000, y: -30.875000 }, { x: 33.375000, y: -33.624984 }, { x: 42.249999, y: -20.749986 }, { x: 45.875001, y: -9.124991 }], [{ x: -6.999999, y: -3.499996 }, { x: -6.500009, y: 3.625018 }, { x: -0.000012, y: 6.999985 }, { x: 6.374989, y: 3.624980 }, { x: 6.499978, y: -3.499996 }]]);
             case 'PartLocation':
                 return ([[{ x: -0.015621, y: -4.546889 }, { x: 2.093748, y: -4.046857 }, { x: 4.046880, y: -2.046883 }, { x: 4.562502, y: 0.015643 }, { x: 4.031251, y: 2.062522 }, { x: 2.093748, y: 4.015631 }, { x: -0.015621, y: 4.468758 }, { x: -2.031251, y: 4.000021 }, { x: -4.015620, y: 2.015618 }, { x: -4.546870, y: -0.031261 }, { x: -4.031252, y: -2.031235 }, { x: -2.046871, y: -3.999991 }]]);
             case 'Ramp':
-                return ([[{ x: 14.125001, y: -15.875018 }, { x: -30.999998, y: -27.000019 }, { x: -32.521481, y: -31.327994 }, { x: -30.046601, y: -32.742218 }, { x: 17.125001, y: -20.499988 }], [{ x: 17.417941, y: -20.279453 }, { x: 25.196110, y: -23.903377 }, { x: 29.438751, y: -20.809796 }, { x: 22.809629, y: -16.125185 }, { x: 14.235960, y: -15.594880 }], [{ x: 25.461282, y: -24.522086 }, { x: 27.759382, y: -30.974457 }, { x: 30.057470, y: -32.830583 }, { x: 32.797511, y: -30.886054 }, { x: 29.527139, y: -21.074968 }], [{ x: -18.290952, y: 11.363583 }, { x: -26.422681, y: 11.363583 }, { x: -33.272779, y: 18.213674 }, { x: -33.272779, y: 25.594108 }, { x: -26.444779, y: 32.422089 }, { x: -17.760620, y: 32.422089 }, { x: -11.297231, y: 25.958682 }, { x: -11.485036, y: 15.959753 }], [{ x: -17.000001, y: 12.000017 }, { x: -7.999998, y: 2.999980 }, { x: -4.999998, y: 5.999980 }, { x: -12.999999, y: 15.000017 }], [{ x: -5.000001, y: -20.999982 }, { x: -5.000001, y: -7.999995 }, { x: -0.000000, y: -7.999995 }, { x: -0.000000, y: -19.999994 }], [{ x: 9.000000, y: -16.999994 }, { x: 2.000001, y: -7.999995 }, { x: 6.000000, y: -6.000020 }, { x: 14.999999, y: -16.000007 }], [{ x: -5.000001, y: -7.999995 }, { x: -8.000001, y: -2.999982 }, { x: -8.000001, y: 1.999992 }, { x: -5.000001, y: 7.000005 }, { x: 9.000000, y: 13.999992 }, { x: 14.000001, y: 13.999992 }, { x: 14.000001, y: 9.000017 }, { x: 7.000002, y: -4.999995 }]]);
+                return ([[{ x: 13.000002, y: -13.999995 }, { x: -44.999999, y: -28.000007 }, { x: -44.999999, y: -34.000007 }, { x: -44.000000, y: -37.000007 }, { x: 16.000002, y: -21.000020 }], [{ x: 16.000002, y: -21.000020 }, { x: 25.000002, y: -24.000019 }, { x: 30.000003, y: -21.000020 }, { x: 23.000000, y: -16.000007 }, { x: 14.000001, y: -16.000007 }], [{ x: 25.000002, y: -24.000019 }, { x: 27.759382, y: -30.974457 }, { x: 30.000003, y: -31.999994 }, { x: 33.000003, y: -30.000019 }, { x: 30.000003, y: -21.000020 }], [{ x: -15.999999, y: 10.999992 }, { x: -27.999998, y: 10.999992 }, { x: -32.999999, y: 18.000017 }, { x: -32.999999, y: 25.999992 }, { x: -27.999998, y: 33.000017 }, { x: -15.999999, y: 33.000017 }, { x: -10.999997, y: 25.999992 }, { x: -10.999997, y: 18.000017 }], [{ x: -17.000001, y: 12.000017 }, { x: -7.999998, y: 2.999980 }, { x: -4.999998, y: 5.999980 }, { x: -12.999999, y: 15.000017 }], [{ x: -3.999999, y: -7.000007 }, { x: -7.999998, y: -3.000020 }, { x: -7.999998, y: 1.999992 }, { x: -3.999999, y: 7.000005 }, { x: 9.000000, y: 13.999992 }, { x: 14.000001, y: 13.999992 }, { x: 14.000001, y: 9.000017 }, { x: 6.000000, y: -6.000020 }], [{ x: -3.999999, y: -17.999982 }, { x: 12.999998, y: -13.999995 }, { x: 6.000000, y: -6.000020 }, { x: -3.999999, y: -7.000007 }]]);
             default:
                 return (null);
         }
@@ -2466,13 +2480,9 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     if (part) {
                         if (part.type !== this.type)
                             throw ('Part type must match PartBody type');
+                        this._partChangeCounter = NaN;
                         this._part = part;
                         this.initBodyFromPart();
-                    }
-                    else {
-                        this.resetBody();
-                        this._part = null;
-                        this._partChangeCounter = NaN;
                     }
                 }
                 // a body representing the physical form of the part
@@ -2483,7 +2493,8 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         const constructor = factory_1.PartFactory.constructorForType(this.type);
                         // construct the ball as a circle
                         if (this.type == 9 /* BALL */) {
-                            this._body = matter_js_1.Bodies.circle(0, 0, (5 * constants_1.PART_SIZE) / 32, { density: constants_1.BALL_DENSITY, friction: 0.05,
+                            this._body = matter_js_1.Bodies.circle(0, 0, (5 * constants_1.PART_SIZE) / 32, { density: constants_1.BALL_DENSITY, friction: constants_1.BALL_FRICTION,
+                                frictionStatic: constants_1.BALL_FRICTION_STATIC,
                                 collisionFilter: { category: constants_1.BALL_CATEGORY, mask: constants_1.BALL_MASK, group: 0 } });
                         }
                         else {
@@ -2575,7 +2586,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         this._bodyOffset.x *= -1;
                         if (this._counterweightDamper) {
                             const attachment = this._counterweightDamper.pointA;
-                            attachment.x = this._body.position.x - attachment.x;
+                            attachment.x *= -1;
                         }
                         this._bodyFlipped = this._part.isFlipped;
                     }
@@ -2594,40 +2605,8 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         matter_js_1.Vector.add(this._body.position, this._damperAnchorVector(this._part.isFlipped, false), this._biasDamper.pointB);
                     }
                     matter_js_1.Body.setAngle(this._body, this._part.angleForRotation(this._part.rotation));
-                    matter_js_1.Body.setAngularVelocity(this._body, 0);
                     // record that we've synced with the part
                     this._partChangeCounter = this._part.changeCounter;
-                }
-                // apply corrections to the body and the balls contacting it
-                cheat(balls) {
-                    if ((!this._body) || (!this._part))
-                        return;
-                    const positionDelta = { x: 0, y: 0 };
-                    let angleDelta = 0;
-                    let moved = false;
-                    if (!this._part.bodyCanMove) {
-                        matter_js_1.Vector.sub(this._compositePosition, this._body.position, positionDelta);
-                        matter_js_1.Body.translate(this._body, positionDelta);
-                        matter_js_1.Body.setVelocity(this._body, { x: 0, y: 0 });
-                        moved = true;
-                    }
-                    if (this._part.bodyCanRotate) {
-                        const r = this._part.rotationForAngle(this._body.angle);
-                        if ((r <= 0.0) || (r >= 1.0)) {
-                            const target = this._part.angleForRotation(Math.min(Math.max(0.0, r), 1.0));
-                            angleDelta = target - this._body.angle;
-                            matter_js_1.Body.rotate(this._body, angleDelta);
-                            matter_js_1.Body.setAngularVelocity(this._body, 0);
-                        }
-                        moved = true;
-                    }
-                    // apply the same movements to balls if there are any, otherwise they 
-                    //  will squash into the part
-                    if ((moved) && (balls)) {
-                        for (const ball of balls) {
-                            matter_js_1.Body.translate(ball.body, matter_js_1.Vector.rotate(positionDelta, angleDelta));
-                        }
-                    }
                 }
                 // tranfer relevant properties from the body
                 updatePartFromBody() {
@@ -2658,8 +2637,12 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                 // add the body to the given world, creating the body if needed
                 addToWorld(world) {
                     const body = this.body;
-                    if (body)
+                    if (body) {
                         matter_js_1.World.add(world, this._composite);
+                        // try to release any stored energy in the part
+                        matter_js_1.Body.setVelocity(this._body, { x: 0, y: 0 });
+                        matter_js_1.Body.setAngularVelocity(this._body, 0);
+                    }
                 }
                 // remove the body from the given world
                 removeFromWorld(world) {
@@ -2674,7 +2657,9 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         const center = matter_js_1.Vertices.centre(vertices);
                         parts.push(matter_js_1.Body.create({ position: center, vertices: vertices }));
                     }
-                    const body = matter_js_1.Body.create({ parts: parts, friction: 0.05, density: constants_1.PART_DENSITY,
+                    const body = matter_js_1.Body.create({ parts: parts,
+                        friction: constants_1.PART_FRICTION, frictionStatic: constants_1.PART_FRICTION_STATIC,
+                        density: constants_1.PART_DENSITY,
                         collisionFilter: { category: constants_1.PART_CATEGORY, mask: constants_1.PART_MASK, group: 0 } });
                     // this is a hack to prevent matter.js from placing the body's center 
                     //  of mass over the origin, which complicates our ability to precisely
@@ -2685,46 +2670,134 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     body.positionPrev.y = 0;
                     return (body);
                 }
+                // PHYSICS ENGINE CHEATS ****************************************************
+                // apply corrections to the body and any balls contacting it
+                cheat(contacts) {
+                    if ((!this._body) || (!this._part))
+                        return;
+                    this._controlRotation(contacts);
+                    if (contacts) {
+                        for (const contact of contacts) {
+                            this._nudgeBall(contact);
+                        }
+                    }
+                }
+                // constrain the position and angle of the part to simulate 
+                //  an angle-constrained revolute joint
+                _controlRotation(contacts) {
+                    const positionDelta = { x: 0, y: 0 };
+                    let angleDelta = 0;
+                    let moved = false;
+                    if (!this._part.bodyCanMove) {
+                        matter_js_1.Vector.sub(this._compositePosition, this._body.position, positionDelta);
+                        matter_js_1.Body.translate(this._body, positionDelta);
+                        matter_js_1.Body.setVelocity(this._body, { x: 0, y: 0 });
+                        moved = true;
+                    }
+                    if (this._part.bodyCanRotate) {
+                        const r = this._part.rotationForAngle(this._body.angle);
+                        if ((r <= 0.0) || (r >= 1.0)) {
+                            const target = this._part.angleForRotation(Math.min(Math.max(0.0, r), 1.0));
+                            angleDelta = target - this._body.angle;
+                            matter_js_1.Body.rotate(this._body, angleDelta);
+                            matter_js_1.Body.setAngularVelocity(this._body, 0);
+                        }
+                        moved = true;
+                    }
+                    // apply the same movements to balls if there are any, otherwise they 
+                    //  will squash into the part
+                    if ((moved) && (contacts)) {
+                        const combined = matter_js_1.Vector.rotate(positionDelta, angleDelta);
+                        for (const contact of contacts) {
+                            matter_js_1.Body.translate(contact.ballPartBody.body, combined);
+                        }
+                    }
+                }
+                // apply a speed limit to the given ball
+                _nudgeBall(contact) {
+                    if ((!this._body) || (!contact.ballPartBody.body))
+                        return;
+                    const ball = contact.ballPartBody.part;
+                    const body = contact.ballPartBody.body;
+                    // get the horizontal direction we want the ball to be going in, and flip 
+                    //  the contact tangent if needed
+                    let dir = 0;
+                    // ramps direct in a single direction
+                    if (this._part.type == 3 /* RAMP */) {
+                        if ((this._part.rotation < 0.25) ||
+                            (this._part.rotation > 0.75)) {
+                            dir = this._part.isFlipped ? -1 : 1;
+                        }
+                    }
+                    else if (this._part.type == 7 /* GEARBIT */) {
+                        if (this._part.rotation < 0.25)
+                            dir = 1;
+                        else if (this._part.rotation > 0.75)
+                            dir = -1;
+                    }
+                    else if (this._part.type == 6 /* BIT */) {
+                        const bottomHalf = ball.row > this._part.row;
+                        if (this._part.rotation >= 0.9)
+                            dir = bottomHalf ? 1 : -1;
+                        else if (this._part.rotation <= 0.1)
+                            dir = bottomHalf ? -1 : 1;
+                    }
+                    else if (this._part.type == 4 /* CROSSOVER */) {
+                        if (ball.lastDistinctColumn < ball.lastColumn)
+                            dir = 1;
+                        else if (ball.lastDistinctColumn > ball.lastColumn)
+                            dir = -1;
+                    }
+                    if (dir == 0)
+                        return;
+                    // only nudge the ball if it's touching a horizontal-ish surface
+                    let tangent = matter_js_1.Vector.clone(contact.tangent);
+                    const slope = Math.abs(tangent.y) / Math.abs(tangent.x);
+                    if (slope > 0.3)
+                        return;
+                    // flip the tangent if the direction doesn't match the target direction
+                    if (((dir < 0) && (tangent.x > 0)) ||
+                        ((dir > 0) && (tangent.x < 0)))
+                        tangent = matter_js_1.Vector.mult(tangent, -1);
+                    // see how much and in which direction we need to correct the horizontal velocity
+                    const target = constants_1.IDEAL_VX * dir;
+                    const current = body.velocity.x;
+                    let accel = 0;
+                    if (dir > 0) {
+                        if (current < target)
+                            accel = constants_1.NUDGE_ACCEL; // too slow => right
+                        else if (current > target)
+                            accel = -constants_1.NUDGE_ACCEL; // too fast => right
+                    }
+                    else {
+                        if (target < current)
+                            accel = constants_1.NUDGE_ACCEL; // too slow <= left
+                        else if (target > current)
+                            accel = -constants_1.NUDGE_ACCEL; // too fast <= left
+                    }
+                    if (accel == 0)
+                        return;
+                    // accelerate the ball in the desired direction
+                    matter_js_1.Body.applyForce(body, body.position, matter_js_1.Vector.mult(tangent, accel * body.mass));
+                }
             };
             exports_24("PartBody", PartBody);
-            // maintain a pool of PartBody instances grouped by type to avoid 
-            //  creation/destruction penalties
+            // FACTORY / CACHE ************************************************************
+            // maintain a cache of PartBody instances
             PartBodyFactory = class PartBodyFactory {
                 constructor() {
-                    // temporarily turning this off as there's too much physical state
-                    //  in the body instances
-                    this.reuse = false;
-                    // instances that are available for use
-                    this._unused = new Map();
-                    // instances that have been made but not released
-                    this._used = new Set();
+                    // cached instances
+                    this._instances = new WeakMap();
                 }
-                // make or reuse a part body from the pool
+                // make or reuse a part body from the cache
                 make(part) {
-                    if (!this._unused.has(part.type)) {
-                        this._unused.set(part.type, []);
+                    if (!this._instances.has(part)) {
+                        this._instances.set(part, new PartBody(part));
                     }
-                    const available = this._unused.get(part.type);
-                    let instance = ((available.length > 0) && (this.reuse)) ?
-                        available.pop() : new PartBody(part);
-                    this._used.add(instance);
-                    instance.part = part;
-                    return (instance);
+                    return (this._instances.get(part));
                 }
+                // mark that a part body is not currently being used
                 release(instance) {
-                    // don't allow double-releases
-                    if (!this._used.has(instance))
-                        return;
-                    // detach the body from its part
-                    instance.part = null;
-                    // remove it from the used set
-                    this._used.delete(instance);
-                    // add it to the unused set
-                    if (!this._unused.has(instance.type)) {
-                        this._unused.set(instance.type, []);
-                    }
-                    if (this.reuse)
-                        this._unused.get(instance.type).push(instance);
                 }
             };
             exports_24("PartBodyFactory", PartBodyFactory);
@@ -2788,7 +2861,7 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                 // UPDATING *****************************************************************
                 update(correction) {
                     this.beforeUpdate();
-                    matter_js_2.Engine.update(this.engine, 1000 / 60, correction);
+                    matter_js_2.Engine.update(this.engine);
                     this.afterUpdate();
                 }
                 beforeUpdate() {
@@ -2801,20 +2874,55 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                 afterUpdate() {
                     // determine the set of balls touching each part
                     const contacts = this._mapContacts();
-                    // transfer part positions
-                    gearbit_3.GearBase.update();
-                    for (const [part, partBody] of this._parts.entries()) {
+                    // apply physics corrections
+                    for (const partBody of this._parts.values()) {
                         partBody.cheat(contacts.get(partBody));
+                    }
+                    // transfer part positions
+                    for (const [part, partBody] of this._parts.entries()) {
                         partBody.updatePartFromBody();
                         if (part.bodyCanMove) {
                             this.board.layoutPart(part, part.column, part.row);
                         }
                     }
+                    // combine the velocities of connected gear trains
+                    this.connectGears(contacts);
                     // re-render the wireframe if there is one
                     this.renderWireframe();
                     // re-render the whole display if we're managing parts
                     if (this._parts.size > 0)
                         renderer_6.Renderer.needsUpdate();
+                }
+                // average the angular velocities of all simulated gears with ball contacts,
+                //  and transfer it to all simulated gears that are connected
+                connectGears(contacts) {
+                    const activeTrains = new Set();
+                    for (const part of this._parts.keys()) {
+                        if (part instanceof gearbit_3.GearBase)
+                            activeTrains.add(part.connected);
+                    }
+                    for (const train of activeTrains) {
+                        let av = 0;
+                        let contactCount = 0;
+                        for (const gear of train) {
+                            // select gears which are simulated and have balls in contact
+                            const partBody = this._parts.get(gear);
+                            if ((partBody) && (partBody.body) && (contacts.has(partBody))) {
+                                av += partBody.body.angularVelocity;
+                                contactCount++;
+                            }
+                        }
+                        // transfer the average angular velocity to all connected gears
+                        if (contactCount > 0) {
+                            av /= contactCount;
+                            for (const gear of train) {
+                                const partBody = this._parts.get(gear);
+                                if ((partBody) && (partBody.body)) {
+                                    matter_js_2.Body.setAngularVelocity(partBody.body, av);
+                                }
+                            }
+                        }
+                    }
                 }
                 _mapContacts() {
                     const contacts = new Map();
@@ -2828,12 +2936,12 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                         if ((partA.type == 9 /* BALL */) && (partB.type != 9 /* BALL */)) {
                             if (!contacts.has(partB))
                                 contacts.set(partB, new Set());
-                            contacts.get(partB).add(partA);
+                            contacts.get(partB).add({ ballPartBody: partA, tangent: pair.collision.tangent });
                         }
                         else if ((partB.type == 9 /* BALL */) && (partA.type != 9 /* BALL */)) {
                             if (!contacts.has(partA))
                                 contacts.set(partA, new Set());
-                            contacts.get(partA).add(partB);
+                            contacts.get(partA).add({ ballPartBody: partB, tangent: pair.collision.tangent });
                         }
                     }
                     return (contacts);
@@ -2923,6 +3031,12 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                                 neighbors.add(part);
                             }
                         }
+                        // track the last column the ball was in before the current one
+                        if (isNaN(ball.lastDistinctColumn))
+                            ball.lastDistinctColumn = column;
+                        else if (ball.lastColumn !== column) {
+                            ball.lastDistinctColumn = ball.lastColumn;
+                        }
                         // store the last place we updated the ball
                         ball.lastColumn = column;
                         ball.lastRow = row;
@@ -2938,6 +3052,7 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                         return; // make it idempotent
                     const partBody = this.partBodyFactory.make(part);
                     this._parts.set(part, partBody);
+                    partBody.updateBodyFromPart();
                     partBody.addToWorld(this.engine.world);
                     if (partBody.body)
                         this._bodies.set(partBody.body, partBody);
@@ -3160,9 +3275,9 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                 }
                 update(delta) {
                     animator_3.Animator.current.update(delta);
-                    gearbit_4.GearBase.update();
                     if (this.board.router)
                         this.board.router.update(delta);
+                    gearbit_4.GearBase.update();
                     renderer_7.Renderer.render();
                 }
                 get width() { return (this._width); }
@@ -3340,8 +3455,17 @@ System.register("index", ["pixi.js", "app", "renderer", "board/builder"], functi
                 // set up the standard board
                 builder_1.BoardBuilder.initStandardBoard(sim.board);
                 sim.actionbar.zoomToFit();
-                // attach the stage to the document
+                // remove the loading animation
+                const loading = document.getElementById('loading');
+                if (loading) {
+                    loading.style.opacity = '0';
+                    // clear it from the display list after the animation,
+                    //  in case the browser still renders it at zero opacity
+                    setTimeout(() => loading.style.display = 'none', 1000);
+                }
+                // attach the stage to the document and fade it in
                 container.appendChild(renderer_8.Renderer.instance.view);
+                container.style.opacity = '1';
                 // start the game loop
                 PIXI.ticker.shared.add(sim.update, sim);
             });

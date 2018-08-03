@@ -36,7 +36,9 @@ loader.add('images/parts.json').load(() => {
   const loading = document.getElementById('loading');
   if (loading) {
     loading.style.opacity = '0';
-    setTimeout(() => loading.style.display = 'none', 2000);
+    // clear it from the display list after the animation,
+    //  in case the browser still renders it at zero opacity
+    setTimeout(() => loading.style.display = 'none', 1000);
   }
   // attach the stage to the document and fade it in
   container.appendChild(Renderer.instance.view);

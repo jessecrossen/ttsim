@@ -8,6 +8,6 @@ export class Crossover extends Part {
   public get canFlip():boolean { return(false); }
   public get type():PartType { return(PartType.CROSSOVER); }
 
-  public get bodyRestitution():number { return(0.75); }
+  public get bodyRestitution():number { return(0.25); }
 
 }

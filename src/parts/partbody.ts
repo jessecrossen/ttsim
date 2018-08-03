@@ -6,8 +6,11 @@ import { getVertexSets, getPinLocations, PinLocation } from './partvertices';
 import { SPACING, PART_SIZE, BALL_MASK, BALL_CATEGORY, PART_CATEGORY, 
          PART_MASK, PIN_CATEGORY, PIN_MASK, DAMPER_RADIUS, BALL_DENSITY, 
          COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, BIAS_STIFFNESS, 
-         BIAS_DAMPING, 
-         PART_DENSITY} from 'board/constants';
+         BIAS_DAMPING,  PART_DENSITY, BALL_FRICTION, PART_FRICTION,
+         BALL_FRICTION_STATIC, PART_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL} from 'board/constants';
+import { GearBase } from './gearbit';
+import { PartBallContact } from 'board/physics';
+import { Ball } from './ball';
 
 // this composes a part with a matter.js body which simulates it
 export class PartBody {
@@ -23,13 +26,9 @@ export class PartBody {
     if (part === this._part) return;
     if (part) {
       if (part.type !== this.type) throw('Part type must match PartBody type');
+      this._partChangeCounter = NaN;
       this._part = part;
       this.initBodyFromPart();
-    }
-    else {
-      this.resetBody();
-      this._part = null;
-      this._partChangeCounter = NaN;
     }
   }
   private _part:Part;
@@ -43,7 +42,8 @@ export class PartBody {
       // construct the ball as a circle
       if (this.type == PartType.BALL) {
         this._body = Bodies.circle(0, 0, (5 * PART_SIZE) / 32,
-        { density: BALL_DENSITY, friction: 0.05,
+        { density: BALL_DENSITY, friction: BALL_FRICTION, 
+          frictionStatic: BALL_FRICTION_STATIC,
           collisionFilter: { category: BALL_CATEGORY, mask: BALL_MASK, group: 0 } });
       }
       // construct other parts from stored vertices
@@ -145,7 +145,7 @@ export class PartBody {
       this._bodyOffset.x *= -1;
       if (this._counterweightDamper) {
         const attachment = this._counterweightDamper.pointA;
-        attachment.x =  this._body.position.x - attachment.x;
+        attachment.x *= -1;
       }
       this._bodyFlipped = this._part.isFlipped;
     }
@@ -168,7 +168,6 @@ export class PartBody {
         this._biasDamper.pointB);
     }
     Body.setAngle(this._body, this._part.angleForRotation(this._part.rotation));
-    Body.setAngularVelocity(this._body, 0);
     // record that we've synced with the part
     this._partChangeCounter = this._part.changeCounter;
   }
@@ -176,38 +175,6 @@ export class PartBody {
   protected _bodyOffset:Vector = { x: 0.0, y: 0.0 };
   private _bodyFlipped:boolean = false;
   private _partChangeCounter:number = NaN;
-
-  // apply corrections to the body and the balls contacting it
-  public cheat(balls:Set<PartBody>):void {
-    if ((! this._body) || (! this._part)) return;
-    const positionDelta:Vector = { x: 0, y: 0 };
-    let angleDelta:number = 0;
-    let moved:boolean = false;
-    if (! this._part.bodyCanMove) {
-      Vector.sub(this._compositePosition, this._body.position, positionDelta);
-      Body.translate(this._body, positionDelta);
-      Body.setVelocity(this._body, { x: 0, y: 0 });
-      moved = true;
-    }
-    if (this._part.bodyCanRotate) {
-      const r:number = this._part.rotationForAngle(this._body.angle);
-      if ((r <= 0.0) || (r >= 1.0)) {
-        const target:number = 
-          this._part.angleForRotation(Math.min(Math.max(0.0, r), 1.0));
-        angleDelta = target - this._body.angle;
-        Body.rotate(this._body, angleDelta);
-        Body.setAngularVelocity(this._body, 0);
-      }
-      moved = true;
-    }
-    // apply the same movements to balls if there are any, otherwise they 
-    //  will squash into the part
-    if ((moved) && (balls)) {
-      for (const ball of balls) {
-        Body.translate(ball.body, Vector.rotate(positionDelta, angleDelta));
-      }
-    }
-  }
 
   // tranfer relevant properties from the body
   public updatePartFromBody():void {
@@ -239,7 +206,12 @@ export class PartBody {
   // add the body to the given world, creating the body if needed
   public addToWorld(world:World):void {
     const body = this.body;
-    if (body) World.add(world, this._composite);
+    if (body) {
+      World.add(world, this._composite);
+      // try to release any stored energy in the part
+      Body.setVelocity(this._body, { x: 0, y: 0 });
+      Body.setAngularVelocity(this._body, 0);
+    }
   }
 
   // remove the body from the given world
@@ -255,7 +227,9 @@ export class PartBody {
       const center = Vertices.centre(vertices);
       parts.push(Body.create({ position: center, vertices: vertices }));
     }
-    const body = Body.create({ parts: parts, friction: 0.05, density: PART_DENSITY,
+    const body = Body.create({ parts: parts, 
+      friction: PART_FRICTION, frictionStatic: PART_FRICTION_STATIC, 
+      density: PART_DENSITY,
       collisionFilter: { category: PART_CATEGORY, mask: PART_MASK, group: 0 } });
     // this is a hack to prevent matter.js from placing the body's center 
     //  of mass over the origin, which complicates our ability to precisely
@@ -267,45 +241,129 @@ export class PartBody {
     return(body);
   }
 
+  // PHYSICS ENGINE CHEATS ****************************************************
+
+  // apply corrections to the body and any balls contacting it
+  public cheat(contacts:Set<PartBallContact>):void {
+    if ((! this._body) || (! this._part)) return;
+    this._controlRotation(contacts);
+    if (contacts) {
+      for (const contact of contacts) {
+        this._nudgeBall(contact);
+      }
+    }
+  }
+  // constrain the position and angle of the part to simulate 
+  //  an angle-constrained revolute joint
+  private _controlRotation(contacts:Set<PartBallContact>):void {
+    const positionDelta:Vector = { x: 0, y: 0 };
+    let angleDelta:number = 0;
+    let moved:boolean = false;
+    if (! this._part.bodyCanMove) {
+      Vector.sub(this._compositePosition, this._body.position, positionDelta);
+      Body.translate(this._body, positionDelta);
+      Body.setVelocity(this._body, { x: 0, y: 0 });
+      moved = true;
+    }
+    if (this._part.bodyCanRotate) {
+      const r:number = this._part.rotationForAngle(this._body.angle);
+      if ((r <= 0.0) || (r >= 1.0)) {
+        const target:number = 
+          this._part.angleForRotation(Math.min(Math.max(0.0, r), 1.0));
+        angleDelta = target - this._body.angle;
+        Body.rotate(this._body, angleDelta);
+        Body.setAngularVelocity(this._body, 0);
+      }
+      moved = true;
+    }
+    // apply the same movements to balls if there are any, otherwise they 
+    //  will squash into the part
+    if ((moved) && (contacts)) {
+      const combined = Vector.rotate(positionDelta, angleDelta);
+      for (const contact of contacts) {
+        Body.translate(contact.ballPartBody.body, combined);
+      }
+    }
+  }
+  // apply a speed limit to the given ball
+  private _nudgeBall(contact:PartBallContact) {
+    if ((! this._body) || (! contact.ballPartBody.body)) return;
+    const ball = contact.ballPartBody.part as Ball;
+    const body = contact.ballPartBody.body;
+    // get the horizontal direction we want the ball to be going in, and flip 
+    //  the contact tangent if needed
+    let dir:number = 0;
+    // ramps direct in a single direction
+    if (this._part.type == PartType.RAMP) {
+      if ((this._part.rotation < 0.25) || 
+          (this._part.rotation > 0.75)) {
+        dir = this._part.isFlipped ? -1 : 1;
+      }
+    }
+    // gearbits are basically like switchable ramps
+    else if (this._part.type == PartType.GEARBIT) {
+      if (this._part.rotation < 0.25) dir = 1;
+      else if (this._part.rotation > 0.75) dir = -1;
+    }
+    // bits direct the ball according to their state, but the direction is 
+    //  opposite for the top and bottom halves
+    else if (this._part.type == PartType.BIT) {
+      const bottomHalf:boolean = ball.row > this._part.row;
+      if (this._part.rotation >= 0.9) dir = bottomHalf ? 1 : -1;
+      else if (this._part.rotation <= 0.1) dir = bottomHalf ? -1 : 1;
+    }
+    // crossovers direct the ball in the same direction it has been going
+    else if (this._part.type == PartType.CROSSOVER) {
+      if (ball.lastDistinctColumn < ball.lastColumn) dir = 1;
+      else if (ball.lastDistinctColumn > ball.lastColumn) dir = -1;
+    }
+    if (dir == 0) return;
+    // only nudge the ball if it's touching a horizontal-ish surface
+    let tangent = Vector.clone(contact.tangent);
+    const slope = Math.abs(tangent.y) / Math.abs(tangent.x);
+    if (slope > 0.3) return;
+    // flip the tangent if the direction doesn't match the target direction
+    if (((dir < 0) && (tangent.x > 0)) ||
+        ((dir > 0) && (tangent.x < 0))) tangent = Vector.mult(tangent, -1);
+    // see how much and in which direction we need to correct the horizontal velocity
+    const target = IDEAL_VX * dir;
+    const current = body.velocity.x;
+    let accel:number = 0;
+    if (dir > 0) {
+      if (current < target) accel = NUDGE_ACCEL;        // too slow => right
+      else if (current > target) accel = - NUDGE_ACCEL; // too fast => right
+    }
+    else {
+      if (target < current) accel = NUDGE_ACCEL;        // too slow <= left
+      else if (target > current) accel = - NUDGE_ACCEL; // too fast <= left
+    }
+    if (accel == 0) return;
+    // accelerate the ball in the desired direction
+    Body.applyForce(body, body.position, 
+      Vector.mult(tangent, accel * body.mass));
+  }
+
+
 }
 
-// maintain a pool of PartBody instances grouped by type to avoid 
-//  creation/destruction penalties
+// FACTORY / CACHE ************************************************************
+
+// maintain a cache of PartBody instances
 export class PartBodyFactory {
 
-  // temporarily turning this off as there's too much physical state
-  //  in the body instances
-  public reuse:boolean = false;
-
-  // make or reuse a part body from the pool
+  // make or reuse a part body from the cache
   public make(part:Part):PartBody {
-    if (! this._unused.has(part.type)) {
-      this._unused.set(part.type, [ ]);
+    if (! this._instances.has(part)) {
+      this._instances.set(part, new PartBody(part));
     }
-    const available = this._unused.get(part.type);
-    let instance:PartBody = ((available.length > 0) && (this.reuse)) ? 
-      available.pop() : new PartBody(part);
-    this._used.add(instance);
-    instance.part = part;
-    return(instance);
+    return(this._instances.get(part));
   }
-  // instances that are available for use
-  private _unused:Map<PartType,PartBody[]> = new Map();
-  // instances that have been made but not released
-  private _used:Set<PartBody> = new Set();
+  // cached instances
+  private _instances:WeakMap<Part,PartBody> = new WeakMap();
 
+  // mark that a part body is not currently being used
   public release(instance:PartBody):void {
-    // don't allow double-releases
-    if (! this._used.has(instance)) return;
-    // detach the body from its part
-    instance.part = null;
-    // remove it from the used set
-    this._used.delete(instance)
-    // add it to the unused set
-    if (! this._unused.has(instance.type)) {
-      this._unused.set(instance.type, [ ]);
-    }
-    if (this.reuse) this._unused.get(instance.type).push(instance);
+    
   }
 
 }

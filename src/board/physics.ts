@@ -11,9 +11,16 @@ import { Colors, Alphas } from 'ui/config';
 import { Gearbit, GearBase } from 'parts/gearbit';
 import { PartBody, PartBodyFactory } from 'parts/partbody';
 
-import { SPACING, PIN_CATEGORY, PART_SIZE } from './constants';
+import { SPACING } from './constants';
 import { Animator } from 'ui/animator';
 import { PartType } from 'parts/factory';
+
+export type PartBallContact = {
+  ballPartBody: PartBody,
+  tangent: Vector
+};
+
+export type ContactMap = Map<PartBody,Set<PartBallContact>>;
 
 export class PhysicalBallRouter implements IBallRouter {
 
@@ -41,7 +48,7 @@ export class PhysicalBallRouter implements IBallRouter {
 
   public update(correction:number):void {
     this.beforeUpdate();
-    Engine.update(this.engine, 1000 / 60, correction);
+    Engine.update(this.engine);
     this.afterUpdate();
   }
 
@@ -56,24 +63,59 @@ export class PhysicalBallRouter implements IBallRouter {
 
   public afterUpdate():void {
     // determine the set of balls touching each part
-    const contacts:Map<PartBody,Set<PartBody>> = this._mapContacts();
-    // transfer part positions
-    GearBase.update();
-    for (const [ part, partBody ] of this._parts.entries()) {
+    const contacts:ContactMap = this._mapContacts();
+    // apply physics corrections
+    for (const partBody of this._parts.values()) {
       partBody.cheat(contacts.get(partBody));
+    }
+    // transfer part positions
+    for (const [ part, partBody ] of this._parts.entries()) {
       partBody.updatePartFromBody();
       if (part.bodyCanMove) {
         this.board.layoutPart(part, part.column, part.row);
       }
     }
+    // combine the velocities of connected gear trains
+    this.connectGears(contacts);
     // re-render the wireframe if there is one
     this.renderWireframe();
     // re-render the whole display if we're managing parts
     if (this._parts.size > 0) Renderer.needsUpdate();
   }
 
-  protected _mapContacts():Map<PartBody,Set<PartBody>> {
-    const contacts:Map<PartBody,Set<PartBody>> = new Map();
+  // average the angular velocities of all simulated gears with ball contacts,
+  //  and transfer it to all simulated gears that are connected
+  protected connectGears(contacts:ContactMap):void {
+    const activeTrains:Set<Set<GearBase>> = new Set();
+    for (const part of this._parts.keys()) {
+      if (part instanceof GearBase) activeTrains.add(part.connected);
+    }
+    for (const train of activeTrains) {
+      let av:number = 0;
+      let contactCount:number = 0;
+      for (const gear of train) {
+        // select gears which are simulated and have balls in contact
+        const partBody = this._parts.get(gear);
+        if ((partBody) && (partBody.body) && (contacts.has(partBody))) {
+          av += partBody.body.angularVelocity;
+          contactCount++;
+        }
+      }
+      // transfer the average angular velocity to all connected gears
+      if (contactCount > 0) {
+        av /= contactCount;
+        for (const gear of train) {
+          const partBody = this._parts.get(gear);
+          if ((partBody) && (partBody.body)) {
+            Body.setAngularVelocity(partBody.body, av);
+          }
+        }
+      }
+    }
+  }
+
+  protected _mapContacts():ContactMap {
+    const contacts:ContactMap = new Map();
     for (const pair of this.engine.pairs.collisionActive) {
       const partA = this._findPartBody(pair.bodyA);
       if (! partA) continue;
@@ -81,11 +123,11 @@ export class PhysicalBallRouter implements IBallRouter {
       if (! partB) continue;
       if ((partA.type == PartType.BALL) && (partB.type != PartType.BALL)) {
         if (! contacts.has(partB)) contacts.set(partB, new Set());
-        contacts.get(partB).add(partA);
+        contacts.get(partB).add({ ballPartBody: partA, tangent: pair.collision.tangent });
       }
       else if ((partB.type == PartType.BALL) && (partA.type != PartType.BALL)) {
         if (! contacts.has(partA)) contacts.set(partA, new Set());
-        contacts.get(partA).add(partB);
+        contacts.get(partA).add({ ballPartBody: partB, tangent: pair.collision.tangent });
       }
     }
     return(contacts);
@@ -184,6 +226,11 @@ export class PhysicalBallRouter implements IBallRouter {
           neighbors.add(part);
         }
       }
+      // track the last column the ball was in before the current one
+      if (isNaN(ball.lastDistinctColumn)) ball.lastDistinctColumn = column;
+      else if (ball.lastColumn !== column) {
+        ball.lastDistinctColumn = ball.lastColumn;
+      }
       // store the last place we updated the ball
       ball.lastColumn = column;
       ball.lastRow = row;
@@ -198,6 +245,7 @@ export class PhysicalBallRouter implements IBallRouter {
     if (this._parts.has(part)) return; // make it idempotent
     const partBody = this.partBodyFactory.make(part);
     this._parts.set(part, partBody);
+    partBody.updateBodyFromPart();
     partBody.addToWorld(this.engine.world);
     if (partBody.body) this._bodies.set(partBody.body, partBody);
   }

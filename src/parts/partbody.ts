@@ -7,10 +7,11 @@ import { SPACING, PART_SIZE, BALL_MASK, BALL_CATEGORY, PART_CATEGORY,
          PART_MASK, PIN_CATEGORY, PIN_MASK, DAMPER_RADIUS, BALL_DENSITY, 
          COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, BIAS_STIFFNESS, 
          BIAS_DAMPING,  PART_DENSITY, BALL_FRICTION, PART_FRICTION,
-         BALL_FRICTION_STATIC, PART_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL} from 'board/constants';
+         BALL_FRICTION_STATIC, PART_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V} from 'board/constants';
 import { GearBase } from './gearbit';
 import { PartBallContact } from 'board/physics';
 import { Ball } from './ball';
+import { Fence, FenceVariant } from './fence';
 
 // this composes a part with a matter.js body which simulates it
 export class PartBody {
@@ -37,28 +38,39 @@ export class PartBody {
   public get body():Body {
     // if there are no stored vertices, the body will be set to null,
     //  and we shouldn't keep trying to construct it
-    if (this._body === undefined) {
-      const constructor = PartFactory.constructorForType(this.type);
-      // construct the ball as a circle
-      if (this.type == PartType.BALL) {
-        this._body = Bodies.circle(0, 0, (5 * PART_SIZE) / 32,
-        { density: BALL_DENSITY, friction: BALL_FRICTION, 
-          frictionStatic: BALL_FRICTION_STATIC,
-          collisionFilter: { category: BALL_CATEGORY, mask: BALL_MASK, group: 0 } });
-      }
-      // construct other parts from stored vertices
-      else {
-        this._body = this._bodyFromVertexSets(getVertexSets(constructor.name));
-      }
-      if (this._body) {
-        Body.setPosition(this._body, { x: 0.0, y: 0.0 });
-        Composite.add(this._composite, this._body);
-      }
-      this.initBodyFromPart();
-    }
+    if (this._body === undefined) this._makeBody();
     return(this._body);
   };
+  private _makeBody():void {
+    this._body = null;
+    this._bodyFlipped = false;
+    // construct the ball as a circle
+    if (this.type == PartType.BALL) {
+      this._body = Bodies.circle(0, 0, (5 * PART_SIZE) / 32,
+      { density: BALL_DENSITY, friction: BALL_FRICTION, 
+        frictionStatic: BALL_FRICTION_STATIC,
+        collisionFilter: { category: BALL_CATEGORY, mask: BALL_MASK, group: 0 } });
+    }
+    // construct fences based on their configuration params
+    else if (this._part instanceof Fence) {
+      this._body = this._bodyForFence(this._part);
+      this._fenceSignature = this._part.signature;
+    }
+    // construct other parts from stored vertices
+    else {
+      const constructor = PartFactory.constructorForType(this.type);
+      this._body = this._bodyFromVertexSets(getVertexSets(constructor.name));
+    }
+    if (this._body) {
+      Body.setPosition(this._body, { x: 0.0, y: 0.0 });
+      Composite.add(this._composite, this._body);
+    }
+    this.initBodyFromPart();
+  }
   protected _body:Body = undefined;
+  
+  // the fence parameters last time we constructed a fence
+  private _fenceSignature:number = NaN;
 
   // a composite representing the body and related constraints, etc.
   public get composite():Composite { return(this._composite); }
@@ -139,9 +151,18 @@ export class PartBody {
     // skip the update if the part hasn't changed
     if ((! this._body) || (! this._part) || 
         (this._part.changeCounter === this._partChangeCounter)) return;
+    // rebuild the body if the fence signature changes
+    if ((this._part instanceof Fence) && 
+        (this._part.signature != this._fenceSignature)) {
+      Composite.remove(this._composite, this._body);
+      this._makeBody();
+    }
     // update mirroring
     if (this._bodyFlipped !== this._part.isFlipped) {
+      const prevAngle:number = this._body.angle;
+      Body.setAngle(this._body, 0);
       Composite.scale(this._composite, -1, 1, this._body.position, true);
+      Body.setAngle(this._body, - prevAngle);
       this._bodyOffset.x *= -1;
       if (this._counterweightDamper) {
         const attachment = this._counterweightDamper.pointA;
@@ -191,18 +212,6 @@ export class PartBody {
     this._partChangeCounter = this._part.changeCounter;
   }
 
-  // reset the body to remove energy from it
-  public resetBody():void {
-    if (! this._body) return;
-    // reposition to the origin
-    Composite.translate(this._composite, 
-      Vector.mult(this._compositePosition, -1), true);
-    this._compositePosition = { x: 0, y: 0 };
-    // clear rotation
-    Body.setAngle(this._body, 0);
-    Body.setAngularVelocity(this._body, 0);
-  }
-
   // add the body to the given world, creating the body if needed
   public addToWorld(world:World):void {
     const body = this.body;
@@ -219,11 +228,21 @@ export class PartBody {
     World.remove(world, this._composite);
   }
 
+  // construct a body for the current fence configuration
+  protected _bodyForFence(fence:Fence):Body {
+    const name:string = (fence.variant == FenceVariant.SIDE) ?
+      'Fence-l' : 'Fence-s'+fence.modulus;
+    const y:number = - ((fence.sequence % fence.modulus) / fence.modulus) * SPACING;
+    return(this._bodyFromVertexSets(getVertexSets(name), 0, y));
+  }
+
   // construct a body from a set of vertex lists
-  protected _bodyFromVertexSets(vertexSets:Vector[][]):Body {
+  protected _bodyFromVertexSets(vertexSets:Vector[][], 
+                                x:number=0, y:number=0):Body {
     if (! vertexSets) return(null);
     const parts:Body[] = [ ];
     for (const vertices of vertexSets) {
+      Vertices.clockwiseSort(vertices);
       const center = Vertices.centre(vertices);
       parts.push(Body.create({ position: center, vertices: vertices }));
     }
@@ -234,10 +253,10 @@ export class PartBody {
     // this is a hack to prevent matter.js from placing the body's center 
     //  of mass over the origin, which complicates our ability to precisely
     //  position parts of an arbitrary shape
-    body.position.x = 0;
-    body.position.y = 0;
-    (body as any).positionPrev.x = 0;
-    (body as any).positionPrev.y = 0;
+    body.position.x = x;
+    body.position.y = y;
+    (body as any).positionPrev.x = x;
+    (body as any).positionPrev.y = y;
     return(body);
   }
 
@@ -247,12 +266,14 @@ export class PartBody {
   public cheat(contacts:Set<PartBallContact>):void {
     if ((! this._body) || (! this._part)) return;
     this._controlRotation(contacts);
+    this._controlVelocity();
     if (contacts) {
       for (const contact of contacts) {
         this._nudgeBall(contact);
       }
     }
   }
+
   // constrain the position and angle of the part to simulate 
   //  an angle-constrained revolute joint
   private _controlRotation(contacts:Set<PartBallContact>):void {
@@ -285,51 +306,84 @@ export class PartBody {
       }
     }
   }
+
+  // apply a limit to how fast a part can move, mainly to prevent fall-through
+  //  and conditions resulting from too much kinetic energy
+  private _controlVelocity():void {
+    if ((! this._body) || (! this._part) || (! this._part.bodyCanMove)) return;
+    if (Vector.magnitude(this._body.velocity) > MAX_V) {
+      const v = Vector.mult(Vector.normalise(this._body.velocity), MAX_V);
+      Body.setVelocity(this._body, v);
+    }
+  }
+
   // apply a speed limit to the given ball
   private _nudgeBall(contact:PartBallContact) {
     if ((! this._body) || (! contact.ballPartBody.body)) return;
     const ball = contact.ballPartBody.part as Ball;
     const body = contact.ballPartBody.body;
-    // get the horizontal direction we want the ball to be going in, and flip 
-    //  the contact tangent if needed
-    let dir:number = 0;
+    let tangent = Vector.clone(contact.tangent);
+    // only nudge the ball if it's touching a horizontal-ish surface
+    let maxSlope:number = 0.3;
+    // get the horizontal direction and relative magnitude we want the ball 
+    //  to be going in
+    let mag:number = 0;
     // ramps direct in a single direction
     if (this._part.type == PartType.RAMP) {
       if ((this._part.rotation < 0.25) || 
           (this._part.rotation > 0.75)) {
-        dir = this._part.isFlipped ? -1 : 1;
+        mag = this._part.isFlipped ? -1 : 1;
       }
     }
     // gearbits are basically like switchable ramps
     else if (this._part.type == PartType.GEARBIT) {
-      if (this._part.rotation < 0.25) dir = 1;
-      else if (this._part.rotation > 0.75) dir = -1;
+      if (this._part.rotation < 0.25) mag = 1;
+      else if (this._part.rotation > 0.75) mag = -1;
     }
     // bits direct the ball according to their state, but the direction is 
     //  opposite for the top and bottom halves
     else if (this._part.type == PartType.BIT) {
       const bottomHalf:boolean = ball.row > this._part.row;
-      if (this._part.rotation >= 0.9) dir = bottomHalf ? 1 : -1;
-      else if (this._part.rotation <= 0.1) dir = bottomHalf ? -1 : 1;
+      if (this._part.rotation >= 0.9) mag = bottomHalf ? 1 : -1;
+      else if (this._part.rotation <= 0.1) mag = bottomHalf ? -1 : 1;
     }
     // crossovers direct the ball in the same direction it has been going
     else if (this._part.type == PartType.CROSSOVER) {
-      if (ball.lastDistinctColumn < ball.lastColumn) dir = 1;
-      else if (ball.lastDistinctColumn > ball.lastColumn) dir = -1;
+      if (ball.lastDistinctColumn < ball.lastColumn) mag = 1;
+      else if (ball.lastDistinctColumn > ball.lastColumn) mag = -1;
+      else if (ball.row < this._part.row) { // top half
+        mag = ball.column < this._part.column ? 1 : -1;
+        // remember this for when we get to the bottom
+        ball.lastDistinctColumn -= mag;
+      }
+      else { // bottom half
+        mag = ball.column < this._part.column ? -1 : 1;
+      }
+      if (ball.row < this._part.row) mag *= 16;
     }
-    if (dir == 0) return;
-    // only nudge the ball if it's touching a horizontal-ish surface
-    let tangent = Vector.clone(contact.tangent);
+    // fences slopes always nudge, and the ball can move fast because
+    //  interactions are simple
+    else if ((this._part instanceof Fence) && 
+             (this._part.variant == FenceVariant.SLOPE)) {
+      mag = this._part.isFlipped ? -3 : 3;
+      // the tangent is always the same for slopes, and setting it explicitly
+      //  prevents strange effect at corners
+      tangent = Vector.normalise({ x: this._part.modulus, y: 1 });
+      maxSlope = 1;
+    }
+    // exit if we're not nudging
+    if (mag == 0) return;
+    // limit slope
     const slope = Math.abs(tangent.y) / Math.abs(tangent.x);
-    if (slope > 0.3) return;
+    if (slope > maxSlope) return;
     // flip the tangent if the direction doesn't match the target direction
-    if (((dir < 0) && (tangent.x > 0)) ||
-        ((dir > 0) && (tangent.x < 0))) tangent = Vector.mult(tangent, -1);
+    if (((mag < 0) && (tangent.x > 0)) ||
+        ((mag > 0) && (tangent.x < 0))) tangent = Vector.mult(tangent, -1);
     // see how much and in which direction we need to correct the horizontal velocity
-    const target = IDEAL_VX * dir;
+    const target = IDEAL_VX * mag;
     const current = body.velocity.x;
     let accel:number = 0;
-    if (dir > 0) {
+    if (mag > 0) {
       if (current < target) accel = NUDGE_ACCEL;        // too slow => right
       else if (current > target) accel = - NUDGE_ACCEL; // too fast => right
     }
@@ -338,11 +392,13 @@ export class PartBody {
       else if (target > current) accel = - NUDGE_ACCEL; // too fast <= left
     }
     if (accel == 0) return;
+    // scale the acceleration by the difference 
+    //  if it gets close to prevent flip-flopping
+    accel *= Math.min(Math.abs(current - target) * 4, 1.0);
     // accelerate the ball in the desired direction
     Body.applyForce(body, body.position, 
       Vector.mult(tangent, accel * body.mass));
   }
-
 
 }
 

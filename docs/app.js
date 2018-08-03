@@ -72,7 +72,7 @@ System.register("parts/crossover", ["parts/part"], function (exports_3, context_
                 get canMirror() { return (true); }
                 get canFlip() { return (false); }
                 get type() { return (4 /* CROSSOVER */); }
-                get bodyRestitution() { return (0.25); }
+                get bodyRestitution() { return (0.5); }
             };
             exports_3("Crossover", Crossover);
         }
@@ -270,6 +270,7 @@ System.register("parts/fence", ["parts/part", "board/board"], function (exports_
                         return;
                     this._variant = v;
                     this._updateTexture();
+                    this.changeCounter++;
                 }
                 static get maxModulus() { return (6); }
                 // for slopes, the number of part units in the slope
@@ -280,6 +281,7 @@ System.register("parts/fence", ["parts/part", "board/board"], function (exports_
                         return;
                     this._modulus = v;
                     this._updateTexture();
+                    this.changeCounter++;
                 }
                 // for slopes, the position of this part in the run of parts,
                 //  where 0 is at the highest point and (modulus - 1) is at the lowest
@@ -289,6 +291,12 @@ System.register("parts/fence", ["parts/part", "board/board"], function (exports_
                         return;
                     this._sequence = v;
                     this._updateTexture();
+                    this.changeCounter++;
+                }
+                // a number that uniquely identifies the fence body type
+                get signature() {
+                    return (this.variant == 2 /* SLOPE */ ?
+                        (this.sequence / this.modulus) : 0);
                 }
                 _updateTexture() {
                     for (let layer = 0 /* BACK */; layer < 7 /* COUNT */; layer++) {
@@ -364,7 +372,7 @@ System.register("parts/drop", ["parts/part"], function (exports_9, context_9) {
 System.register("board/constants", [], function (exports_10, context_10) {
     "use strict";
     var __moduleName = context_10 && context_10.id;
-    var PART_SIZE, SPACING, PART_DENSITY, BALL_DENSITY, BALL_FRICTION, PART_FRICTION, BALL_FRICTION_STATIC, PART_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, DAMPER_RADIUS, BIAS_STIFFNESS, BIAS_DAMPING, COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, DEFAULT_MASK, PART_CATEGORY, BALL_CATEGORY, PIN_CATEGORY, PART_MASK, BALL_MASK, PIN_MASK;
+    var PART_SIZE, SPACING, PART_DENSITY, BALL_DENSITY, BALL_FRICTION, PART_FRICTION, BALL_FRICTION_STATIC, PART_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V, DAMPER_RADIUS, BIAS_STIFFNESS, BIAS_DAMPING, COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, DEFAULT_MASK, PART_CATEGORY, BALL_CATEGORY, PIN_CATEGORY, PART_MASK, BALL_MASK, PIN_MASK;
     return {
         setters: [],
         execute: function () {
@@ -378,9 +386,11 @@ System.register("board/constants", [], function (exports_10, context_10) {
             exports_10("BALL_FRICTION_STATIC", BALL_FRICTION_STATIC = 0.03);
             exports_10("PART_FRICTION_STATIC", PART_FRICTION_STATIC = 0.03);
             // the ideal horizontal velocity at which a ball should be moving
-            exports_10("IDEAL_VX", IDEAL_VX = 1.0);
+            exports_10("IDEAL_VX", IDEAL_VX = 1.5);
             // the maximum acceleration to use when nudging the ball
             exports_10("NUDGE_ACCEL", NUDGE_ACCEL = 0.001);
+            // the maximum speed at which a part can move
+            exports_10("MAX_V", MAX_V = 12);
             // damping/counterweight constraint parameters
             exports_10("DAMPER_RADIUS", DAMPER_RADIUS = PART_SIZE / 2);
             exports_10("BIAS_STIFFNESS", BIAS_STIFFNESS = BALL_DENSITY / 16);
@@ -2413,6 +2423,20 @@ System.register("parts/partvertices", [], function (exports_23, context_23) {
                 return ([[{ x: -1.055229, y: -32.311155 }, { x: 0.083096, y: -27.714947 }, { x: -27.716345, y: 0.194331 }, { x: -32.193815, y: -1.017234 }, { x: -34.041082, y: -34.054877 }], [{ x: -9.275339, y: -18.699338 }, { x: -18.644511, y: -8.976617 }, { x: -0.000000, y: 14.000038 }, { x: 12.203028, y: 15.153399 }, { x: 15.296620, y: 11.971414 }, { x: 13.999993, y: 0.000026 }], [{ x: 26.999992, y: -2.999974 }, { x: 27.625371, y: -30.038638 }, { x: 27.844206, y: -31.163652 }, { x: 28.781680, y: -32.163640 }, { x: 30.000426, y: -32.538569 }, { x: 31.156697, y: -32.288364 }, { x: 32.156684, y: -31.507136 }, { x: 32.625459, y: -30.163362 }, { x: 31.999993, y: -2.999974 }], [{ x: -4.000006, y: 27.000025 }, { x: -30.292815, y: 27.954318 }, { x: -31.416143, y: 28.181468 }, { x: -32.409014, y: 29.126463 }, { x: -32.774721, y: 30.348006 }, { x: -32.515785, y: 31.502387 }, { x: -31.727017, y: 32.496403 }, { x: -30.379740, y: 32.955011 }, { x: -4.000006, y: 32.000038 }], [{ x: 26.999992, y: -2.999974 }, { x: 13.999993, y: 0.000026 }, { x: 15.385009, y: 12.059818 }, { x: 28.731650, y: 2.602268 }, { x: 31.999993, y: -2.999974 }], [{ x: -4.000006, y: 27.000025 }, { x: 0.000034, y: 14.000038 }, { x: 11.959139, y: 15.360668 }, { x: 2.501590, y: 28.707313 }, { x: -4.000006, y: 32.000038 }]]);
             case 'Crossover':
                 return ([[{ x: -0.125001, y: -48.250007 }, { x: -2.750000, y: -46.000016 }, { x: -2.750000, y: -15.874990 }, { x: 3.000000, y: -15.874990 }, { x: 3.000000, y: -46.374983 }], [{ x: -3.000008, y: -15.999979 }, { x: -12.000004, y: -9.999979 }, { x: -2.249998, y: 4.250011 }, { x: 2.374998, y: 4.250011 }, { x: 11.999992, y: -9.999979 }, { x: 2.999992, y: -15.999979 }], [{ x: -32.250001, y: 31.999982 }, { x: -0.051776, y: 29.502583 }, { x: 31.124998, y: 31.499988 }, { x: 32.874999, y: 34.374999 }, { x: 30.375000, y: 36.999994 }, { x: -30.250000, y: 36.999994 }, { x: -32.749999, y: 35.125008 }], [{ x: -36.000003, y: -27.999979 }, { x: -43.000005, y: -5.000005 }, { x: -48.000003, y: -2.999992 }, { x: -45.000003, y: -20.999992 }, { x: -36.000003, y: -35.999991 }], [{ x: -43.000005, y: -5.000005 }, { x: -33.000003, y: 6.999995 }, { x: -39.000003, y: 6.999995 }, { x: -48.000003, y: -2.999992 }], [{ x: -35.999992, y: -35.999991 }, { x: -24.000011, y: -35.999991 }, { x: -29.999999, y: -27.999979 }, { x: -35.999999, y: -27.999979 }], [{ x: 35.999938, y: -27.999979 }, { x: 42.999941, y: -5.000005 }, { x: 47.999938, y: -2.999992 }, { x: 44.999938, y: -20.999992 }, { x: 35.999938, y: -35.999991 }], [{ x: 42.999941, y: -5.000005 }, { x: 32.999938, y: 6.999995 }, { x: 38.999938, y: 6.999995 }, { x: 47.999938, y: -2.999992 }], [{ x: 35.999927, y: -35.999991 }, { x: 23.999946, y: -35.999991 }, { x: 29.999935, y: -27.999979 }, { x: 35.999935, y: -27.999979 }]]);
+            case 'Fence-l':
+                return ([[{ x: -37.000036, y: -33.999997 }, { x: -31.000036, y: -33.999997 }, { x: -31.000036, y: 34.000014 }, { x: -37.000036, y: 34.000014 }]]);
+            case 'Fence-s1':
+                return ([[{ x: -32.000020, y: -35.999989 }, { x: 35.999990, y: 30.999929 }, { x: 31.999965, y: 36.000017 }, { x: -36.000008, y: -31.999990 }]]);
+            case 'Fence-s2':
+                return ([[{ x: -32.000020, y: -35.999984 }, { x: 35.999990, y: -2.999985 }, { x: 32.999990, y: 3.000015 }, { x: -35.000020, y: -30.999986 }]]);
+            case 'Fence-s3':
+                return ([[{ x: -33.000008, y: -35.999982 }, { x: 35.999990, y: -13.999980 }, { x: 33.999978, y: -7.999981 }, { x: -35.000020, y: -30.999981 }]]);
+            case 'Fence-s4':
+                return ([[{ x: -33.000011, y: -36.999976 }, { x: 34.999962, y: -19.999979 }, { x: 32.999987, y: -13.999979 }, { x: -35.000024, y: -30.999976 }]]);
+            case 'Fence-s5':
+                return ([[{ x: -33.999999, y: -36.999974 }, { x: 34.999962, y: -23.999972 }, { x: 33.999974, y: -16.999974 }, { x: -36.000011, y: -30.999975 }]]);
+            case 'Fence-s6':
+                return ([[{ x: -34.000028, y: -35.999970 }, { x: 33.999996, y: -26.999965 }, { x: 33.999976, y: -19.999970 }, { x: -34.000015, y: -30.999970 }]]);
             case 'GearLocation':
                 return ([[{ x: -0.015621, y: -4.546895 }, { x: 2.093748, y: -4.046864 }, { x: 4.046880, y: -2.046889 }, { x: 4.562502, y: 0.015637 }, { x: 4.031251, y: 2.062516 }, { x: 2.093748, y: 4.015624 }, { x: -0.015621, y: 4.468752 }, { x: -2.031251, y: 4.000015 }, { x: -4.015620, y: 2.015612 }, { x: -4.546870, y: -0.031267 }, { x: -4.031252, y: -2.031242 }, { x: -2.046871, y: -3.999997 }]]);
             case 'Gearbit':
@@ -2441,10 +2465,10 @@ System.register("parts/partvertices", [], function (exports_23, context_23) {
         }
     };
 });
-System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvertices", "board/constants"], function (exports_24, context_24) {
+System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvertices", "board/constants", "parts/fence"], function (exports_24, context_24) {
     "use strict";
     var __moduleName = context_24 && context_24.id;
-    var matter_js_1, factory_1, partvertices_1, constants_1, PartBody, PartBodyFactory;
+    var matter_js_1, factory_1, partvertices_1, constants_1, fence_3, PartBody, PartBodyFactory;
     return {
         setters: [
             function (matter_js_1_1) {
@@ -2458,6 +2482,9 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
             },
             function (constants_1_1) {
                 constants_1 = constants_1_1;
+            },
+            function (fence_3_1) {
+                fence_3 = fence_3_1;
             }
         ],
         execute: function () {
@@ -2465,6 +2492,8 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
             PartBody = class PartBody {
                 constructor(part) {
                     this._body = undefined;
+                    // the fence parameters last time we constructed a fence
+                    this._fenceSignature = NaN;
                     this._composite = matter_js_1.Composite.create();
                     this._compositePosition = { x: 0.0, y: 0.0 };
                     this._bodyOffset = { x: 0.0, y: 0.0 };
@@ -2489,26 +2518,34 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                 get body() {
                     // if there are no stored vertices, the body will be set to null,
                     //  and we shouldn't keep trying to construct it
-                    if (this._body === undefined) {
-                        const constructor = factory_1.PartFactory.constructorForType(this.type);
-                        // construct the ball as a circle
-                        if (this.type == 9 /* BALL */) {
-                            this._body = matter_js_1.Bodies.circle(0, 0, (5 * constants_1.PART_SIZE) / 32, { density: constants_1.BALL_DENSITY, friction: constants_1.BALL_FRICTION,
-                                frictionStatic: constants_1.BALL_FRICTION_STATIC,
-                                collisionFilter: { category: constants_1.BALL_CATEGORY, mask: constants_1.BALL_MASK, group: 0 } });
-                        }
-                        else {
-                            this._body = this._bodyFromVertexSets(partvertices_1.getVertexSets(constructor.name));
-                        }
-                        if (this._body) {
-                            matter_js_1.Body.setPosition(this._body, { x: 0.0, y: 0.0 });
-                            matter_js_1.Composite.add(this._composite, this._body);
-                        }
-                        this.initBodyFromPart();
-                    }
+                    if (this._body === undefined)
+                        this._makeBody();
                     return (this._body);
                 }
                 ;
+                _makeBody() {
+                    this._body = null;
+                    this._bodyFlipped = false;
+                    // construct the ball as a circle
+                    if (this.type == 9 /* BALL */) {
+                        this._body = matter_js_1.Bodies.circle(0, 0, (5 * constants_1.PART_SIZE) / 32, { density: constants_1.BALL_DENSITY, friction: constants_1.BALL_FRICTION,
+                            frictionStatic: constants_1.BALL_FRICTION_STATIC,
+                            collisionFilter: { category: constants_1.BALL_CATEGORY, mask: constants_1.BALL_MASK, group: 0 } });
+                    }
+                    else if (this._part instanceof fence_3.Fence) {
+                        this._body = this._bodyForFence(this._part);
+                        this._fenceSignature = this._part.signature;
+                    }
+                    else {
+                        const constructor = factory_1.PartFactory.constructorForType(this.type);
+                        this._body = this._bodyFromVertexSets(partvertices_1.getVertexSets(constructor.name));
+                    }
+                    if (this._body) {
+                        matter_js_1.Body.setPosition(this._body, { x: 0.0, y: 0.0 });
+                        matter_js_1.Composite.add(this._composite, this._body);
+                    }
+                    this.initBodyFromPart();
+                }
                 // a composite representing the body and related constraints, etc.
                 get composite() { return (this._composite); }
                 // initialize the body after creation
@@ -2580,9 +2617,18 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     if ((!this._body) || (!this._part) ||
                         (this._part.changeCounter === this._partChangeCounter))
                         return;
+                    // rebuild the body if the fence signature changes
+                    if ((this._part instanceof fence_3.Fence) &&
+                        (this._part.signature != this._fenceSignature)) {
+                        matter_js_1.Composite.remove(this._composite, this._body);
+                        this._makeBody();
+                    }
                     // update mirroring
                     if (this._bodyFlipped !== this._part.isFlipped) {
+                        const prevAngle = this._body.angle;
+                        matter_js_1.Body.setAngle(this._body, 0);
                         matter_js_1.Composite.scale(this._composite, -1, 1, this._body.position, true);
+                        matter_js_1.Body.setAngle(this._body, -prevAngle);
                         this._bodyOffset.x *= -1;
                         if (this._counterweightDamper) {
                             const attachment = this._counterweightDamper.pointA;
@@ -2623,17 +2669,6 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     // record that we've synced with the part
                     this._partChangeCounter = this._part.changeCounter;
                 }
-                // reset the body to remove energy from it
-                resetBody() {
-                    if (!this._body)
-                        return;
-                    // reposition to the origin
-                    matter_js_1.Composite.translate(this._composite, matter_js_1.Vector.mult(this._compositePosition, -1), true);
-                    this._compositePosition = { x: 0, y: 0 };
-                    // clear rotation
-                    matter_js_1.Body.setAngle(this._body, 0);
-                    matter_js_1.Body.setAngularVelocity(this._body, 0);
-                }
                 // add the body to the given world, creating the body if needed
                 addToWorld(world) {
                     const body = this.body;
@@ -2648,12 +2683,20 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                 removeFromWorld(world) {
                     matter_js_1.World.remove(world, this._composite);
                 }
+                // construct a body for the current fence configuration
+                _bodyForFence(fence) {
+                    const name = (fence.variant == 1 /* SIDE */) ?
+                        'Fence-l' : 'Fence-s' + fence.modulus;
+                    const y = -((fence.sequence % fence.modulus) / fence.modulus) * constants_1.SPACING;
+                    return (this._bodyFromVertexSets(partvertices_1.getVertexSets(name), 0, y));
+                }
                 // construct a body from a set of vertex lists
-                _bodyFromVertexSets(vertexSets) {
+                _bodyFromVertexSets(vertexSets, x = 0, y = 0) {
                     if (!vertexSets)
                         return (null);
                     const parts = [];
                     for (const vertices of vertexSets) {
+                        matter_js_1.Vertices.clockwiseSort(vertices);
                         const center = matter_js_1.Vertices.centre(vertices);
                         parts.push(matter_js_1.Body.create({ position: center, vertices: vertices }));
                     }
@@ -2664,10 +2707,10 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     // this is a hack to prevent matter.js from placing the body's center 
                     //  of mass over the origin, which complicates our ability to precisely
                     //  position parts of an arbitrary shape
-                    body.position.x = 0;
-                    body.position.y = 0;
-                    body.positionPrev.x = 0;
-                    body.positionPrev.y = 0;
+                    body.position.x = x;
+                    body.position.y = y;
+                    body.positionPrev.x = x;
+                    body.positionPrev.y = y;
                     return (body);
                 }
                 // PHYSICS ENGINE CHEATS ****************************************************
@@ -2676,6 +2719,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     if ((!this._body) || (!this._part))
                         return;
                     this._controlRotation(contacts);
+                    this._controlVelocity();
                     if (contacts) {
                         for (const contact of contacts) {
                             this._nudgeBall(contact);
@@ -2713,57 +2757,88 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         }
                     }
                 }
+                // apply a limit to how fast a part can move, mainly to prevent fall-through
+                //  and conditions resulting from too much kinetic energy
+                _controlVelocity() {
+                    if ((!this._body) || (!this._part) || (!this._part.bodyCanMove))
+                        return;
+                    if (matter_js_1.Vector.magnitude(this._body.velocity) > constants_1.MAX_V) {
+                        const v = matter_js_1.Vector.mult(matter_js_1.Vector.normalise(this._body.velocity), constants_1.MAX_V);
+                        matter_js_1.Body.setVelocity(this._body, v);
+                    }
+                }
                 // apply a speed limit to the given ball
                 _nudgeBall(contact) {
                     if ((!this._body) || (!contact.ballPartBody.body))
                         return;
                     const ball = contact.ballPartBody.part;
                     const body = contact.ballPartBody.body;
-                    // get the horizontal direction we want the ball to be going in, and flip 
-                    //  the contact tangent if needed
-                    let dir = 0;
+                    let tangent = matter_js_1.Vector.clone(contact.tangent);
+                    // only nudge the ball if it's touching a horizontal-ish surface
+                    let maxSlope = 0.3;
+                    // get the horizontal direction and relative magnitude we want the ball 
+                    //  to be going in
+                    let mag = 0;
                     // ramps direct in a single direction
                     if (this._part.type == 3 /* RAMP */) {
                         if ((this._part.rotation < 0.25) ||
                             (this._part.rotation > 0.75)) {
-                            dir = this._part.isFlipped ? -1 : 1;
+                            mag = this._part.isFlipped ? -1 : 1;
                         }
                     }
                     else if (this._part.type == 7 /* GEARBIT */) {
                         if (this._part.rotation < 0.25)
-                            dir = 1;
+                            mag = 1;
                         else if (this._part.rotation > 0.75)
-                            dir = -1;
+                            mag = -1;
                     }
                     else if (this._part.type == 6 /* BIT */) {
                         const bottomHalf = ball.row > this._part.row;
                         if (this._part.rotation >= 0.9)
-                            dir = bottomHalf ? 1 : -1;
+                            mag = bottomHalf ? 1 : -1;
                         else if (this._part.rotation <= 0.1)
-                            dir = bottomHalf ? -1 : 1;
+                            mag = bottomHalf ? -1 : 1;
                     }
                     else if (this._part.type == 4 /* CROSSOVER */) {
                         if (ball.lastDistinctColumn < ball.lastColumn)
-                            dir = 1;
+                            mag = 1;
                         else if (ball.lastDistinctColumn > ball.lastColumn)
-                            dir = -1;
+                            mag = -1;
+                        else if (ball.row < this._part.row) {
+                            mag = ball.column < this._part.column ? 1 : -1;
+                            // remember this for when we get to the bottom
+                            ball.lastDistinctColumn -= mag;
+                        }
+                        else {
+                            mag = ball.column < this._part.column ? -1 : 1;
+                        }
+                        if (ball.row < this._part.row)
+                            mag *= 16;
                     }
-                    if (dir == 0)
+                    else if ((this._part instanceof fence_3.Fence) &&
+                        (this._part.variant == 2 /* SLOPE */)) {
+                        mag = this._part.isFlipped ? -3 : 3;
+                        // the tangent is always the same for slopes, and setting it explicitly
+                        //  prevents strange effect at corners
+                        tangent = matter_js_1.Vector.normalise({ x: this._part.modulus, y: 1 });
+                        maxSlope = 1;
+                    }
+                    // exit if we're not nudging
+                    if (mag == 0)
                         return;
-                    // only nudge the ball if it's touching a horizontal-ish surface
-                    let tangent = matter_js_1.Vector.clone(contact.tangent);
+                    // limit slope
                     const slope = Math.abs(tangent.y) / Math.abs(tangent.x);
-                    if (slope > 0.3)
+                    if (slope > maxSlope)
                         return;
                     // flip the tangent if the direction doesn't match the target direction
-                    if (((dir < 0) && (tangent.x > 0)) ||
-                        ((dir > 0) && (tangent.x < 0)))
+                    if (((mag < 0) && (tangent.x > 0)) ||
+                        ((mag > 0) && (tangent.x < 0)))
                         tangent = matter_js_1.Vector.mult(tangent, -1);
                     // see how much and in which direction we need to correct the horizontal velocity
-                    const target = constants_1.IDEAL_VX * dir;
+                    const target = constants_1.IDEAL_VX * mag;
                     const current = body.velocity.x;
                     let accel = 0;
-                    if (dir > 0) {
+                    if (mag > 0) {
                         if (current < target)
                             accel = constants_1.NUDGE_ACCEL; // too slow => right
                         else if (current > target)
@@ -2777,6 +2852,9 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     }
                     if (accel == 0)
                         return;
+                    // scale the acceleration by the difference 
+                    //  if it gets close to prevent flip-flopping
+                    accel *= Math.min(Math.abs(current - target) * 4, 1.0);
                     // accelerate the ball in the desired direction
                     matter_js_1.Body.applyForce(body, body.position, matter_js_1.Vector.mult(tangent, accel * body.mass));
                 }
@@ -3022,7 +3100,7 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                         neighbors.clear();
                         // update the neighborhood of parts around the ball
                         for (let c = -1; c <= 1; c++) {
-                            for (let r = -1; r <= 1; r++) {
+                            for (let r = -1; r <= 3; r++) {
                                 const part = this.board.getPart(column + c, row + r);
                                 if (!part)
                                     continue;
@@ -3316,11 +3394,11 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
 System.register("board/builder", ["parts/fence"], function (exports_28, context_28) {
     "use strict";
     var __moduleName = context_28 && context_28.id;
-    var fence_3, BoardBuilder;
+    var fence_4, BoardBuilder;
     return {
         setters: [
-            function (fence_3_1) {
-                fence_3 = fence_3_1;
+            function (fence_4_1) {
+                fence_4 = fence_4_1;
             }
         ],
         execute: function () {
@@ -3333,7 +3411,7 @@ System.register("board/builder", ["parts/fence"], function (exports_28, context_
                     const redColumn = center + Math.floor(redBlueDistance / 2);
                     const dropLevel = (blueColumn % 2 == 0) ? 1 : 0;
                     const collectLevel = dropLevel + verticalDrop;
-                    const steps = Math.ceil(center / fence_3.Fence.maxModulus);
+                    const steps = Math.ceil(center / fence_4.Fence.maxModulus);
                     const maxModulus = Math.ceil(center / steps);
                     const height = collectLevel + steps + 2;
                     board.setSize(width, height);
@@ -3382,19 +3460,19 @@ System.register("board/builder", ["parts/fence"], function (exports_28, context_
                     // block out the unreachable locations at the bottom
                     for (r = collectLevel; r < height; r++) {
                         for (c = 0; c < width; c++) {
-                            if (board.getPart(c, r) instanceof fence_3.Fence)
+                            if (board.getPart(c, r) instanceof fence_4.Fence)
                                 break;
                             board.setPart(board.partFactory.copy(blank), c, r);
                         }
                         for (c = width - 1; c >= 0; c--) {
-                            if (board.getPart(c, r) instanceof fence_3.Fence)
+                            if (board.getPart(c, r) instanceof fence_4.Fence)
                                 break;
                             board.setPart(board.partFactory.copy(blank), c, r);
                         }
                     }
                     // make a fence to collect balls
                     r = height - 1;
-                    const rightSide = Math.min(center + fence_3.Fence.maxModulus, height - 1);
+                    const rightSide = Math.min(center + fence_4.Fence.maxModulus, height - 1);
                     for (c = center; c < rightSide; c++) {
                         board.setPart(board.partFactory.copy(fence), c, r);
                     }

@@ -11,9 +11,11 @@ export const BALL_FRICTION_STATIC:number = 0.03;
 export const PART_FRICTION_STATIC:number = 0.03;
 
 // the ideal horizontal velocity at which a ball should be moving
-export const IDEAL_VX:number = 1.0;
+export const IDEAL_VX:number = 1.5;
 // the maximum acceleration to use when nudging the ball
 export const NUDGE_ACCEL:number = 0.001;
+// the maximum speed at which a part can move
+export const MAX_V:number = 12;
 
 // damping/counterweight constraint parameters
 export const DAMPER_RADIUS:number = PART_SIZE / 2;

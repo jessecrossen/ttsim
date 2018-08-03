@@ -218,7 +218,7 @@ export class PhysicalBallRouter implements IBallRouter {
       neighbors.clear();
       // update the neighborhood of parts around the ball
       for (let c:number = -1; c <= 1; c++) {
-        for (let r:number = -1; r <= 1; r++) {
+        for (let r:number = -1; r <= 3; r++) {
           const part = this.board.getPart(column + c, row + r);
           if (! part) continue;
           addParts.add(part);

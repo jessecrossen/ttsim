@@ -21,6 +21,7 @@ export class Fence extends Part {
     if (v === this.variant) return;
     this._variant = v;
     this._updateTexture();
+    this.changeCounter++;
   }
   private _variant:FenceVariant = FenceVariant.PREVIEW;
 
@@ -33,6 +34,7 @@ export class Fence extends Part {
     if (v === this.modulus) return;
     this._modulus = v;
     this._updateTexture();
+    this.changeCounter++;
   }
   private _modulus:number = 1;
 
@@ -43,8 +45,15 @@ export class Fence extends Part {
     if (v === this.sequence) return;
     this._sequence = v;
     this._updateTexture();
+    this.changeCounter++;
   }
   private _sequence:number = 1;
+
+  // a number that uniquely identifies the fence body type
+  public get signature():number {
+    return(this.variant == FenceVariant.SLOPE ? 
+      (this.sequence / this.modulus) : 0);
+  }
 
   protected _updateTexture():void {
     for (let layer:number = Layer.BACK; layer < Layer.COUNT; layer++) {

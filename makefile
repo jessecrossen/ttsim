@@ -57,7 +57,8 @@ src/parts/partvertices.ts: src/svg/parts.svg \
 # GRAPHICS
 
 # NOTE: you'll need Inkscape and ImageMagick to rebuild the graphics
-graphics: docs/images/parts.png docs/images/parts.json docs/images/loading.gif
+graphics: docs/images/parts.png docs/images/parts.json docs/images/loading.gif \
+					docs/images/icon.png
 
 docs/images/parts.png: src/svg/parts.svg
 	mkdir -p docs/images
@@ -76,6 +77,11 @@ docs/images/loading.gif: src/svg/gear.svg
 	convert -loop 0 -dispose Background \
 		/tmp/ttsim/gear.png -crop 84x84 +repage \
 		docs/images/loading.gif
+
+docs/images/icon.png: src/svg/icon.svg
+	mkdir -p docs/images
+	inkscape --export-area-page --export-png=docs/images/icon.png \
+		src/svg/icon.svg
 
 # CLEANUP
 

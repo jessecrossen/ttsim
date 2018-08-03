@@ -8,6 +8,7 @@ import { Renderer } from 'renderer';
 import { Animator } from 'ui/animator';
 import { PhysicalBallRouter } from 'board/physics';
 import { makeKeyHandler } from 'ui/keyboard';
+import { GearBase } from 'parts/gearbit';
 
 export class SimulatorApp extends PIXI.Container {
 
@@ -39,6 +40,7 @@ export class SimulatorApp extends PIXI.Container {
 
   public update(delta:number):void {
     Animator.current.update(delta);
+    GearBase.update();
     if (this.board.router) this.board.router.update(delta);
     Renderer.render();
   }

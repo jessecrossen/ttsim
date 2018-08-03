@@ -729,7 +729,9 @@ export class Board {
              (this.partPrototype)) {
       if (this.canPlacePart(this.partPrototype.type, column, row)) {
         const oldPart = this.getPart(column, row);
-        if (! (oldPart.hasSameStateAs(this.partPrototype))) {
+        if ((! (oldPart.hasSameStateAs(this.partPrototype))) &&
+            (! ((oldPart.type == PartType.GEARBIT) && 
+                (this.partPrototype.type == PartType.GEAR)))) {
           this.setPart(this.partFactory.copy(this.partPrototype), 
               column, row);
         }

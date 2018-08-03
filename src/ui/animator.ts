@@ -32,6 +32,7 @@ export class Animator {
       subject[property] = end;
       return(null);
     }
+    // get all animations for this subject
     if (! this._subjects.has(subject)) this._subjects.set(subject, new Map());
     const properties = this._subjects.get(subject);
     // calculate a delta to traverse the property's entire range in the given time
@@ -68,6 +69,14 @@ export class Animator {
     const properties = this._subjects.get(subject);
     if (! properties.has(property)) return(current);
     return(properties.get(property).end);
+  }
+
+  // get whether the given property is being animated
+  public isAnimating(subject:any, property:string):boolean {
+    const current:number = subject[property];
+    if (! this._subjects.has(subject)) return(false);
+    const properties = this._subjects.get(subject);
+    return (properties.has(property));
   }
 
   // stop animating the given property, leaving the current value as-is

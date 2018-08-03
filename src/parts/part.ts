@@ -98,6 +98,14 @@ export abstract class Part {
       const bitValue = this.bitValue;
       Animator.current.animate(this, 'rotation',
         bitValue ? 1.0 : 0.0, bitValue ? 0.0 : 1.0, time);
+      // cancel rotation animations for connected gear trains
+      //  (note that we don't refer to Gearbase to avoid a circular reference)
+      if ((this.type == PartType.GEAR) || (this.type == PartType.GEARBIT)) {
+        const connected = (this as any).connected as Set<Part>;
+        for (const gear of connected) {
+          if (gear !== this) Animator.current.stopAnimating(gear, 'rotation');
+        }
+      }
     }
   }
 

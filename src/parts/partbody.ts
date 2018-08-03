@@ -6,7 +6,8 @@ import { getVertexSets, getPinLocations, PinLocation } from './partvertices';
 import { SPACING, PART_SIZE, BALL_MASK, BALL_CATEGORY, PART_CATEGORY, 
          PART_MASK, PIN_CATEGORY, PIN_MASK, DAMPER_RADIUS, BALL_DENSITY, 
          COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, BIAS_STIFFNESS, 
-         BIAS_DAMPING } from 'board/constants';
+         BIAS_DAMPING, 
+         PART_DENSITY} from 'board/constants';
 
 // this composes a part with a matter.js body which simulates it
 export class PartBody {
@@ -73,9 +74,8 @@ export class PartBody {
     else {
       Body.setStatic(this._body, false);
     }
-    // parts that can rotate need to be placed in a composite 
-    //  to simulate the pin joint attaching them to the board
-    if ((this._part.bodyCanRotate) && (! this._pivot)) {
+    // add bodies and constraints to control rotation
+    if ((this._part.bodyCanRotate) && (! this._pins)) {
       this._makeRotationConstraints();
     }
     // set restitution
@@ -84,15 +84,6 @@ export class PartBody {
     this.updateBodyFromPart();
   }
   protected _makeRotationConstraints():void {
-    if (this._pivot) return; // don't do this twice
-    // make a location around which the body will rotate
-    this._pivot = { x: 0, y: 0 };
-    Composite.add(this._composite, Constraint.create({
-      bodyA: this._body,
-      pointB: this._pivot,
-      length: 0,
-      stiffness: 1.0
-    }));
     // make constraints that bias parts and keep them from bouncing at the 
     //  ends of their range
     if (this._part.isCounterWeighted) {
@@ -138,7 +129,6 @@ export class PartBody {
       { x: flipped ? DAMPER_RADIUS : - DAMPER_RADIUS, y: 0 } : 
       { x: 0, y: DAMPER_RADIUS });
   }
-  private _pivot:Vector;
   private _pinLocations:PinLocation[];
   private _pins:Body[];
   private _counterweightDamper:Constraint;
@@ -166,23 +156,17 @@ export class PartBody {
     Composite.translate(this._composite, positionDelta, true);
     this._compositePosition = position;
     Body.setVelocity(this._body, { x: 0, y: 0 });
-    // update the pivot location
-    if (this._pivot) {
-      this._pivot.x = position.x;
-      this._pivot.y = position.y;
-      // move damper anchor points
-      if (this._counterweightDamper) {
-        Vector.add(this._body.position, 
-          this._damperAnchorVector(this._part.isFlipped, true), 
-          this._counterweightDamper.pointB);
-      }
-      if (this._biasDamper) {
-        Vector.add(this._body.position, 
-          this._damperAnchorVector(this._part.isFlipped, false), 
-          this._biasDamper.pointB);
-      }
+    // move damper anchor points
+    if (this._counterweightDamper) {
+      Vector.add(this._body.position, 
+        this._damperAnchorVector(this._part.isFlipped, true), 
+        this._counterweightDamper.pointB);
     }
-    // update rotation
+    if (this._biasDamper) {
+      Vector.add(this._body.position, 
+        this._damperAnchorVector(this._part.isFlipped, false), 
+        this._biasDamper.pointB);
+    }
     Body.setAngle(this._body, this._part.angleForRotation(this._part.rotation));
     Body.setAngularVelocity(this._body, 0);
     // record that we've synced with the part
@@ -192,6 +176,38 @@ export class PartBody {
   protected _bodyOffset:Vector = { x: 0.0, y: 0.0 };
   private _bodyFlipped:boolean = false;
   private _partChangeCounter:number = NaN;
+
+  // apply corrections to the body and the balls contacting it
+  public cheat(balls:Set<PartBody>):void {
+    if ((! this._body) || (! this._part)) return;
+    const positionDelta:Vector = { x: 0, y: 0 };
+    let angleDelta:number = 0;
+    let moved:boolean = false;
+    if (! this._part.bodyCanMove) {
+      Vector.sub(this._compositePosition, this._body.position, positionDelta);
+      Body.translate(this._body, positionDelta);
+      Body.setVelocity(this._body, { x: 0, y: 0 });
+      moved = true;
+    }
+    if (this._part.bodyCanRotate) {
+      const r:number = this._part.rotationForAngle(this._body.angle);
+      if ((r <= 0.0) || (r >= 1.0)) {
+        const target:number = 
+          this._part.angleForRotation(Math.min(Math.max(0.0, r), 1.0));
+        angleDelta = target - this._body.angle;
+        Body.rotate(this._body, angleDelta);
+        Body.setAngularVelocity(this._body, 0);
+      }
+      moved = true;
+    }
+    // apply the same movements to balls if there are any, otherwise they 
+    //  will squash into the part
+    if ((moved) && (balls)) {
+      for (const ball of balls) {
+        Body.translate(ball.body, Vector.rotate(positionDelta, angleDelta));
+      }
+    }
+  }
 
   // tranfer relevant properties from the body
   public updatePartFromBody():void {
@@ -239,7 +255,7 @@ export class PartBody {
       const center = Vertices.centre(vertices);
       parts.push(Body.create({ position: center, vertices: vertices }));
     }
-    const body = Body.create({ parts: parts, friction: 0.05,
+    const body = Body.create({ parts: parts, friction: 0.05, density: PART_DENSITY,
       collisionFilter: { category: PART_CATEGORY, mask: PART_MASK, group: 0 } });
     // this is a hack to prevent matter.js from placing the body's center 
     //  of mass over the origin, which complicates our ability to precisely

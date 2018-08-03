@@ -2,6 +2,7 @@
 export const PART_SIZE:number = 64;
 export const SPACING:number = 68;
 
+export const PART_DENSITY:number = 0.100;
 export const BALL_DENSITY:number = 0.008;
 
 // damping/counterweight constraint parameters

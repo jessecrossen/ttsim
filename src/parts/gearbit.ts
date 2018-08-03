@@ -1,6 +1,5 @@
 import { Part, Layer } from './part';
 import { PartType } from './factory';
-import { Animator } from 'ui/animator';
 
 export abstract class GearBase extends Part {
 
@@ -11,21 +10,50 @@ export abstract class GearBase extends Part {
 
   // transfer rotation to connected elements
   public get rotation():number { return(super.rotation); }
-  public set rotation(v:number) {
-    if ((! GearBase._settingConnectedRotation) && (this.connected)) {
-      GearBase._settingConnectedRotation = this;
-      for (const part of this.connected) {
-        if (part !== this) part.rotation = v;
-      }
-      GearBase._settingConnectedRotation = null;
+  public set rotation(r:number) {
+    // if this is connected to a gear train, register a vote 
+    //  to be tallied later
+    if ((this.connected) && (this.connected.size > 1) && 
+        (! GearBase._updating)) {
+      this._rotationVote = r;
+      GearBase._rotationElections.add(this.connected);
     }
-    if ((GearBase._settingConnectedRotation) && 
-        (GearBase._settingConnectedRotation !== this)) {
-      Animator.current.stopAnimating(this, 'rotation');
+    else {
+      super.rotation = r;
     }
-    super.rotation = v;
   }
-  private static _settingConnectedRotation:GearBase = null;
+  private _rotationVote:number = NaN;
+  private static _rotationElections:Set<Set<GearBase>> = new Set();
+
+  // tally votes and apply rotation
+  public static update():void {
+    // skip this if there are no votes
+    if (! (GearBase._rotationElections.size > 0)) return;
+    GearBase._updating = true;
+    for (const election of GearBase._rotationElections) {
+      let sum:number = 0;
+      let count:number = 0;
+      for (const voter of election) {
+        if (! isNaN(voter._rotationVote)) {
+          sum += voter._rotationVote;
+          count += 1;
+          voter._rotationVote = NaN;
+        }
+      }
+      if (! (count > 0)) continue;
+      const mean:number = sum / count;
+      for (const voter of election) {
+        voter.rotation = mean;
+      }
+    }
+    GearBase._rotationElections.clear();
+    GearBase._updating = false;
+  }
+  private static _updating:boolean = false;
+
+  public isBeingDriven():boolean {
+    return(GearBase._rotationElections.has(this.connected));
+  }
 
 }
 

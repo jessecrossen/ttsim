@@ -1,17 +1,19 @@
 import * as PIXI from 'pixi.js';
 
-import { Engine, Composite, World, Constraint, Body, Bodies, Vector } from 'matter-js';
+import { Engine, Composite, World, Constraint, Body, Bodies, Vector, 
+         Events } from 'matter-js';
 import { IBallRouter } from './router';
 import { Board } from './board';
 import { Renderer } from 'renderer';
 import { Part } from 'parts/part';
 import { Ball } from 'parts/ball';
 import { Colors, Alphas } from 'ui/config';
-import { Gearbit } from 'parts/gearbit';
+import { Gearbit, GearBase } from 'parts/gearbit';
 import { PartBody, PartBodyFactory } from 'parts/partbody';
 
-import { SPACING } from './constants';
+import { SPACING, PIN_CATEGORY, PART_SIZE } from './constants';
 import { Animator } from 'ui/animator';
+import { PartType } from 'parts/factory';
 
 export class PhysicalBallRouter implements IBallRouter {
 
@@ -53,8 +55,12 @@ export class PhysicalBallRouter implements IBallRouter {
   private _boardChangeCounter:number = -1;
 
   public afterUpdate():void {
+    // determine the set of balls touching each part
+    const contacts:Map<PartBody,Set<PartBody>> = this._mapContacts();
     // transfer part positions
+    GearBase.update();
     for (const [ part, partBody ] of this._parts.entries()) {
+      partBody.cheat(contacts.get(partBody));
       partBody.updatePartFromBody();
       if (part.bodyCanMove) {
         this.board.layoutPart(part, part.column, part.row);
@@ -64,6 +70,32 @@ export class PhysicalBallRouter implements IBallRouter {
     this.renderWireframe();
     // re-render the whole display if we're managing parts
     if (this._parts.size > 0) Renderer.needsUpdate();
+  }
+
+  protected _mapContacts():Map<PartBody,Set<PartBody>> {
+    const contacts:Map<PartBody,Set<PartBody>> = new Map();
+    for (const pair of this.engine.pairs.collisionActive) {
+      const partA = this._findPartBody(pair.bodyA);
+      if (! partA) continue;
+      const partB = this._findPartBody(pair.bodyB);
+      if (! partB) continue;
+      if ((partA.type == PartType.BALL) && (partB.type != PartType.BALL)) {
+        if (! contacts.has(partB)) contacts.set(partB, new Set());
+        contacts.get(partB).add(partA);
+      }
+      else if ((partB.type == PartType.BALL) && (partA.type != PartType.BALL)) {
+        if (! contacts.has(partA)) contacts.set(partA, new Set());
+        contacts.get(partA).add(partB);
+      }
+    }
+    return(contacts);
+  }
+  protected _findPartBody(body:Body):PartBody {
+    if (this._bodies.has(body)) return(this._bodies.get(body));
+    if ((body.parent) && (body.parent !== body)) {
+      return(this._findPartBody(body.parent));
+    }
+    return(null);
   }
 
   // STATE MANAGEMENT *********************************************************
@@ -167,23 +199,26 @@ export class PhysicalBallRouter implements IBallRouter {
     const partBody = this.partBodyFactory.make(part);
     this._parts.set(part, partBody);
     partBody.addToWorld(this.engine.world);
+    if (partBody.body) this._bodies.set(partBody.body, partBody);
   }
   protected removePart(part:Part):void {
     if (! this._parts.has(part)) return; // make it idempotent
     const partBody = this._parts.get(part);
     partBody.removeFromWorld(this.engine.world);
+    this._bodies.delete(partBody.body);
     this.partBodyFactory.release(partBody);
     this._parts.delete(part);
     this._restoreRestingRotation(part);
   }
   private _parts:Map<Part,PartBody> = new Map();
+  private _bodies:Map<Body,PartBody> = new Map();
 
   // restore the rotation of the part if it has one
   protected _restoreRestingRotation(part:Part):void {
     if (part.rotation === part.restingRotation) return;
     // ensure we don't "restore" a gear that's still connected
     //  to a chain that's being simulated
-    if (part instanceof Gearbit) {
+    if ((part instanceof Gearbit) && (part.connected)) {
       for (const gear of part.connected) {
         if ((gear instanceof Gearbit) && (this._parts.has(gear))) return;
       }

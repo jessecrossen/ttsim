@@ -397,8 +397,8 @@ System.register("board/constants", [], function (exports_10, context_10) {
             exports_10("DAMPER_RADIUS", DAMPER_RADIUS = PART_SIZE / 2);
             exports_10("BIAS_STIFFNESS", BIAS_STIFFNESS = BALL_DENSITY / 16);
             exports_10("BIAS_DAMPING", BIAS_DAMPING = 0.3);
-            exports_10("COUNTERWEIGHT_STIFFNESS", COUNTERWEIGHT_STIFFNESS = BALL_DENSITY / 8);
-            exports_10("COUNTERWEIGHT_DAMPING", COUNTERWEIGHT_DAMPING = 0.3);
+            exports_10("COUNTERWEIGHT_STIFFNESS", COUNTERWEIGHT_STIFFNESS = BALL_DENSITY / 32);
+            exports_10("COUNTERWEIGHT_DAMPING", COUNTERWEIGHT_DAMPING = 0.1);
             // collision filtering categories
             exports_10("DEFAULT_MASK", DEFAULT_MASK = 0xFFFFFF);
             exports_10("PART_CATEGORY", PART_CATEGORY = 0x0001);
@@ -1114,7 +1114,7 @@ System.register("parts/partvertices", [], function (exports_19, context_19) {
             case 'Bit':
                 return ([[{ x: -1.055229, y: -32.311155 }, { x: 0.083096, y: -27.714947 }, { x: -27.716345, y: 0.194331 }, { x: -32.193815, y: -1.017234 }, { x: -34.041082, y: -34.054877 }], [{ x: -9.275339, y: -18.699338 }, { x: -18.644511, y: -8.976617 }, { x: -0.000000, y: 14.000038 }, { x: 12.203028, y: 15.153399 }, { x: 15.296620, y: 11.971414 }, { x: 13.999993, y: 0.000026 }], [{ x: 26.999992, y: -2.999974 }, { x: 27.625371, y: -30.038638 }, { x: 27.844206, y: -31.163652 }, { x: 28.781680, y: -32.163640 }, { x: 30.000426, y: -32.538569 }, { x: 31.156697, y: -32.288364 }, { x: 32.156684, y: -31.507136 }, { x: 32.625459, y: -30.163362 }, { x: 31.999993, y: -2.999974 }], [{ x: -4.000006, y: 27.000025 }, { x: -30.292815, y: 27.954318 }, { x: -31.416143, y: 28.181468 }, { x: -32.409014, y: 29.126463 }, { x: -32.774721, y: 30.348006 }, { x: -32.515785, y: 31.502387 }, { x: -31.727017, y: 32.496403 }, { x: -30.379740, y: 32.955011 }, { x: -4.000006, y: 32.000038 }], [{ x: 26.999992, y: -2.999974 }, { x: 13.999993, y: 0.000026 }, { x: 15.385009, y: 12.059818 }, { x: 28.731650, y: 2.602268 }, { x: 31.999993, y: -2.999974 }], [{ x: -4.000006, y: 27.000025 }, { x: 0.000034, y: 14.000038 }, { x: 11.959139, y: 15.360668 }, { x: 2.501590, y: 28.707313 }, { x: -4.000006, y: 32.000038 }]]);
             case 'Crossover':
-                return ([[{ x: -0.125001, y: -48.250007 }, { x: -2.750000, y: -46.000016 }, { x: -2.750000, y: -15.874990 }, { x: 3.000000, y: -15.874990 }, { x: 3.000000, y: -46.374983 }], [{ x: -3.000008, y: -15.999979 }, { x: -12.000004, y: -9.999979 }, { x: -2.249998, y: 4.250011 }, { x: 2.374998, y: 4.250011 }, { x: 11.999992, y: -9.999979 }, { x: 2.999992, y: -15.999979 }], [{ x: -32.250001, y: 31.999982 }, { x: -0.051776, y: 29.502583 }, { x: 31.124998, y: 31.499988 }, { x: 32.874999, y: 34.374999 }, { x: 30.375000, y: 36.999994 }, { x: -30.250000, y: 36.999994 }, { x: -32.749999, y: 35.125008 }], [{ x: -36.000003, y: -27.999979 }, { x: -43.000005, y: -5.000005 }, { x: -48.000003, y: -2.999992 }, { x: -45.000003, y: -20.999992 }, { x: -36.000003, y: -35.999991 }], [{ x: -43.000005, y: -5.000005 }, { x: -33.000003, y: 6.999995 }, { x: -39.000003, y: 6.999995 }, { x: -48.000003, y: -2.999992 }], [{ x: -35.999992, y: -35.999991 }, { x: -24.000011, y: -35.999991 }, { x: -29.999999, y: -27.999979 }, { x: -35.999999, y: -27.999979 }], [{ x: 35.999938, y: -27.999979 }, { x: 42.999941, y: -5.000005 }, { x: 47.999938, y: -2.999992 }, { x: 44.999938, y: -20.999992 }, { x: 35.999938, y: -35.999991 }], [{ x: 42.999941, y: -5.000005 }, { x: 32.999938, y: 6.999995 }, { x: 38.999938, y: 6.999995 }, { x: 47.999938, y: -2.999992 }], [{ x: 35.999927, y: -35.999991 }, { x: 23.999946, y: -35.999991 }, { x: 29.999935, y: -27.999979 }, { x: 35.999935, y: -27.999979 }]]);
+                return ([[{ x: -0.125001, y: -48.250007 }, { x: -2.750000, y: -46.000016 }, { x: -2.750000, y: -15.874990 }, { x: 3.000000, y: -15.874990 }, { x: 3.000000, y: -46.374983 }], [{ x: -3.000008, y: -15.999979 }, { x: -12.000004, y: -9.999979 }, { x: -2.249998, y: 4.250011 }, { x: 2.374998, y: 4.250011 }, { x: 11.999992, y: -9.999979 }, { x: 2.999992, y: -15.999979 }], [{ x: -32.250001, y: 31.999982 }, { x: -0.051776, y: 29.502583 }, { x: 31.124998, y: 31.499988 }, { x: 32.874999, y: 34.374999 }, { x: 30.375000, y: 36.999994 }, { x: -30.250000, y: 36.999994 }, { x: -32.749999, y: 35.125008 }], [{ x: -36.000003, y: -27.999979 }, { x: -43.000005, y: -5.000005 }, { x: -48.000003, y: -2.999992 }, { x: -45.000003, y: -20.999992 }, { x: -36.000003, y: -35.999991 }], [{ x: -43.000005, y: -5.000005 }, { x: -33.000003, y: 6.999995 }, { x: -39.000003, y: 6.999995 }, { x: -48.000003, y: -2.999992 }], [{ x: -35.999992, y: -35.999991 }, { x: -32.000004, y: -35.999991 }, { x: -31.999993, y: -31.999966 }, { x: -35.999999, y: -27.999979 }], [{ x: 35.999938, y: -27.999979 }, { x: 42.999941, y: -5.000005 }, { x: 47.999938, y: -2.999992 }, { x: 44.999938, y: -20.999992 }, { x: 35.999938, y: -35.999991 }], [{ x: 42.999941, y: -5.000005 }, { x: 32.999938, y: 6.999995 }, { x: 38.999938, y: 6.999995 }, { x: 47.999938, y: -2.999992 }], [{ x: 35.999927, y: -35.999991 }, { x: 31.999993, y: -35.999991 }, { x: 31.999989, y: -31.999966 }, { x: 35.999935, y: -27.999979 }]]);
             case 'Fence-l':
                 return ([[{ x: -37.000036, y: -33.999997 }, { x: -31.000036, y: -33.999997 }, { x: -31.000036, y: 34.000014 }, { x: -37.000036, y: 34.000014 }]]);
             case 'Fence-s1':
@@ -1407,14 +1407,22 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                 }
                 // PHYSICS ENGINE CHEATS ****************************************************
                 // apply corrections to the body and any balls contacting it
-                cheat(contacts) {
+                cheat(contacts, nearby) {
                     if ((!this._body) || (!this._part))
                         return;
                     this._controlRotation(contacts);
                     this._controlVelocity();
                     if (contacts) {
                         for (const contact of contacts) {
-                            this._nudgeBall(contact);
+                            const nudged = this._nudgeBall(contact);
+                            // if we've nudged a ball, don't do other stuff to it
+                            if ((nudged) && (nearby))
+                                nearby.delete(contact.ballPartBody);
+                        }
+                    }
+                    if (nearby) {
+                        for (const ballPartBody of nearby) {
+                            this._influenceBall(ballPartBody);
                         }
                     }
                 }
@@ -1462,7 +1470,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                 // apply a speed limit to the given ball
                 _nudgeBall(contact) {
                     if ((!this._body) || (!contact.ballPartBody.body))
-                        return;
+                        return (false);
                     const ball = contact.ballPartBody.part;
                     const body = contact.ballPartBody.body;
                     let tangent = matter_js_1.Vector.clone(contact.tangent);
@@ -1470,67 +1478,70 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     let maxSlope = 0.3;
                     // get the horizontal direction and relative magnitude we want the ball 
                     //  to be going in
-                    let mag = 0;
+                    let mag = 1;
+                    let sign = 0;
                     // ramps direct in a single direction
-                    if (this._part.type == 3 /* RAMP */) {
-                        if ((this._part.rotation < 0.25) ||
-                            (this._part.rotation > 0.75)) {
-                            mag = this._part.isFlipped ? -1 : 1;
-                        }
+                    if ((this._part.type == 3 /* RAMP */) &&
+                        (this._part.rotation < 0.25) &&
+                        (ball.row < this._part.row)) {
+                        sign = this._part.isFlipped ? -1 : 1;
                     }
                     else if (this._part.type == 7 /* GEARBIT */) {
                         if (this._part.rotation < 0.25)
-                            mag = 1;
+                            sign = 1;
                         else if (this._part.rotation > 0.75)
-                            mag = -1;
+                            sign = -1;
                     }
                     else if (this._part.type == 6 /* BIT */) {
                         const bottomHalf = ball.row > this._part.row;
                         if (this._part.rotation >= 0.9)
-                            mag = bottomHalf ? 1 : -1;
+                            sign = bottomHalf ? 1 : 1;
                         else if (this._part.rotation <= 0.1)
-                            mag = bottomHalf ? -1 : 1;
+                            sign = bottomHalf ? -1 : 1;
+                        if (!bottomHalf)
+                            mag = 0.5;
                     }
                     else if (this._part.type == 4 /* CROSSOVER */) {
                         if (ball.lastDistinctColumn < ball.lastColumn)
-                            mag = 1;
+                            sign = 1;
                         else if (ball.lastDistinctColumn > ball.lastColumn)
-                            mag = -1;
+                            sign = -1;
                         else if (ball.row < this._part.row) {
-                            mag = ball.column < this._part.column ? 1 : -1;
+                            sign = ball.column < this._part.column ? 1 : -1;
                             // remember this for when we get to the bottom
-                            ball.lastDistinctColumn -= mag;
+                            ball.lastDistinctColumn -= sign;
                         }
                         else {
-                            mag = ball.column < this._part.column ? -1 : 1;
+                            sign = ball.column < this._part.column ? -1 : 1;
                         }
                         if (ball.row < this._part.row)
                             mag *= 16;
                     }
                     else if ((this._part instanceof fence_2.Fence) &&
                         (this._part.variant == 2 /* SLOPE */)) {
-                        mag = this._part.isFlipped ? -3 : 3;
+                        mag = 2;
+                        sign = this._part.isFlipped ? -1 : 1;
                         // the tangent is always the same for slopes, and setting it explicitly
                         //  prevents strange effect at corners
-                        tangent = matter_js_1.Vector.normalise({ x: this._part.modulus, y: 1 });
+                        tangent = matter_js_1.Vector.normalise({ x: this._part.modulus * sign, y: 1 });
                         maxSlope = 1;
                     }
                     // exit if we're not nudging
-                    if (mag == 0)
-                        return;
+                    if (sign == 0)
+                        return (false);
                     // limit slope
                     const slope = Math.abs(tangent.y) / Math.abs(tangent.x);
                     if (slope > maxSlope)
-                        return;
+                        return (false);
                     // flip the tangent if the direction doesn't match the target direction
-                    if (((mag < 0) && (tangent.x > 0)) ||
-                        ((mag > 0) && (tangent.x < 0)))
+                    if (((sign < 0) && (tangent.x > 0)) ||
+                        ((sign > 0) && (tangent.x < 0)))
                         tangent = matter_js_1.Vector.mult(tangent, -1);
                     // see how much and in which direction we need to correct the horizontal velocity
-                    const target = constants_1.IDEAL_VX * mag;
+                    const target = constants_1.IDEAL_VX * sign * mag;
                     const current = body.velocity.x;
                     let accel = 0;
-                    if (mag > 0) {
+                    if (sign > 0) {
                         if (current < target)
                             accel = constants_1.NUDGE_ACCEL; // too slow => right
                         else if (current > target)
@@ -1543,12 +1554,43 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                             accel = -constants_1.NUDGE_ACCEL; // too fast <= left
                     }
                     if (accel == 0)
-                        return;
+                        return (false);
                     // scale the acceleration by the difference 
                     //  if it gets close to prevent flip-flopping
                     accel *= Math.min(Math.abs(current - target) * 4, 1.0);
                     // accelerate the ball in the desired direction
                     matter_js_1.Body.applyForce(body, body.position, matter_js_1.Vector.mult(tangent, accel * body.mass));
+                    // return that we've nudged the ball
+                    return (true);
+                }
+                // apply trajectory influences to balls in the vicinity
+                _influenceBall(ballPartBody) {
+                    const ball = ballPartBody.part;
+                    const body = ballPartBody.body;
+                    if (this._part.type == 4 /* CROSSOVER */) {
+                        const currentSign = body.velocity.x > 0 ? 1 : -1;
+                        // make trajectories in the upper half of the crossover more diagonal,
+                        //  which ensures they have enough horizontal energy to make it through
+                        //  the bottom half without the "conveyer belt" nudge being obvious
+                        if ((ball.row < this._part.row) && (body.velocity.x > 0.001)) {
+                            if (Math.abs(body.velocity.x) < Math.abs(body.velocity.y)) {
+                                matter_js_1.Body.applyForce(body, body.position, { x: currentSign * constants_1.NUDGE_ACCEL * body.mass, y: 0 });
+                                return (true);
+                            }
+                        }
+                        else if (ball.row > this._part.row) {
+                            let desiredSign = 0;
+                            if (ball.lastDistinctColumn < ball.lastColumn)
+                                desiredSign = 1;
+                            else if (ball.lastDistinctColumn > ball.lastColumn)
+                                desiredSign = -1;
+                            if ((desiredSign != 0) && (desiredSign != currentSign)) {
+                                matter_js_1.Body.applyForce(body, body.position, { x: desiredSign * constants_1.NUDGE_ACCEL * body.mass, y: 0 });
+                                return (true);
+                            }
+                        }
+                    }
+                    return (false);
                 }
             };
             exports_20("PartBody", PartBody);
@@ -1656,9 +1698,10 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                 afterUpdate() {
                     // determine the set of balls touching each part
                     const contacts = this._mapContacts();
+                    const nearby = this._mapNearby();
                     // apply physics corrections
                     for (const partBody of this._parts.values()) {
-                        partBody.cheat(contacts.get(partBody));
+                        partBody.cheat(contacts.get(partBody), nearby.get(partBody));
                     }
                     // transfer part positions
                     for (const [part, partBody] of this._parts.entries()) {
@@ -1735,6 +1778,23 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                         return (this._findPartBody(body.parent));
                     }
                     return (null);
+                }
+                // map parts to the balls in their grid square
+                _mapNearby() {
+                    const map = new Map;
+                    for (const ball of this.board.balls) {
+                        const ballPartBody = this._parts.get(ball);
+                        if (!ballPartBody)
+                            continue;
+                        const part = this.board.getPart(Math.round(ball.column), Math.round(ball.row));
+                        const partBody = this._parts.get(part);
+                        if (!partBody)
+                            continue;
+                        if (!map.has(partBody))
+                            map.set(partBody, new Set());
+                        map.get(partBody).add(ballPartBody);
+                    }
+                    return (map);
                 }
                 // STATE MANAGEMENT *********************************************************
                 _createWalls() {
@@ -2844,7 +2904,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                     else if ((this._action === 2 /* PLACE_BALL */) &&
                         (this.partPrototype)) {
-                        this.addBall(this.partFactory.copy(this.partPrototype), this._actionX, this._actionY);
+                        const ball = this.ballUnder(this.columnForX(this._actionX), this.rowForY(this._actionY));
+                        if (ball) {
+                            this.removeBall(ball);
+                        }
+                        else {
+                            this.addBall(this.partFactory.copy(this.partPrototype), this._actionX, this._actionY);
+                        }
                     }
                     else if (this._action === 3 /* CLEAR_PART */) {
                         this.clearPart(this._actionColumn, this._actionRow);
@@ -3521,8 +3587,8 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                 }
                 _addKeyHandlers() {
                     const w = keyboard_1.makeKeyHandler('w');
-                    w.press = () => { this.physicalRouter.showWireframe = true; };
-                    w.release = () => { this.physicalRouter.showWireframe = false; };
+                    w.press = () => { this.board.physicalRouter.showWireframe = true; };
+                    w.release = () => { this.board.physicalRouter.showWireframe = false; };
                 }
             };
             exports_27("SimulatorApp", SimulatorApp);

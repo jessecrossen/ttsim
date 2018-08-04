@@ -66,8 +66,8 @@ export class Board {
   public speed:number = 1.0;
 
   // routers to manage the positions of the balls
-  protected physicalRouter:PhysicalBallRouter = new PhysicalBallRouter(this);
-  protected router:IBallRouter = this.physicalRouter;
+  public readonly physicalRouter:PhysicalBallRouter = new PhysicalBallRouter(this);
+  public readonly router:IBallRouter = this.physicalRouter;
 
   // update the board state
   public update(correction:number):void {
@@ -919,8 +919,15 @@ export class Board {
     // place a ball
     else if ((this._action === ActionType.PLACE_BALL) &&
              (this.partPrototype)) {
-      this.addBall(this.partFactory.copy(this.partPrototype) as Ball, 
-        this._actionX, this._actionY);
+      const ball = this.ballUnder(this.columnForX(this._actionX),
+                                  this.rowForY(this._actionY));
+      if (ball) {
+        this.removeBall(ball);
+      }
+      else {
+        this.addBall(this.partFactory.copy(this.partPrototype) as Ball, 
+          this._actionX, this._actionY);
+      }
     }
     // clear parts
     else if (this._action === ActionType.CLEAR_PART) {

@@ -23,8 +23,8 @@ export const MAX_V:number = 12;
 export const DAMPER_RADIUS:number = PART_SIZE / 2;
 export const BIAS_STIFFNESS:number = BALL_DENSITY / 16;
 export const BIAS_DAMPING:number = 0.3;
-export const COUNTERWEIGHT_STIFFNESS:number = BALL_DENSITY / 8;
-export const COUNTERWEIGHT_DAMPING:number = 0.3;
+export const COUNTERWEIGHT_STIFFNESS:number = BALL_DENSITY / 32;
+export const COUNTERWEIGHT_DAMPING:number = 0.1;
 
 // collision filtering categories
 export const DEFAULT_MASK:number = 0xFFFFFF;

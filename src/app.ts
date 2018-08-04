@@ -71,8 +71,8 @@ export class SimulatorApp extends PIXI.Container {
 
   protected _addKeyHandlers():void {
     const w = makeKeyHandler('w');
-    w.press = () => { this.physicalRouter.showWireframe = true; };
-    w.release = () => { this.physicalRouter.showWireframe = false; };
+    w.press = () => { this.board.physicalRouter.showWireframe = true; };
+    w.release = () => { this.board.physicalRouter.showWireframe = false; };
   }
 
 }

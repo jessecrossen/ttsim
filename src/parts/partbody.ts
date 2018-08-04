@@ -263,13 +263,20 @@ export class PartBody {
   // PHYSICS ENGINE CHEATS ****************************************************
 
   // apply corrections to the body and any balls contacting it
-  public cheat(contacts:Set<PartBallContact>):void {
+  public cheat(contacts:Set<PartBallContact>, nearby:Set<PartBody>):void {
     if ((! this._body) || (! this._part)) return;
     this._controlRotation(contacts);
     this._controlVelocity();
     if (contacts) {
       for (const contact of contacts) {
-        this._nudgeBall(contact);
+        const nudged = this._nudgeBall(contact);
+        // if we've nudged a ball, don't do other stuff to it
+        if ((nudged) && (nearby)) nearby.delete(contact.ballPartBody);
+      }
+    }
+    if (nearby) {
+      for (const ballPartBody of nearby) {
+        this._influenceBall(ballPartBody);
       }
     }
   }
@@ -318,8 +325,8 @@ export class PartBody {
   }
 
   // apply a speed limit to the given ball
-  private _nudgeBall(contact:PartBallContact) {
-    if ((! this._body) || (! contact.ballPartBody.body)) return;
+  private _nudgeBall(contact:PartBallContact):boolean {
+    if ((! this._body) || (! contact.ballPartBody.body)) return(false);
     const ball = contact.ballPartBody.part as Ball;
     const body = contact.ballPartBody.body;
     let tangent = Vector.clone(contact.tangent);
@@ -327,37 +334,38 @@ export class PartBody {
     let maxSlope:number = 0.3;
     // get the horizontal direction and relative magnitude we want the ball 
     //  to be going in
-    let mag:number = 0;
+    let mag:number = 1;
+    let sign:number = 0;
     // ramps direct in a single direction
-    if (this._part.type == PartType.RAMP) {
-      if ((this._part.rotation < 0.25) || 
-          (this._part.rotation > 0.75)) {
-        mag = this._part.isFlipped ? -1 : 1;
-      }
+    if ((this._part.type == PartType.RAMP) &&
+        (this._part.rotation < 0.25) && 
+        (ball.row < this._part.row)) {
+      sign = this._part.isFlipped ? -1 : 1;
     }
     // gearbits are basically like switchable ramps
     else if (this._part.type == PartType.GEARBIT) {
-      if (this._part.rotation < 0.25) mag = 1;
-      else if (this._part.rotation > 0.75) mag = -1;
+      if (this._part.rotation < 0.25) sign = 1;
+      else if (this._part.rotation > 0.75) sign = -1;
     }
     // bits direct the ball according to their state, but the direction is 
     //  opposite for the top and bottom halves
     else if (this._part.type == PartType.BIT) {
       const bottomHalf:boolean = ball.row > this._part.row;
-      if (this._part.rotation >= 0.9) mag = bottomHalf ? 1 : -1;
-      else if (this._part.rotation <= 0.1) mag = bottomHalf ? -1 : 1;
+      if (this._part.rotation >= 0.9) sign = bottomHalf ? 1 : 1;
+      else if (this._part.rotation <= 0.1) sign = bottomHalf ? -1 : 1;
+      if (! bottomHalf) mag = 0.5;
     }
     // crossovers direct the ball in the same direction it has been going
     else if (this._part.type == PartType.CROSSOVER) {
-      if (ball.lastDistinctColumn < ball.lastColumn) mag = 1;
-      else if (ball.lastDistinctColumn > ball.lastColumn) mag = -1;
+      if (ball.lastDistinctColumn < ball.lastColumn) sign = 1;
+      else if (ball.lastDistinctColumn > ball.lastColumn) sign = -1;
       else if (ball.row < this._part.row) { // top half
-        mag = ball.column < this._part.column ? 1 : -1;
+        sign = ball.column < this._part.column ? 1 : -1;
         // remember this for when we get to the bottom
-        ball.lastDistinctColumn -= mag;
+        ball.lastDistinctColumn -= sign;
       }
       else { // bottom half
-        mag = ball.column < this._part.column ? -1 : 1;
+        sign = ball.column < this._part.column ? -1 : 1;
       }
       if (ball.row < this._part.row) mag *= 16;
     }
@@ -365,25 +373,26 @@ export class PartBody {
     //  interactions are simple
     else if ((this._part instanceof Fence) && 
              (this._part.variant == FenceVariant.SLOPE)) {
-      mag = this._part.isFlipped ? -3 : 3;
+      mag = 2;
+      sign = this._part.isFlipped ? -1 : 1;
       // the tangent is always the same for slopes, and setting it explicitly
       //  prevents strange effect at corners
-      tangent = Vector.normalise({ x: this._part.modulus, y: 1 });
+      tangent = Vector.normalise({ x: this._part.modulus * sign, y: 1 });
       maxSlope = 1;
     }
     // exit if we're not nudging
-    if (mag == 0) return;
+    if (sign == 0) return(false);
     // limit slope
     const slope = Math.abs(tangent.y) / Math.abs(tangent.x);
-    if (slope > maxSlope) return;
+    if (slope > maxSlope) return(false);
     // flip the tangent if the direction doesn't match the target direction
-    if (((mag < 0) && (tangent.x > 0)) ||
-        ((mag > 0) && (tangent.x < 0))) tangent = Vector.mult(tangent, -1);
+    if (((sign < 0) && (tangent.x > 0)) ||
+        ((sign > 0) && (tangent.x < 0))) tangent = Vector.mult(tangent, -1);
     // see how much and in which direction we need to correct the horizontal velocity
-    const target = IDEAL_VX * mag;
+    const target = IDEAL_VX * sign * mag;
     const current = body.velocity.x;
     let accel:number = 0;
-    if (mag > 0) {
+    if (sign > 0) {
       if (current < target) accel = NUDGE_ACCEL;        // too slow => right
       else if (current > target) accel = - NUDGE_ACCEL; // too fast => right
     }
@@ -391,13 +400,48 @@ export class PartBody {
       if (target < current) accel = NUDGE_ACCEL;        // too slow <= left
       else if (target > current) accel = - NUDGE_ACCEL; // too fast <= left
     }
-    if (accel == 0) return;
+    if (accel == 0) return(false);
     // scale the acceleration by the difference 
     //  if it gets close to prevent flip-flopping
     accel *= Math.min(Math.abs(current - target) * 4, 1.0);
     // accelerate the ball in the desired direction
     Body.applyForce(body, body.position, 
       Vector.mult(tangent, accel * body.mass));
+    // return that we've nudged the ball
+    return(true);
+  }
+
+  // apply trajectory influences to balls in the vicinity
+  private _influenceBall(ballPartBody:PartBody):boolean {
+    const ball = ballPartBody.part as Ball;
+    const body = ballPartBody.body;
+    if (this._part.type == PartType.CROSSOVER) {
+      const currentSign:number = body.velocity.x > 0 ? 1 : -1;
+      // make trajectories in the upper half of the crossover more diagonal,
+      //  which ensures they have enough horizontal energy to make it through
+      //  the bottom half without the "conveyer belt" nudge being obvious
+      if ((ball.row < this._part.row) && (body.velocity.x > 0.001)) {
+        if (Math.abs(body.velocity.x) < Math.abs(body.velocity.y)) {
+          Body.applyForce(body, body.position, 
+            { x: currentSign * NUDGE_ACCEL * body.mass, y: 0});
+          return(true);
+        }
+      }
+      // if the ball somehow happens to be going the wrong way in the 
+      //  bottom half, as it sometimes does, we need to intervene and fix it
+      //  even if that looks unnatural
+      else if (ball.row > this._part.row) {
+        let desiredSign:number = 0;
+        if (ball.lastDistinctColumn < ball.lastColumn) desiredSign = 1;
+        else if (ball.lastDistinctColumn > ball.lastColumn) desiredSign = -1;
+        if ((desiredSign != 0) && (desiredSign != currentSign)) {
+          Body.applyForce(body, body.position, 
+            { x: desiredSign * NUDGE_ACCEL * body.mass, y: 0});
+          return(true);
+        }
+      }
+    }
+    return(false);
   }
 
 }

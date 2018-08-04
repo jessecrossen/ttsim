@@ -74,9 +74,10 @@ export class PhysicalBallRouter implements IBallRouter {
   public afterUpdate():void {
     // determine the set of balls touching each part
     const contacts:ContactMap = this._mapContacts();
+    const nearby = this._mapNearby();
     // apply physics corrections
     for (const partBody of this._parts.values()) {
-      partBody.cheat(contacts.get(partBody));
+      partBody.cheat(contacts.get(partBody), nearby.get(partBody));
     }
     // transfer part positions
     for (const [ part, partBody ] of this._parts.entries()) {
@@ -148,6 +149,22 @@ export class PhysicalBallRouter implements IBallRouter {
       return(this._findPartBody(body.parent));
     }
     return(null);
+  }
+
+  // map parts to the balls in their grid square
+  protected _mapNearby():Map<PartBody,Set<PartBody>> {
+    const map:Map<PartBody,Set<PartBody>> = new Map;
+    for (const ball of this.board.balls) {
+      const ballPartBody = this._parts.get(ball);
+      if (! ballPartBody) continue;
+      const part = this.board.getPart(
+        Math.round(ball.column), Math.round(ball.row));
+      const partBody = this._parts.get(part);
+      if (! partBody) continue;
+      if (! map.has(partBody)) map.set(partBody, new Set());
+      map.get(partBody).add(ballPartBody);
+    }
+    return(map);
   }
 
   // STATE MANAGEMENT *********************************************************

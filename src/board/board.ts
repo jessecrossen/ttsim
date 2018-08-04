@@ -463,14 +463,20 @@ export class Board {
 
   // get the ball under the given point in fractional column/row units
   public ballUnder(column:number, row:number):Ball {
-    const radius = BALL_RADIUS / SPACING;
+    const radius = (BALL_RADIUS / SPACING) * 1.2;
+    let closest:Ball = null;
+    let minDistance:number = Infinity;
     for (const ball of this.balls) {
       const dx:number = Math.abs(column - ball.column);
       const dy:number = Math.abs(row - ball.row);
       if ((dx > radius) || (dy > radius)) continue;
-      if (Math.sqrt((dx * dx) + (dy * dy)) <= radius) return(ball);
+      const d:number = Math.sqrt((dx * dx) + (dy * dy));
+      if (d < minDistance) {
+        closest = ball;
+        minDistance = d;
+      }
     }
-    return(null);
+    return(closest);
   }
 
   // add a part to the board's layers
@@ -729,26 +735,17 @@ export class Board {
   private _onDragStart(x:number, y:number):void {
     this._panStartColumn = this.centerColumn;
     this._panStartRow = this.centerRow;
-    if ((this._action === ActionType.FLIP_PART) ||
-        (this._action === ActionType.DRAG_PART) ||
-        (this._action === ActionType.PAN)) {
-      const c:number = this.columnForX(this._actionX);
-      const r:number = this.rowForY(this._actionY);
-      const column:number = Math.round(c);
-      const row:number = Math.round(r);
-      let part:Part = this.ballUnder(c, r);
-      if ((! part) && (! this.isBackgroundPart(column, row))) {
-        part = this.getPart(column, row);
-      }
-      if (part) {
-        if (part instanceof Ball) this.removeBall(part);
-        else this.clearPart(column, row);
-        this.partPrototype = part;
-        this._action = ActionType.DRAG_PART;
-        this.view.cursor = 'pointer';
-        this._partDragStartColumn = this._actionColumn;
-        this._partDragStartRow = this._actionRow;
-      }
+    if (this._action === ActionType.FLIP_PART) {
+      this._action = ActionType.DRAG_PART;
+    }
+    if ((this._action === ActionType.DRAG_PART) && (this._actionPart)) {
+      if (this._actionPart instanceof Ball) this.removeBall(this._actionPart);
+      else this.clearPart(this._actionColumn, this._actionRow);
+      this.partPrototype = this._actionPart;
+      this._action = ActionType.DRAG_PART;
+      this.view.cursor = 'move';
+      this._partDragStartColumn = this._actionColumn;
+      this._partDragStartRow = this._actionRow;
     }
   }
   private _panStartColumn:number;
@@ -807,25 +804,25 @@ export class Board {
   private _onDragFinish():void {
     this._dragFlippedParts.clear();
     if ((this._action === ActionType.DRAG_PART) && (this.partPrototype)) {
-      const part = this.partPrototype;
+      const part = this.partFactory.copy(this.partPrototype);
       this.partPrototype = null;
       if (part instanceof Ball) {
         this.partPrototype = null;
-        this.addBall(this.partFactory.copy(part) as Ball, 
+        this.addBall(part as Ball, 
           this._actionX, this._actionY);
       }
       else if (this.canPlacePart(part.type, this._actionColumn, this._actionRow)) {
         this.setPart(part, this._actionColumn, this._actionRow);
       }
       else {
-        this.setPart(part, this._partDragStartColumn, 
-                           this._partDragStartRow);
+        this.setPart(part, this._partDragStartColumn, this._partDragStartRow);
       }
     }
   }
 
   private _updateAction(e:PIXI.interaction.InteractionEvent):void {
     const p = e.data.getLocalPosition(this._layers);
+    this._actionPart = null;
     this._actionX = p.x;
     this._actionY = p.y;
     const column = this._actionColumn = Math.round(this.columnForX(p.x));
@@ -842,18 +839,26 @@ export class Board {
       this.view.cursor = 'pointer';
     }
     else if ((this.tool == ToolType.HAND) && 
-             (this.ballUnder(this.columnForX(p.x), this.rowForY(p.y)))) {
+             (this._actionPart = 
+              this.ballUnder(this.columnForX(p.x), this.rowForY(p.y)))) {
       this._action = ActionType.DRAG_PART;
-      this.view.cursor = 'pointer';
+      this.view.cursor = 'move';
     }
     else if ((this.tool == ToolType.HAND) &&
              (this.canFlipPart(column, row))) {
       this._action = ActionType.FLIP_PART;
+      this._actionPart = this.getPart(column, row);
       this.view.cursor = 'pointer';
+    }
+    else if ((this.tool == ToolType.HAND) &&
+             (! this.isBackgroundPart(column, row))) {
+      this._action = ActionType.DRAG_PART;
+      this._actionPart = this.getPart(column, row);
+      this.view.cursor = 'move';
     }
     else {
       this._action = ActionType.PAN;
-      this.view.cursor = 'move';
+      this.view.cursor = 'auto';
     }
     this._updatePreview();
   }
@@ -862,6 +867,7 @@ export class Board {
   private _actionRow:number;
   private _actionX:number;
   private _actionY:number;
+  private _actionPart:Part;
 
   private _updatePreview():void {
     if (this.partPrototype) {

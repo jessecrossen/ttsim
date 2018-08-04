@@ -1553,16 +1553,21 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 }
                 // get the ball under the given point in fractional column/row units
                 ballUnder(column, row) {
-                    const radius = constants_1.BALL_RADIUS / constants_1.SPACING;
+                    const radius = (constants_1.BALL_RADIUS / constants_1.SPACING) * 1.2;
+                    let closest = null;
+                    let minDistance = Infinity;
                     for (const ball of this.balls) {
                         const dx = Math.abs(column - ball.column);
                         const dy = Math.abs(row - ball.row);
                         if ((dx > radius) || (dy > radius))
                             continue;
-                        if (Math.sqrt((dx * dx) + (dy * dy)) <= radius)
-                            return (ball);
+                        const d = Math.sqrt((dx * dx) + (dy * dy));
+                        if (d < minDistance) {
+                            closest = ball;
+                            minDistance = d;
+                        }
                     }
-                    return (null);
+                    return (closest);
                 }
                 // add a part to the board's layers
                 addPart(part) {
@@ -1821,28 +1826,19 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 _onDragStart(x, y) {
                     this._panStartColumn = this.centerColumn;
                     this._panStartRow = this.centerRow;
-                    if ((this._action === 4 /* FLIP_PART */) ||
-                        (this._action === 5 /* DRAG_PART */) ||
-                        (this._action === 0 /* PAN */)) {
-                        const c = this.columnForX(this._actionX);
-                        const r = this.rowForY(this._actionY);
-                        const column = Math.round(c);
-                        const row = Math.round(r);
-                        let part = this.ballUnder(c, r);
-                        if ((!part) && (!this.isBackgroundPart(column, row))) {
-                            part = this.getPart(column, row);
-                        }
-                        if (part) {
-                            if (part instanceof ball_2.Ball)
-                                this.removeBall(part);
-                            else
-                                this.clearPart(column, row);
-                            this.partPrototype = part;
-                            this._action = 5 /* DRAG_PART */;
-                            this.view.cursor = 'pointer';
-                            this._partDragStartColumn = this._actionColumn;
-                            this._partDragStartRow = this._actionRow;
-                        }
+                    if (this._action === 4 /* FLIP_PART */) {
+                        this._action = 5 /* DRAG_PART */;
+                    }
+                    if ((this._action === 5 /* DRAG_PART */) && (this._actionPart)) {
+                        if (this._actionPart instanceof ball_2.Ball)
+                            this.removeBall(this._actionPart);
+                        else
+                            this.clearPart(this._actionColumn, this._actionRow);
+                        this.partPrototype = this._actionPart;
+                        this._action = 5 /* DRAG_PART */;
+                        this.view.cursor = 'move';
+                        this._partDragStartColumn = this._actionColumn;
+                        this._partDragStartRow = this._actionRow;
                     }
                 }
                 _onDrag(startX, startY, lastX, lastY, currentX, currentY) {
@@ -1893,11 +1889,11 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 _onDragFinish() {
                     this._dragFlippedParts.clear();
                     if ((this._action === 5 /* DRAG_PART */) && (this.partPrototype)) {
-                        const part = this.partPrototype;
+                        const part = this.partFactory.copy(this.partPrototype);
                         this.partPrototype = null;
                         if (part instanceof ball_2.Ball) {
                             this.partPrototype = null;
-                            this.addBall(this.partFactory.copy(part), this._actionX, this._actionY);
+                            this.addBall(part, this._actionX, this._actionY);
                         }
                         else if (this.canPlacePart(part.type, this._actionColumn, this._actionRow)) {
                             this.setPart(part, this._actionColumn, this._actionRow);
@@ -1909,6 +1905,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 }
                 _updateAction(e) {
                     const p = e.data.getLocalPosition(this._layers);
+                    this._actionPart = null;
                     this._actionX = p.x;
                     this._actionY = p.y;
                     const column = this._actionColumn = Math.round(this.columnForX(p.x));
@@ -1925,18 +1922,26 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this.view.cursor = 'pointer';
                     }
                     else if ((this.tool == 3 /* HAND */) &&
-                        (this.ballUnder(this.columnForX(p.x), this.rowForY(p.y)))) {
+                        (this._actionPart =
+                            this.ballUnder(this.columnForX(p.x), this.rowForY(p.y)))) {
                         this._action = 5 /* DRAG_PART */;
-                        this.view.cursor = 'pointer';
+                        this.view.cursor = 'move';
                     }
                     else if ((this.tool == 3 /* HAND */) &&
                         (this.canFlipPart(column, row))) {
                         this._action = 4 /* FLIP_PART */;
+                        this._actionPart = this.getPart(column, row);
                         this.view.cursor = 'pointer';
+                    }
+                    else if ((this.tool == 3 /* HAND */) &&
+                        (!this.isBackgroundPart(column, row))) {
+                        this._action = 5 /* DRAG_PART */;
+                        this._actionPart = this.getPart(column, row);
+                        this.view.cursor = 'move';
                     }
                     else {
                         this._action = 0 /* PAN */;
-                        this.view.cursor = 'move';
+                        this.view.cursor = 'auto';
                     }
                     this._updatePreview();
                 }

@@ -46,10 +46,20 @@ export class PhysicalBallRouter implements IBallRouter {
 
   // UPDATING *****************************************************************
 
-  public update(correction:number):void {
-    this.beforeUpdate();
-    Engine.update(this.engine);
-    this.afterUpdate();
+  public update(speed:number, correction:number):void {
+    if (! (speed > 0)) return;
+    let iterations:number = speed * 2;
+    if (iterations < 1) {
+      this.engine.timing.timeScale = speed;
+      iterations = 1;
+    }
+    else this.engine.timing.timeScale = 1;
+    for (let i:number = 0; i < iterations; i++) {
+      this.beforeUpdate();
+      Engine.update(this.engine);
+      this.afterUpdate();
+      GearBase.update();
+    }
   }
 
   public beforeUpdate():void {

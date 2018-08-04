@@ -26,3 +26,8 @@ export const enum Delays {
 export const enum Sizes {
   DRAG_THRESHOLD = 5
 }
+
+export const Zooms:number[] = 
+  [ 2, 4, 6, 8, 12, 16, 24, 32, 48, 64 ];
+export const Speeds:number[] = 
+  [ 0.0, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0 ];

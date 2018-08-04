@@ -10,6 +10,7 @@ import { Renderer } from 'renderer';
 import { Ball } from 'parts/ball';
 import { IBallRouter } from './router';
 import { BALL_RADIUS, SPACING } from './constants';
+import { PhysicalBallRouter } from './physics';
 
 export const enum ToolType {
   NONE,
@@ -27,7 +28,6 @@ export const enum ActionType {
   DRAG_PART
 }
 
-export const PartSizes:number[] = [ 2, 4, 6, 8, 12, 16, 24, 32, 48, 64 ];
 export const SPACING_FACTOR:number = 1.0625;
 
 type LayerToContainerMap = Map<Layer,PIXI.Container>;
@@ -45,8 +45,6 @@ export class Board {
 
   // the set of balls currently on the board
   public readonly balls:Set<Ball> = new Set();
-  // a router to manage the positions of the balls
-  public router:IBallRouter;
 
   // a counter that increments whenever the board changes
   public get changeCounter():number { return(this._changeCounter); }
@@ -63,6 +61,18 @@ export class Board {
     this._updateLayerVisibility();
   }
   protected _schematic:boolean = false;
+
+  // the speed to run the simulator at
+  public speed:number = 1.0;
+
+  // routers to manage the positions of the balls
+  protected physicalRouter:PhysicalBallRouter = new PhysicalBallRouter(this);
+  protected router:IBallRouter = this.physicalRouter;
+
+  // update the board state
+  public update(correction:number):void {
+    this.router.update(this.speed, correction);
+  }
 
   // LAYERS *******************************************************************
 

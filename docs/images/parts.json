@@ -1392,59 +1392,11 @@
       }, 
       "trimmed": false
     }, 
-    "Gear-b": {
-      "frame": {
-        "h": 96, 
-        "w": 96, 
-        "x": 4, 
-        "y": 212
-      }, 
-      "pivot": {
-        "x": 0.5, 
-        "y": 0.5
-      }, 
-      "rotated": false, 
-      "sourceSize": {
-        "h": 96, 
-        "w": 96
-      }, 
-      "spriteSourceSize": {
-        "h": 96, 
-        "w": 96, 
-        "x": 0, 
-        "y": 0
-      }, 
-      "trimmed": false
-    }, 
     "Gear-f": {
       "frame": {
         "h": 96, 
         "w": 96, 
         "x": 212, 
-        "y": 212
-      }, 
-      "pivot": {
-        "x": 0.5, 
-        "y": 0.5
-      }, 
-      "rotated": false, 
-      "sourceSize": {
-        "h": 96, 
-        "w": 96
-      }, 
-      "spriteSourceSize": {
-        "h": 96, 
-        "w": 96, 
-        "x": 0, 
-        "y": 0
-      }, 
-      "trimmed": false
-    }, 
-    "Gear-m": {
-      "frame": {
-        "h": 96, 
-        "w": 96, 
-        "x": 108, 
         "y": 212
       }, 
       "pivot": {
@@ -2160,6 +2112,30 @@
       }, 
       "trimmed": false
     }, 
+    "faster": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 108, 
+        "y": 212
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
     "hand": {
       "frame": {
         "h": 96, 
@@ -2214,6 +2190,30 @@
         "w": 96, 
         "x": 108, 
         "y": 4
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "slower": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 4, 
+        "y": 212
       }, 
       "pivot": {
         "x": 0.5, 

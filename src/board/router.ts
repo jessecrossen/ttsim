@@ -4,5 +4,5 @@ export interface IBallRouter {
   // respond to changes to the size or scale of the board
   onBoardSizeChanged():void;
   // update ball positions, etc.
-  update(correction:number):void;
+  update(speed:number, correction:number):void;
 }

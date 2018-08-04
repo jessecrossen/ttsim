@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js';
 
 import { Part } from 'parts/part';
-import { Board, ToolType, PartSizes } from 'board/board';
+import { Board, ToolType } from 'board/board';
 import { PartType } from 'parts/factory';
 import { Button, PartButton, SpriteButton, ButtonBar } from './button';
 import { Delays } from './config';

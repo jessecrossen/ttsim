@@ -1,7 +1,8 @@
 import * as PIXI from 'pixi.js';
 
-import { Board, ToolType, PartSizes, SPACING_FACTOR } from 'board/board';
+import { Board, ToolType, SPACING_FACTOR } from 'board/board';
 import { Button, PartButton, SpriteButton, ButtonBar } from './button';
+import { Zooms, Speeds } from './config';
 import { Renderer } from 'renderer';
 
 export class Actionbar extends ButtonBar {
@@ -22,6 +23,12 @@ export class Actionbar extends ButtonBar {
     this._zoomToFitButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['zoomtofit']));
     this.addButton(this._zoomToFitButton);
+    this._fasterButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['faster']));
+    this.addButton(this._fasterButton);
+    this._slowerButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['slower']));
+    this.addButton(this._slowerButton);
 
     // add more top buttons here...
     
@@ -36,6 +43,8 @@ export class Actionbar extends ButtonBar {
   private _zoomInButton:Button;
   private _zoomOutButton:Button;
   private _zoomToFitButton:Button;
+  private _fasterButton:Button;
+  private _slowerButton:Button;
   private _heartButton:Button;
 
   protected onButtonClick(button:Button):void {
@@ -48,6 +57,8 @@ export class Actionbar extends ButtonBar {
     else if (button === this._zoomInButton) { this.zoomIn(); }
     else if (button === this._zoomOutButton) { this.zoomOut(); }
     else if (button === this._zoomToFitButton) { this.zoomToFit(); }
+    else if (button === this._fasterButton) { this.goFaster(); }
+    else if (button === this._slowerButton) { this.goSlower(); }
     else if (button === this._heartButton) {
       window.open('https://www.turingtumble.com/', '_blank');
     }
@@ -66,6 +77,12 @@ export class Actionbar extends ButtonBar {
       else if (button == this._zoomOutButton) {
         button.isEnabled = this.canZoomOut;
       }
+      else if (button == this._fasterButton) {
+        button.isEnabled = this.canGoFaster;
+      }
+      else if (button == this._slowerButton) {
+        button.isEnabled = this.canGoSlower;
+      }
       else if (button instanceof PartButton) {
         button.isToggled = ((this.board.tool === ToolType.PART) && 
                             (this.board.partPrototype) &&
@@ -74,6 +91,31 @@ export class Actionbar extends ButtonBar {
       }
     }
     Renderer.needsUpdate();
+  }
+
+  // SPEED CONTROL ************************************************************
+
+  public get canGoFaster():boolean {
+    return(this.speedIndex < Speeds.length - 1);
+  }
+  public get canGoSlower():boolean {
+    return(this.speedIndex > 0);
+  }
+
+  public goFaster():void {
+    this.speedIndex++;
+  }
+
+  public goSlower():void {
+    this.speedIndex--;
+  }
+
+  protected get speedIndex():number {
+    return(Speeds.indexOf(this.board.speed));
+  }
+  protected set speedIndex(i:number) {
+    if ((i >= 0) && (i < Speeds.length)) this.board.speed = Speeds[i];
+    this.updateToggled();
   }
 
   // ZOOMING ******************************************************************
@@ -96,7 +138,7 @@ export class Actionbar extends ButtonBar {
   }
 
   public get canZoomIn():boolean {
-    return(this.zoomIndex < PartSizes.length - 1);
+    return(this.zoomIndex < Zooms.length - 1);
   }
   public get canZoomOut():boolean {
     return(this.zoomIndex > 0);
@@ -104,14 +146,14 @@ export class Actionbar extends ButtonBar {
 
   public zoomIn():void {
     if (! this.canZoomIn) return;
-    this.board.partSize = PartSizes[this.zoomIndex + 1];
+    this.board.partSize = Zooms[this.zoomIndex + 1];
     this._updateAutoSchematic();
     this.updateToggled();
   }
   
   public zoomOut():void {
     if (! this.canZoomOut) return;
-    this.board.partSize = PartSizes[this.zoomIndex - 1];
+    this.board.partSize = Zooms[this.zoomIndex - 1];
     this._updateAutoSchematic();
     this.updateToggled();
   }
@@ -120,9 +162,9 @@ export class Actionbar extends ButtonBar {
   public zoomToFit():void {
     this.board.centerColumn = (this.board.columnCount - 1) / 2;
     this.board.centerRow = (this.board.rowCount - 1) / 2;
-    let s:number = PartSizes[0];
-    for (let i:number = PartSizes.length - 1; i >= 0; i--) {
-      s = PartSizes[i];
+    let s:number = Zooms[0];
+    for (let i:number = Zooms.length - 1; i >= 0; i--) {
+      s = Zooms[i];
       const w:number = this.board.columnCount * Math.floor(s * SPACING_FACTOR);
       const h:number = this.board.rowCount * Math.floor(s * SPACING_FACTOR);
       if ((w <= this.board.width) && (h <= this.board.height)) break;
@@ -133,7 +175,7 @@ export class Actionbar extends ButtonBar {
   }
 
   protected get zoomIndex():number {
-    return(PartSizes.indexOf(this.board.partSize));
+    return(Zooms.indexOf(this.board.partSize));
   }
 
 }

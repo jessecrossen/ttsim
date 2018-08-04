@@ -26,9 +26,6 @@ export class SimulatorApp extends PIXI.Container {
     this.addChild(this.toolbar);
     this.addChild(this.actionbar);
     this._layout();
-    // set up ball routers
-    this.physicalRouter = new PhysicalBallRouter(this.board);
-    this.board.router = this.physicalRouter;
     // add event listeners
     this._addKeyHandlers();
   }
@@ -40,7 +37,7 @@ export class SimulatorApp extends PIXI.Container {
 
   public update(delta:number):void {
     Animator.current.update(delta);
-    if (this.board.router) this.board.router.update(delta);
+    this.board.update(delta);
     GearBase.update();
     Renderer.render();
   }

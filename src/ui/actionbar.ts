@@ -29,6 +29,9 @@ export class Actionbar extends ButtonBar {
     this._slowerButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['slower']));
     this.addButton(this._slowerButton);
+    this._returnButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['return']));
+    this.addButton(this._returnButton);
 
     // add more top buttons here...
     
@@ -45,6 +48,7 @@ export class Actionbar extends ButtonBar {
   private _zoomToFitButton:Button;
   private _fasterButton:Button;
   private _slowerButton:Button;
+  private _returnButton:Button;
   private _heartButton:Button;
 
   protected onButtonClick(button:Button):void {
@@ -59,6 +63,7 @@ export class Actionbar extends ButtonBar {
     else if (button === this._zoomToFitButton) { this.zoomToFit(); }
     else if (button === this._fasterButton) { this.goFaster(); }
     else if (button === this._slowerButton) { this.goSlower(); }
+    else if (button === this._returnButton) { this.board.returnBalls(); }
     else if (button === this._heartButton) {
       window.open('https://www.turingtumble.com/', '_blank');
     }

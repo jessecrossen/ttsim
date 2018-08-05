@@ -12,7 +12,7 @@ export class BoardBuilder {
     const center:number = Math.floor(width / 2);
     const blueColumn:number = center - Math.floor(redBlueDistance / 2);
     const redColumn:number = center + Math.floor(redBlueDistance / 2);
-    const dropLevel:number = (blueColumn % 2 == 0) ? 2 : 1;
+    const dropLevel:number = (blueColumn % 2 == 0) ? 1 : 2;
     const collectLevel:number = dropLevel + verticalDrop;
     const steps:number = Math.ceil(center / Slope.maxModulus);
     const maxModulus:number = Math.ceil(center / steps);

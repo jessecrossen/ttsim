@@ -12,6 +12,10 @@ export class Drop extends Part {
   // a set of balls associated with the drop
   public readonly balls:Set<Ball> = new Set();
 
+  // a flag to set signalling a desire to release a ball, which will be cleared
+  //  after a ball is released
+  public releaseBall:boolean = false;
+
   // show and hide the controls on the front layer
   public get controlsAlpha():number { return(this._controlsAlpha); }
   public set controlsAlpha(v:number) {

@@ -7,11 +7,12 @@ import { SPACING, PART_SIZE, BALL_MASK, BALL_CATEGORY, PART_CATEGORY,
          PART_MASK, PIN_CATEGORY, PIN_MASK, DAMPER_RADIUS, BALL_DENSITY, 
          COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, BIAS_STIFFNESS, 
          BIAS_DAMPING,  PART_DENSITY, BALL_FRICTION, PART_FRICTION,
-         BALL_FRICTION_STATIC, PART_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V} from 'board/constants';
+         BALL_FRICTION_STATIC, PART_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V, DROP_FRICTION, DROP_FRICTION_STATIC, BALL_MASK_RELEASED, GATE_CATEGORY, GATE_MASK} from 'board/constants';
 import { GearBase } from './gearbit';
 import { PartBallContact } from 'board/physics';
 import { Ball } from './ball';
 import { Slope } from './fence';
+import { Drop } from './drop';
 
 // this composes a part with a matter.js body which simulates it
 export class PartBody {
@@ -43,7 +44,6 @@ export class PartBody {
   };
   private _makeBody():void {
     this._body = null;
-    this._bodyFlipped = false;
     // construct the ball as a circle
     if (this.type == PartType.BALL) {
       this._body = Bodies.circle(0, 0, (5 * PART_SIZE) / 32,
@@ -67,6 +67,10 @@ export class PartBody {
     }
     this.initBodyFromPart();
   }
+  private _refreshBody():void {
+    this._clearBody();
+    this._makeBody();
+  }
   protected _body:Body = undefined;
   
   // the fence parameters last time we constructed a fence
@@ -87,11 +91,15 @@ export class PartBody {
       Body.setStatic(this._body, false);
     }
     // add bodies and constraints to control rotation
-    if ((this._part.bodyCanRotate) && (! this._pins)) {
+    if (this._part.bodyCanRotate) {
       this._makeRotationConstraints();
     }
     // set restitution
     this._body.restitution = this._part.bodyRestitution;
+    // do special configuration for ball drops
+    if (this._part.type == PartType.DROP) {
+      this._makeDropGate();
+    }
     // perform a first update of properties from the part
     this.updateBodyFromPart();
   }
@@ -99,25 +107,12 @@ export class PartBody {
     // make constraints that bias parts and keep them from bouncing at the 
     //  ends of their range
     if (this._part.isCounterWeighted) {
-      this._counterweightDamper = this._makeDamper(false, true, 
+      this._counterweightDamper = this._makeDamper(this._part.isFlipped, true, 
         COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING);
     }
     else {
       this._biasDamper = this._makeDamper(false, false,
         BIAS_STIFFNESS, BIAS_DAMPING);
-    }
-    // make stops to confine the body's rotation
-    const constructor = PartFactory.constructorForType(this.type);
-    this._pinLocations = getPinLocations(constructor.name);
-    if (this._pinLocations) {
-      this._pins = [ ];
-      const options = { isStatic: true, restitution: 0,
-        collisionFilter: { category: PIN_CATEGORY, mask: PIN_MASK, group: 0 } };
-      for (const pinLocation of this._pinLocations) {
-        const pin = Bodies.circle(pinLocation.x, pinLocation.y, pinLocation.r, options);
-        this._pins.push(pin);
-        Composite.add(this._composite, pin);
-      }
     }
   }
   private _makeDamper(flipped:boolean, counterweighted:boolean, 
@@ -141,10 +136,32 @@ export class PartBody {
       { x: flipped ? DAMPER_RADIUS : - DAMPER_RADIUS, y: 0 } : 
       { x: 0, y: DAMPER_RADIUS });
   }
-  private _pinLocations:PinLocation[];
-  private _pins:Body[];
+  private _makeDropGate():void {
+    this._body.friction = DROP_FRICTION;
+    this._body.friction = DROP_FRICTION_STATIC;
+    const sign = this._part.isFlipped ? -1 : 1;
+    this._dropGate = Bodies.rectangle(
+      (SPACING / 2) * sign, 0, PART_SIZE / 16, SPACING,
+      { friction: DROP_FRICTION, frictionStatic: DROP_FRICTION_STATIC,
+        collisionFilter: { category: GATE_CATEGORY, mask: GATE_MASK, group: 0 },
+        isStatic: true });
+    Composite.add(this._composite, this._dropGate);
+  }
+
+  // remove all constraints and bodies we've added to the composite
+  private _clearBody():void {
+    const clear = (item:Body|Constraint):undefined => {
+      if (item) Composite.remove(this._composite, item);
+      return(undefined);
+    };
+    this._body = clear(this._body);
+    this._counterweightDamper = clear(this._body);
+    this._biasDamper = clear(this._body);
+    this._dropGate = clear(this._body);
+  }
   private _counterweightDamper:Constraint;
   private _biasDamper:Constraint;
+  private _dropGate:Body;
 
   // transfer relevant properties to the body
   public updateBodyFromPart():void {
@@ -154,21 +171,13 @@ export class PartBody {
     // rebuild the body if the slope signature changes
     if ((this._part instanceof Slope) && 
         (this._part.signature != this._slopeSignature)) {
-      Composite.remove(this._composite, this._body);
-      this._makeBody();
+      this._refreshBody();
+      return;
     }
     // update mirroring
     if (this._bodyFlipped !== this._part.isFlipped) {
-      const prevAngle:number = this._body.angle;
-      Body.setAngle(this._body, 0);
-      Composite.scale(this._composite, -1, 1, this._body.position, true);
-      Body.setAngle(this._body, - prevAngle);
-      this._bodyOffset.x *= -1;
-      if (this._counterweightDamper) {
-        const attachment = this._counterweightDamper.pointA;
-        attachment.x *= -1;
-      }
-      this._bodyFlipped = this._part.isFlipped;
+      this._refreshBody();
+      return;
     }
     // update position
     const position = { x: (this._part.column * SPACING) + this._bodyOffset.x,
@@ -240,7 +249,14 @@ export class PartBody {
                                 x:number=0, y:number=0):Body {
     if (! vertexSets) return(null);
     const parts:Body[] = [ ];
+    this._bodyFlipped = this._part.isFlipped;
     for (const vertices of vertexSets) {
+      // flip the vertices if the part is flipped
+      if (this._part.isFlipped) {
+        Vertices.scale(vertices, -1, 1, { x: 0, y: 0 });
+      }
+      // make sure they're in clockwise order, because flipping reverses 
+      //  their direction and we can't be sure how the source SVG is drawn
       Vertices.clockwiseSort(vertices);
       const center = Vertices.centre(vertices);
       parts.push(Body.create({ position: center, vertices: vertices }));
@@ -266,6 +282,11 @@ export class PartBody {
     if ((! this._body) || (! this._part)) return;
     this._controlRotation(contacts);
     this._controlVelocity();
+    // ball drop
+    if ((this._part instanceof Drop) && (this._part.releaseBall)) {
+      this._releaseBall(nearby);
+      this._part.releaseBall = false;
+    }
     if (contacts) {
       for (const contact of contacts) {
         const nudged = this._nudgeBall(contact);
@@ -378,6 +399,11 @@ export class PartBody {
       tangent = Vector.normalise({ x: this._part.modulus * sign, y: 1 });
       maxSlope = 1;
     }
+    // the ball drop only nudges balls it's dropping
+    else if ((this._part instanceof Drop) &&
+             (body.collisionFilter.mask === BALL_MASK_RELEASED)) {
+      sign = this._part.isFlipped ? -1 : 1;
+    }
     // exit if we're not nudging
     if (sign == 0) return(false);
     // limit slope
@@ -413,6 +439,7 @@ export class PartBody {
   private _influenceBall(ballPartBody:PartBody):boolean {
     const ball = ballPartBody.part as Ball;
     const body = ballPartBody.body;
+    // crossovers are complicated!
     if (this._part.type == PartType.CROSSOVER) {
       const currentSign:number = body.velocity.x > 0 ? 1 : -1;
       // make trajectories in the upper half of the crossover more diagonal,
@@ -440,6 +467,28 @@ export class PartBody {
       }
     }
     return(false);
+  }
+
+  private _releaseBall(ballPartBodies:Set<PartBody>):void {
+    if (! ballPartBodies) return;
+    // find the ball closest to the bottom right
+    let closest:PartBody;
+    let maxSum:number = - Infinity;
+    for (const ballPartBody of ballPartBodies) {
+      // never release a ball twice (returned balls are actually recreated)
+      if (ballPartBody.body.collisionFilter.mask === BALL_MASK_RELEASED) continue;
+      let dc = ballPartBody.part.column - this.part.column;
+      if (this.part.isFlipped) dc *= -1;
+      const d = dc + ballPartBody.part.row;
+      if (d > maxSum) {
+        closest = ballPartBody;
+        maxSum = d;
+      }
+    }
+    // if there's no ball to release, we're done
+    if (! closest) return;
+    // change the collision mask of the ball so it goes through the gate
+    closest.body.collisionFilter.mask = BALL_MASK_RELEASED;
   }
 
 }

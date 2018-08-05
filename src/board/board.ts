@@ -429,9 +429,9 @@ export class Board {
     this._partPrototype = p;
     if (this._partPrototype) {
       // clear the part if the prototype is being pulled off the board
-      if (this.getPart(p.column, p.row) === p) {
-        if (p instanceof Ball) this.removeBall(p);
-        else this.clearPart(p.column, p.row);
+      if (p instanceof Ball) this.removeBall(p);
+      else if (this.getPart(p.column, p.row) === p) {
+        this.clearPart(p.column, p.row);
       }
       this._partPrototype.alpha = Alphas.PREVIEW_ALPHA;
       this._partPrototype.visible = false;
@@ -483,6 +483,9 @@ export class Board {
     // maintain our set of drops
     if ((oldPart instanceof Drop) && (oldPart !== this.partPrototype)) {
       this.drops.delete(oldPart);
+      for (const ball of oldPart.balls) {
+        this.removeBall(ball);
+      }
     }
     if (newPart instanceof Drop) {
       this.drops.add(newPart);
@@ -505,21 +508,21 @@ export class Board {
   }
 
   // add a ball to the board
-  public addBall(ball:Ball, x:number, y:number) {
+  public addBall(ball:Ball, c:number, r:number) {
     if (! this.balls.has(ball)) {
       this.balls.add(ball);
-      const c = this.columnForX(x);
-      const r = this.rowForY(y);
       this.layoutPart(ball, c, r);
       this.addPart(ball);
-      // assign the ball to a drop
-      let drop = this.catchmentDrop(c, r);
-      if (! drop) drop = this.nearestDrop(c, r);
-      if (drop) {
-        this.drops.add(drop);
-        drop.balls.add(ball);
-        ball.drop = drop;
-        ball.hue = drop.hue;
+      // assign the ball to a drop if it doesn't have one
+      if (! ball.drop) {
+        let drop = this.catchmentDrop(c, r);
+        if (! drop) drop = this.nearestDrop(c, r);
+        if (drop) {
+          this.drops.add(drop);
+          drop.balls.add(ball);
+          ball.drop = drop;
+          ball.hue = drop.hue;
+        }
       }
       this.onChange();
     }
@@ -532,6 +535,46 @@ export class Board {
       this.removePart(ball);
       Renderer.needsUpdate();
       this.onChange();
+    }
+  }
+
+  // add a ball to the given drop
+  public addBallToDrop(drop:Drop):void {
+    // get the highest ball associated with the drop
+    let topBall:Ball;
+    for (const ball of drop.balls) {
+      if ((! topBall) || (ball.row < topBall.row)) {
+        topBall = ball;
+      }
+    }
+    // get the fraction of a grid unit a ball's radius takes up
+    const radius:number = BALL_RADIUS / SPACING;
+    let c:number = drop.column;
+    let r:number = drop.row;
+    // if the highest ball is on or above the drop, add the new ball above it
+    if ((topBall) && (topBall.row <= drop.row + (0.5 - radius))) {
+      c = topBall.column;
+      r = topBall.row - (2 * radius);
+    }
+    this.addBall(this.partFactory.make(PartType.BALL) as Ball, c, Math.max(-0.5, r));
+  }
+
+  // return all balls to their appropriate drops
+  public returnBalls():void {
+    const addCounts:Map<Drop,number> = new Map();
+    const radius:number = BALL_RADIUS / SPACING;
+    for (const ball of this.balls) {
+      if (! ball.drop) this.removeBall(ball);
+      else if (ball.row > ball.drop.row + (0.5 - radius)) {
+        this.removeBall(ball);
+        if (! addCounts.has(ball.drop)) addCounts.set(ball.drop, 0);
+        addCounts.set(ball.drop, addCounts.get(ball.drop) + 1);
+      }
+    }
+    for (const [ drop, count ] of addCounts.entries()) {
+      for (let i:number = 0; i < count; i++) {
+        this.addBallToDrop(drop);
+      }
     }
   }
 
@@ -593,7 +636,11 @@ export class Board {
     let lc:number = c; // the last column the ball was in
     while ((r < this.rowCount) && (c >= 0) && (c < this.columnCount)) {
       const p = this.getPart(c, r);
+      // don't go off the board
+      if (! p) break;
+      // if we hit a drop we're done
       if (p instanceof Drop) return(p);
+      // follow deterministic parts
       else if (p.type == PartType.SLOPE) {
         c += p.isFlipped ? -1 : 1;
       }
@@ -909,7 +956,7 @@ export class Board {
       if (part instanceof Ball) {
         this.partPrototype = null;
         this.addBall(part as Ball, 
-          this._actionX, this._actionY);
+          this.columnForX(this._actionX), this.rowForY(this._actionY));
       }
       else if (this.canPlacePart(part.type, this._actionColumn, this._actionRow)) {
         this.setPart(part, this._actionColumn, this._actionRow);
@@ -1072,7 +1119,7 @@ export class Board {
       }
       else {
         this.addBall(this.partFactory.copy(this.partPrototype) as Ball, 
-          this._actionX, this._actionY);
+          this.columnForX(this._actionX), this.rowForY(this._actionY));
       }
     }
     // clear parts
@@ -1089,6 +1136,11 @@ export class Board {
     // flip parts
     else if (this._action === ActionType.FLIP_PART) {
       this.flipPart(this._actionColumn, this._actionRow);
+    }
+    // drop balls
+    else if ((this._action === ActionType.DROP_BALL) &&
+             (this._actionPart instanceof Drop)) {
+      this._actionPart.releaseBall = true;
     }
   }
 

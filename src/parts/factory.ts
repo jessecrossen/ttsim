@@ -70,6 +70,9 @@ export class PartFactory {
       newPart.isLocked = part.isLocked;
       newPart.hue = part.hue;
     }
+    if ((newPart instanceof Ball) && (part instanceof Ball)) {
+      newPart.drop = part.drop;
+    }
     return(newPart);
   }
 

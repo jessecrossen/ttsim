@@ -9,8 +9,10 @@ export const BALL_DENSITY:number = 0.008;
 
 export const BALL_FRICTION:number = 0.03;
 export const PART_FRICTION:number = 0.03;
+export const DROP_FRICTION:number = 0;
 export const BALL_FRICTION_STATIC:number = 0.03;
 export const PART_FRICTION_STATIC:number = 0.03;
+export const DROP_FRICTION_STATIC:number = 0;
 
 // the ideal horizontal velocity at which a ball should be moving
 export const IDEAL_VX:number = 1.5;
@@ -31,6 +33,9 @@ export const DEFAULT_MASK:number = 0xFFFFFF;
 export const PART_CATEGORY:number = 0x0001;
 export const BALL_CATEGORY:number = 0x0002;
 export const PIN_CATEGORY:number = 0x0004;
+export const GATE_CATEGORY:number = 0x0008;
 export const PART_MASK:number = BALL_CATEGORY | PIN_CATEGORY;
 export const BALL_MASK:number = DEFAULT_MASK;
+export const BALL_MASK_RELEASED:number = BALL_MASK ^ GATE_CATEGORY;
+export const GATE_MASK:number = DEFAULT_MASK;
 export const PIN_MASK:number = PART_CATEGORY;

@@ -20,11 +20,14 @@ export const enum Alphas {
 }
 
 export const enum Delays {
-  FLIP = 0.25
+  FLIP = 0.25,
+  SHOW_CONTROL = 0.1,
+  HIDE_CONTROL = 0.25
 }
 
 export const enum Sizes {
-  DRAG_THRESHOLD = 5
+  DRAG_THRESHOLD = 5,
+  COLORWHEEL_HIDE_SIZE = 0.33
 }
 
 export const Zooms:number[] = 

@@ -16,6 +16,17 @@ export class ColorWheel extends PIXI.Sprite {
   private _wheel:PIXI.Sprite;
   private _pointer:PIXI.Sprite;
 
+  // the size of the control from 0 to 1
+  public get size():number { return(this._size); }
+  public set size(v:number) {
+    v = Math.min(Math.max(0.0, v), 1.0);
+    if (v === this.size) return;
+    this._size = v;
+    this.scale.set(v, v);
+    Renderer.needsUpdate();
+  }
+  private _size:number = 1.0;
+
   // the hue in degrees
   public get hue():number { return(this._hue); }
   public set hue(v:number) {

@@ -1,4 +1,4 @@
-import { Part } from './part';
+import { Part, Layer } from './part';
 import { PartType } from './factory';
 
 export class Drop extends Part {
@@ -8,8 +8,20 @@ export class Drop extends Part {
   public get canFlip():boolean { return(true); }
   public get type():PartType { return(PartType.DROP); }
 
-  // add a ball to be managed by the drop
-  
+  // show and hide the controls on the front layer
+  public get controlsAlpha():number { return(this._controlsAlpha); }
+  public set controlsAlpha(v:number) {
+    v = Math.min(Math.max(0.0, v), 1.0);
+    if (v === this._controlsAlpha) return;
+    this._controlsAlpha = v;
+    this._updateSprites();
+  }
+  protected _layerAlpha(layer:Layer):number {
+    const alpha = super._layerAlpha(layer);
+    if (layer == Layer.FRONT) return(alpha * this._controlsAlpha);
+    return(alpha);
+  }
+  private _controlsAlpha:number = 0.0;
 
   // the hue of balls in this ball drop
   public get hue():number { return(this._hue); }
@@ -21,7 +33,5 @@ export class Drop extends Part {
     this._hue = v;
   }
   private _hue:number = 0.0;
-
-  
 
 }

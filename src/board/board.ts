@@ -13,6 +13,7 @@ import { BALL_RADIUS, SPACING } from './constants';
 import { PhysicalBallRouter } from './physics';
 import { Drop } from 'parts/drop';
 import { ColorWheel } from './controls';
+import { Animator } from 'ui/animator';
 
 export const enum ToolType {
   NONE,
@@ -181,6 +182,7 @@ export class Board {
   protected _makeControls():void {
     this._colorWheel = new ColorWheel(this.partFactory.textures);
     this._colorWheel.visible = false;
+    this._colorWheel.size = Sizes.COLORWHEEL_HIDE_SIZE;
     this._controls.push(this._colorWheel);
     const container = this._containers.get(Layer.CONTROL);
     for (const control of this._controls) {
@@ -891,6 +893,7 @@ export class Board {
     const r = this.rowForY(p.y);
     const column = this._actionColumn = Math.round(c);
     const row = this._actionRow = Math.round(r);
+    const oldActionPart = this._actionPart;
     this._actionPart = this.getPart(column, row);
     let ball:Ball;
     if ((this.tool == ToolType.PART) && (this.partPrototype) &&
@@ -939,6 +942,18 @@ export class Board {
       this._actionPart = null;
       this.view.cursor = 'auto';
     }
+    // respond to the part under the cursor changing
+    if (this._actionPart !== oldActionPart) {
+      // show/hide drop controls
+      if (oldActionPart instanceof Drop) {
+        Animator.current.animate(oldActionPart, 'controlsAlpha', 
+          1, 0, Delays.HIDE_CONTROL);
+      }
+      if (this._actionPart instanceof Drop) {
+        Animator.current.animate(this._actionPart, 'controlsAlpha', 
+          0, 1, Delays.SHOW_CONTROL);
+      }
+    }
     this._updatePreview();
   }
   private _action:ActionType = ActionType.PAN;
@@ -977,14 +992,25 @@ export class Board {
           this.xForColumn(this._actionPart.column + (sign * 0.2)));
       this._colorWheel.y = Math.round(
           this.yForRow(this._actionPart.row - 0.3));
-      this._colorWheel.visible = true;
-      this._updateLayerVisibility();
+      if (! this._showingColorWheel) {
+        this._colorWheel.visible = true;
+        Animator.current.animate(
+          this._colorWheel, 'size', 0.4, 1.0, Delays.SHOW_CONTROL);
+        this._showingColorWheel = true;
+        this._updateLayerVisibility();
+      }
     }
-    else if (this._colorWheel.visible) {
-      this._colorWheel.visible = false;
-      this._updateLayerVisibility();
+    else if (this._showingColorWheel) {
+      Animator.current.animate(
+        this._colorWheel, 'size', 1.0, Sizes.COLORWHEEL_HIDE_SIZE, 
+        Delays.HIDE_CONTROL, () => {
+          this._colorWheel.visible = false;
+          this._updateLayerVisibility();
+        });
+      this._showingColorWheel = false;
     }
   }
+  private _showingColorWheel:boolean = false;
 
   private _onClick(e:PIXI.interaction.InteractionEvent):void {
     this._updateAction(e);

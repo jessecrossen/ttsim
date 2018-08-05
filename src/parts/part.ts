@@ -202,11 +202,13 @@ export abstract class Part {
   }
 
   // set initial properties for a newly-created sprite
-  protected _initSprite(layer:Layer):void {
+  protected _initSprite(layer:Layer):PIXI.Sprite {
     const sprite = this._sprites.get(layer);
-    if (! sprite) return;
-    // always position sprites from the center
-    sprite.anchor.set(0.5, 0.5);
+    if (sprite) {
+      // always position sprites from the center
+      sprite.anchor.set(0.5, 0.5);
+    }
+    return(sprite);
   }
 
   // update all sprites to track the part's state
@@ -245,13 +247,17 @@ export abstract class Part {
                         this.y + (this._yOffset * this.size));
     // apply opacity and visibility
     sprite.visible = this._isLayerVisible(layer);
-    sprite.alpha = sprite.visible ? this.alpha : 0;
+    sprite.alpha = this._layerAlpha(layer);
     // schedule rendering
     Renderer.needsUpdate();
   }
   // control the visibility of layers
   protected _isLayerVisible(layer:Layer):boolean {
     return(this.visible);
+  }
+  // control the opacity of layers
+  protected _layerAlpha(layer:Layer):number {
+    return(this._isLayerVisible(layer) ? this.alpha : 0.0);
   }
   // adjustable offsets for textures (as a fraction of the size)
   protected _xOffset:number = 0.0;

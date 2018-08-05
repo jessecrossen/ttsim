@@ -4,7 +4,8 @@ export type Animation = {
   start: number,
   end: number,
   time: number,
-  delta: number
+  delta: number,
+  callback: () => void
 };
 
 type MapPropertyToAnimation = Map<string,Animation>;
@@ -25,7 +26,8 @@ export class Animator {
   // animate the given property of the given subject from its current value
   //  to the given end point, at a speed which would take the given time to 
   //  traverse the range from start to end
-  public animate(subject:any, property:string, start:number, end:number, time:number):Animation {
+  public animate(subject:any, property:string, start:number, end:number, time:number, 
+                 callback?:() => void):Animation {
     // handle the edge-cases of zero or negative time
     if (! (time > 0.0)) {
       this.stopAnimating(subject, property);
@@ -45,6 +47,7 @@ export class Animator {
       animation.end = end;
       animation.time = time;
       animation.delta = delta;
+      animation.callback = callback;
     }
     // make a new animation
     else {
@@ -54,7 +57,8 @@ export class Animator {
         start: start,
         end: end,
         time: time,
-        delta: delta
+        delta: delta,
+        callback: callback
       };
       properties.set(property, animation);
     }
@@ -100,12 +104,14 @@ export class Animator {
           if (current >= animation.end) {
             current = animation.end;
             this.stopAnimating(subject, property);
+            if (animation.callback) animation.callback();
           }
         }
         else if (animation.delta < 0) {
           if (current <= animation.end) {
             current = animation.end;
             this.stopAnimating(subject, property);
+            if (animation.callback) animation.callback();
           }
         }
         else {

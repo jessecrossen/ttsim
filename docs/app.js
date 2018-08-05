@@ -362,13 +362,28 @@ System.register("parts/drop", ["parts/part"], function (exports_9, context_9) {
             Drop = class Drop extends part_9.Part {
                 constructor() {
                     super(...arguments);
+                    this._controlsAlpha = 0.0;
                     this._hue = 0.0;
                 }
                 get canRotate() { return (false); }
                 get canMirror() { return (false); }
                 get canFlip() { return (true); }
                 get type() { return (10 /* DROP */); }
-                // add a ball to be managed by the drop
+                // show and hide the controls on the front layer
+                get controlsAlpha() { return (this._controlsAlpha); }
+                set controlsAlpha(v) {
+                    v = Math.min(Math.max(0.0, v), 1.0);
+                    if (v === this._controlsAlpha)
+                        return;
+                    this._controlsAlpha = v;
+                    this._updateSprites();
+                }
+                _layerAlpha(layer) {
+                    const alpha = super._layerAlpha(layer);
+                    if (layer == 2 /* FRONT */)
+                        return (alpha * this._controlsAlpha);
+                    return (alpha);
+                }
                 // the hue of balls in this ball drop
                 get hue() { return (this._hue); }
                 set hue(v) {
@@ -673,7 +688,7 @@ System.register("ui/animator", [], function (exports_15, context_15) {
                 // animate the given property of the given subject from its current value
                 //  to the given end point, at a speed which would take the given time to 
                 //  traverse the range from start to end
-                animate(subject, property, start, end, time) {
+                animate(subject, property, start, end, time, callback) {
                     // handle the edge-cases of zero or negative time
                     if (!(time > 0.0)) {
                         this.stopAnimating(subject, property);
@@ -694,6 +709,7 @@ System.register("ui/animator", [], function (exports_15, context_15) {
                         animation.end = end;
                         animation.time = time;
                         animation.delta = delta;
+                        animation.callback = callback;
                     }
                     else {
                         animation = {
@@ -702,7 +718,8 @@ System.register("ui/animator", [], function (exports_15, context_15) {
                             start: start,
                             end: end,
                             time: time,
-                            delta: delta
+                            delta: delta,
+                            callback: callback
                         };
                         properties.set(property, animation);
                     }
@@ -748,12 +765,16 @@ System.register("ui/animator", [], function (exports_15, context_15) {
                                 if (current >= animation.end) {
                                     current = animation.end;
                                     this.stopAnimating(subject, property);
+                                    if (animation.callback)
+                                        animation.callback();
                                 }
                             }
                             else if (animation.delta < 0) {
                                 if (current <= animation.end) {
                                     current = animation.end;
                                     this.stopAnimating(subject, property);
+                                    if (animation.callback)
+                                        animation.callback();
                                 }
                             }
                             else {
@@ -966,10 +987,11 @@ System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (
                 // set initial properties for a newly-created sprite
                 _initSprite(layer) {
                     const sprite = this._sprites.get(layer);
-                    if (!sprite)
-                        return;
-                    // always position sprites from the center
-                    sprite.anchor.set(0.5, 0.5);
+                    if (sprite) {
+                        // always position sprites from the center
+                        sprite.anchor.set(0.5, 0.5);
+                    }
+                    return (sprite);
                 }
                 // update all sprites to track the part's state
                 _updateSprites() {
@@ -1008,13 +1030,17 @@ System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (
                     sprite.position.set(this.x + (this._xOffset * this.size), this.y + (this._yOffset * this.size));
                     // apply opacity and visibility
                     sprite.visible = this._isLayerVisible(layer);
-                    sprite.alpha = sprite.visible ? this.alpha : 0;
+                    sprite.alpha = this._layerAlpha(layer);
                     // schedule rendering
                     renderer_1.Renderer.needsUpdate();
                 }
                 // control the visibility of layers
                 _isLayerVisible(layer) {
                     return (this.visible);
+                }
+                // control the opacity of layers
+                _layerAlpha(layer) {
+                    return (this._isLayerVisible(layer) ? this.alpha : 0.0);
                 }
                 // get the angle for the given rotation value
                 angleForRotation(r, layer = 1 /* MID */) {
@@ -2102,6 +2128,7 @@ System.register("board/controls", ["pixi.js", "renderer"], function (exports_22,
                 constructor(textures) {
                     super();
                     this.textures = textures;
+                    this._size = 1.0;
                     this._hue = 0.0;
                     this._wheel = new PIXI.Sprite(textures['ColorWheel-m']);
                     this._wheel.anchor.set(0.5, 0.5);
@@ -2110,6 +2137,16 @@ System.register("board/controls", ["pixi.js", "renderer"], function (exports_22,
                     this._pointer.anchor.set(0.5, 0.5);
                     this.addChild(this._pointer);
                     this.anchor.set(0.5, 0.5);
+                }
+                // the size of the control from 0 to 1
+                get size() { return (this._size); }
+                set size(v) {
+                    v = Math.min(Math.max(0.0, v), 1.0);
+                    if (v === this.size)
+                        return;
+                    this._size = v;
+                    this.scale.set(v, v);
+                    renderer_3.Renderer.needsUpdate();
                 }
                 // the hue in degrees
                 get hue() { return (this._hue); }
@@ -2131,10 +2168,10 @@ System.register("board/controls", ["pixi.js", "renderer"], function (exports_22,
         }
     };
 });
-System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball", "board/constants", "board/physics", "parts/drop", "board/controls"], function (exports_23, context_23) {
+System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball", "board/constants", "board/physics", "parts/drop", "board/controls", "ui/animator"], function (exports_23, context_23) {
     "use strict";
     var __moduleName = context_23 && context_23.id;
-    var filter, fence_3, gearbit_3, disjoint_1, renderer_4, ball_2, constants_3, physics_1, drop_2, controls_1, SPACING_FACTOR, Board;
+    var filter, fence_3, gearbit_3, disjoint_1, renderer_4, ball_2, constants_3, physics_1, drop_2, controls_1, animator_3, SPACING_FACTOR, Board;
     return {
         setters: [
             function (filter_1) {
@@ -2166,6 +2203,9 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             },
             function (controls_1_1) {
                 controls_1 = controls_1_1;
+            },
+            function (animator_3_1) {
+                animator_3 = animator_3_1;
             }
         ],
         execute: function () {
@@ -2200,6 +2240,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._dragging = false;
                     this._dragFlippedParts = new Set();
                     this._action = 0 /* PAN */;
+                    this._showingColorWheel = false;
                     this._bindMouseEvents();
                     this.view.addChild(this._layers);
                     this._initContainers();
@@ -2321,6 +2362,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 _makeControls() {
                     this._colorWheel = new controls_1.ColorWheel(this.partFactory.textures);
                     this._colorWheel.visible = false;
+                    this._colorWheel.size = 0.33 /* COLORWHEEL_HIDE_SIZE */;
                     this._controls.push(this._colorWheel);
                     const container = this._containers.get(7 /* CONTROL */);
                     for (const control of this._controls) {
@@ -3005,6 +3047,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     const r = this.rowForY(p.y);
                     const column = this._actionColumn = Math.round(c);
                     const row = this._actionRow = Math.round(r);
+                    const oldActionPart = this._actionPart;
                     this._actionPart = this.getPart(column, row);
                     let ball;
                     if ((this.tool == 1 /* PART */) && (this.partPrototype) &&
@@ -3053,6 +3096,16 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this._actionPart = null;
                         this.view.cursor = 'auto';
                     }
+                    // respond to the part under the cursor changing
+                    if (this._actionPart !== oldActionPart) {
+                        // show/hide drop controls
+                        if (oldActionPart instanceof drop_2.Drop) {
+                            animator_3.Animator.current.animate(oldActionPart, 'controlsAlpha', 1, 0, 0.25 /* HIDE_CONTROL */);
+                        }
+                        if (this._actionPart instanceof drop_2.Drop) {
+                            animator_3.Animator.current.animate(this._actionPart, 'controlsAlpha', 0, 1, 0.1 /* SHOW_CONTROL */);
+                        }
+                    }
                     this._updatePreview();
                 }
                 _updatePreview() {
@@ -3079,12 +3132,19 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         const sign = this._actionPart.isFlipped ? 1 : -1;
                         this._colorWheel.x = Math.round(this.xForColumn(this._actionPart.column + (sign * 0.2)));
                         this._colorWheel.y = Math.round(this.yForRow(this._actionPart.row - 0.3));
-                        this._colorWheel.visible = true;
-                        this._updateLayerVisibility();
+                        if (!this._showingColorWheel) {
+                            this._colorWheel.visible = true;
+                            animator_3.Animator.current.animate(this._colorWheel, 'size', 0.4, 1.0, 0.1 /* SHOW_CONTROL */);
+                            this._showingColorWheel = true;
+                            this._updateLayerVisibility();
+                        }
                     }
-                    else if (this._colorWheel.visible) {
-                        this._colorWheel.visible = false;
-                        this._updateLayerVisibility();
+                    else if (this._showingColorWheel) {
+                        animator_3.Animator.current.animate(this._colorWheel, 'size', 1.0, 0.33 /* COLORWHEEL_HIDE_SIZE */, 0.25 /* HIDE_CONTROL */, () => {
+                            this._colorWheel.visible = false;
+                            this._updateLayerVisibility();
+                        });
+                        this._showingColorWheel = false;
                     }
                 }
                 _onClick(e) {
@@ -3707,7 +3767,7 @@ System.register("ui/keyboard", [], function (exports_27, context_27) {
 System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "ui/animator", "ui/keyboard", "parts/gearbit"], function (exports_28, context_28) {
     "use strict";
     var __moduleName = context_28 && context_28.id;
-    var PIXI, board_3, factory_2, toolbar_1, actionbar_1, renderer_8, animator_3, keyboard_1, gearbit_4, SimulatorApp;
+    var PIXI, board_3, factory_2, toolbar_1, actionbar_1, renderer_8, animator_4, keyboard_1, gearbit_4, SimulatorApp;
     return {
         setters: [
             function (PIXI_8) {
@@ -3728,8 +3788,8 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
             function (renderer_8_1) {
                 renderer_8 = renderer_8_1;
             },
-            function (animator_3_1) {
-                animator_3 = animator_3_1;
+            function (animator_4_1) {
+                animator_4 = animator_4_1;
             },
             function (keyboard_1_1) {
                 keyboard_1 = keyboard_1_1;
@@ -3761,7 +3821,7 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     this._addKeyHandlers();
                 }
                 update(delta) {
-                    animator_3.Animator.current.update(delta);
+                    animator_4.Animator.current.update(delta);
                     this.board.update(delta);
                     gearbit_4.GearBase.update();
                     renderer_8.Renderer.render();

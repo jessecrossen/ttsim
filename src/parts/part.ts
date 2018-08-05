@@ -185,16 +185,8 @@ export abstract class Part {
   // return a sprite for the given layer, or null if there is none
   public getSpriteForLayer(layer:Layer):PIXI.Sprite {
     if (! this._sprites.has(layer)) {
-      const textureName = this.getTextureNameForLayer(layer);
-      if ((textureName) && (textureName in this.textures)) {
-        const sprite = new PIXI.Sprite(this.textures[textureName]);
-        this._sprites.set(layer, sprite);
-        this._initSprite(layer);
-        this._updateSprite(layer);
-      }
-      else {
-        this._sprites.set(layer, null);
-      }
+      this._sprites.set(layer, this._initSprite(layer));
+      this._updateSprite(layer);
     }
     return(this._sprites.get(layer));
   }
@@ -211,7 +203,9 @@ export abstract class Part {
 
   // set initial properties for a newly-created sprite
   protected _initSprite(layer:Layer):PIXI.Sprite {
-    const sprite = this._sprites.get(layer);
+    const textureName = this.getTextureNameForLayer(layer);
+    const sprite = new PIXI.Sprite(this.textures[textureName]);
+    if ((! textureName) || (! (textureName in this.textures))) return(null);
     if (sprite) {
       // always position sprites from the center
       sprite.anchor.set(0.5, 0.5);

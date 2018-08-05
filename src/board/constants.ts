@@ -29,11 +29,13 @@ export const COUNTERWEIGHT_STIFFNESS:number = BALL_DENSITY / 32;
 export const COUNTERWEIGHT_DAMPING:number = 0.1;
 
 // collision filtering categories
-export const DEFAULT_MASK:number = 0xFFFFFF;
-export const PART_CATEGORY:number = 0x0001;
-export const BALL_CATEGORY:number = 0x0002;
-export const GATE_CATEGORY:number = 0x0008;
-export const PART_MASK:number = BALL_CATEGORY;
+
+export const PART_CATEGORY:number          = 0x0001;
+export const UNRELEASED_BALL_CATEGORY:number          = 0x0002;
+export const BALL_CATEGORY:number = 0x0004;
+export const GATE_CATEGORY:number          = 0x0008;
+export const DEFAULT_MASK:number           = 0xFFFFFF;
+export const PART_MASK:number = UNRELEASED_BALL_CATEGORY | BALL_CATEGORY;
+export const UNRELEASED_BALL_MASK:number = DEFAULT_MASK ^ BALL_CATEGORY;
 export const BALL_MASK:number = DEFAULT_MASK;
-export const BALL_MASK_RELEASED:number = BALL_MASK ^ GATE_CATEGORY;
-export const GATE_MASK:number = DEFAULT_MASK;
+export const GATE_MASK:number = DEFAULT_MASK ^ BALL_CATEGORY;

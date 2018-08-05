@@ -25,6 +25,9 @@ export class Turnstile extends Part {
 
   // put a ball in the center to show the color of the associated drop
   protected _initSprite(layer:Layer):PIXI.Sprite {
+    if (layer == Layer.SCHEMATIC_BACK) {
+      return(this._centerBall.getSpriteForLayer(Layer.SCHEMATIC));
+    }
     const sprite = super._initSprite(layer);
     if ((layer == Layer.FRONT) && (! this._ballContainer)) {
       this._ballContainer = new PIXI.Container();

@@ -14,6 +14,7 @@ import { PartBody, PartBodyFactory } from 'parts/partbody';
 import { SPACING } from './constants';
 import { Animator } from 'ui/animator';
 import { PartType } from 'parts/factory';
+import { Drop } from 'parts/drop';
 
 export type PartBallContact = {
   ballPartBody: PartBody,
@@ -275,6 +276,9 @@ export class PhysicalBallRouter implements IBallRouter {
     partBody.updateBodyFromPart();
     partBody.addToWorld(this.engine.world);
     if (partBody.body) this._bodies.set(partBody.body, partBody);
+    // if there was a pending drop request after the last ball exited,
+    //  clear it now
+    if (part instanceof Drop) part.releaseBall = false;
   }
   protected removePart(part:Part):void {
     if (! this._parts.has(part)) return; // make it idempotent

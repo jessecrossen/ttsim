@@ -488,6 +488,9 @@ System.register("parts/turnstile", ["parts/part", "parts/ball"], function (expor
                 }
                 // put a ball in the center to show the color of the associated drop
                 _initSprite(layer) {
+                    if (layer == 3 /* SCHEMATIC_BACK */) {
+                        return (this._centerBall.getSpriteForLayer(4 /* SCHEMATIC */));
+                    }
                     const sprite = super._initSprite(layer);
                     if ((layer == 2 /* FRONT */) && (!this._ballContainer)) {
                         this._ballContainer = new PIXI.Container();
@@ -1033,16 +1036,8 @@ System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (
                 // return a sprite for the given layer, or null if there is none
                 getSpriteForLayer(layer) {
                     if (!this._sprites.has(layer)) {
-                        const textureName = this.getTextureNameForLayer(layer);
-                        if ((textureName) && (textureName in this.textures)) {
-                            const sprite = new PIXI.Sprite(this.textures[textureName]);
-                            this._sprites.set(layer, sprite);
-                            this._initSprite(layer);
-                            this._updateSprite(layer);
-                        }
-                        else {
-                            this._sprites.set(layer, null);
-                        }
+                        this._sprites.set(layer, this._initSprite(layer));
+                        this._updateSprite(layer);
                     }
                     return (this._sprites.get(layer));
                 }
@@ -1057,7 +1052,10 @@ System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (
                 }
                 // set initial properties for a newly-created sprite
                 _initSprite(layer) {
-                    const sprite = this._sprites.get(layer);
+                    const textureName = this.getTextureNameForLayer(layer);
+                    const sprite = new PIXI.Sprite(this.textures[textureName]);
+                    if ((!textureName) || (!(textureName in this.textures)))
+                        return (null);
                     if (sprite) {
                         // always position sprites from the center
                         sprite.anchor.set(0.5, 0.5);
@@ -1283,7 +1281,7 @@ System.register("board/router", [], function (exports_18, context_18) {
 System.register("board/constants", [], function (exports_19, context_19) {
     "use strict";
     var __moduleName = context_19 && context_19.id;
-    var PART_SIZE, SPACING, BALL_RADIUS, PART_DENSITY, BALL_DENSITY, BALL_FRICTION, PART_FRICTION, DROP_FRICTION, BALL_FRICTION_STATIC, PART_FRICTION_STATIC, DROP_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V, DAMPER_RADIUS, BIAS_STIFFNESS, BIAS_DAMPING, COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, DEFAULT_MASK, PART_CATEGORY, BALL_CATEGORY, GATE_CATEGORY, PART_MASK, BALL_MASK, BALL_MASK_RELEASED, GATE_MASK;
+    var PART_SIZE, SPACING, BALL_RADIUS, PART_DENSITY, BALL_DENSITY, BALL_FRICTION, PART_FRICTION, DROP_FRICTION, BALL_FRICTION_STATIC, PART_FRICTION_STATIC, DROP_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V, DAMPER_RADIUS, BIAS_STIFFNESS, BIAS_DAMPING, COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, PART_CATEGORY, UNRELEASED_BALL_CATEGORY, BALL_CATEGORY, GATE_CATEGORY, DEFAULT_MASK, PART_MASK, UNRELEASED_BALL_MASK, BALL_MASK, GATE_MASK;
     return {
         setters: [],
         execute: function () {
@@ -1313,14 +1311,15 @@ System.register("board/constants", [], function (exports_19, context_19) {
             exports_19("COUNTERWEIGHT_STIFFNESS", COUNTERWEIGHT_STIFFNESS = BALL_DENSITY / 32);
             exports_19("COUNTERWEIGHT_DAMPING", COUNTERWEIGHT_DAMPING = 0.1);
             // collision filtering categories
-            exports_19("DEFAULT_MASK", DEFAULT_MASK = 0xFFFFFF);
             exports_19("PART_CATEGORY", PART_CATEGORY = 0x0001);
-            exports_19("BALL_CATEGORY", BALL_CATEGORY = 0x0002);
+            exports_19("UNRELEASED_BALL_CATEGORY", UNRELEASED_BALL_CATEGORY = 0x0002);
+            exports_19("BALL_CATEGORY", BALL_CATEGORY = 0x0004);
             exports_19("GATE_CATEGORY", GATE_CATEGORY = 0x0008);
-            exports_19("PART_MASK", PART_MASK = BALL_CATEGORY);
+            exports_19("DEFAULT_MASK", DEFAULT_MASK = 0xFFFFFF);
+            exports_19("PART_MASK", PART_MASK = UNRELEASED_BALL_CATEGORY | BALL_CATEGORY);
+            exports_19("UNRELEASED_BALL_MASK", UNRELEASED_BALL_MASK = DEFAULT_MASK ^ BALL_CATEGORY);
             exports_19("BALL_MASK", BALL_MASK = DEFAULT_MASK);
-            exports_19("BALL_MASK_RELEASED", BALL_MASK_RELEASED = BALL_MASK ^ GATE_CATEGORY);
-            exports_19("GATE_MASK", GATE_MASK = DEFAULT_MASK);
+            exports_19("GATE_MASK", GATE_MASK = DEFAULT_MASK ^ BALL_CATEGORY);
         }
     };
 });
@@ -1451,7 +1450,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     if (this.type == 9 /* BALL */) {
                         this._body = matter_js_1.Bodies.circle(0, 0, (5 * constants_1.PART_SIZE) / 32, { density: constants_1.BALL_DENSITY, friction: constants_1.BALL_FRICTION,
                             frictionStatic: constants_1.BALL_FRICTION_STATIC,
-                            collisionFilter: { category: constants_1.BALL_CATEGORY, mask: constants_1.BALL_MASK, group: 0 } });
+                            collisionFilter: { category: constants_1.UNRELEASED_BALL_CATEGORY, mask: constants_1.UNRELEASED_BALL_MASK, group: 0 } });
                     }
                     else if (this._part instanceof fence_2.Slope) {
                         this._body = this._bodyForSlope(this._part);
@@ -1656,22 +1655,32 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     this._controlRotation(contacts, nearby);
                     this._controlVelocity();
                     // ball drop
-                    if ((this._part instanceof drop_2.Drop) && (this._part.releaseBall)) {
-                        this._releaseBall(nearby);
-                        this._part.releaseBall = false;
-                    }
-                    if (contacts) {
-                        for (const contact of contacts) {
-                            const nudged = this._nudgeBall(contact);
-                            // if we've nudged a ball, don't do other stuff to it
-                            if ((nudged) && (nearby))
-                                nearby.delete(contact.ballPartBody);
+                    if (this._part instanceof drop_2.Drop) {
+                        this._updateReleaseFilters(nearby);
+                        if (this._part.releaseBall) {
+                            this._releaseBall(nearby);
+                            this._part.releaseBall = false;
                         }
                     }
+                    this._nudge(contacts, nearby);
                     if (nearby) {
                         for (const ballPartBody of nearby) {
                             this._influenceBall(ballPartBody);
                         }
+                    }
+                }
+                _nudge(contacts, nearby) {
+                    if (!contacts)
+                        return;
+                    // don't nudge multiple balls on slopes, 
+                    //  it tends to cause pileups in the output
+                    if ((this._part.type === 11 /* SLOPE */) && (contacts.size > 1))
+                        return;
+                    for (const contact of contacts) {
+                        const nudged = this._nudgeBall(contact);
+                        // if we've nudged a ball, don't do other stuff to it
+                        if ((nudged) && (nearby))
+                            nearby.delete(contact.ballPartBody);
                     }
                 }
                 // constrain the position and angle of the part to simulate 
@@ -1792,7 +1801,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         maxSlope = 1;
                     }
                     else if ((this._part instanceof drop_2.Drop) &&
-                        (body.collisionFilter.mask === constants_1.BALL_MASK_RELEASED)) {
+                        (body.collisionFilter.mask === constants_1.BALL_MASK)) {
                         sign = this._part.isFlipped ? -1 : 1;
                     }
                     // exit if we're not nudging
@@ -1862,22 +1871,50 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     }
                     return (false);
                 }
-                _releaseBall(ballPartBodies) {
-                    if (!ballPartBodies)
+                // update the collision filters of balls in a drop
+                _updateReleaseFilters(balls) {
+                    if (!balls)
                         return;
+                    if (!this._releasedBalls)
+                        this._releasedBalls = new Set();
+                    // make a set of balls that have exited successfully
+                    const exitedBalls = new Set(this._releasedBalls);
+                    for (const ball of balls) {
+                        exitedBalls.delete(ball);
+                    }
+                    // remove them from the set of balls we've released, 
+                    //  allowing them to go back into the drop if needed
+                    for (const ball of exitedBalls) {
+                        this._releasedBalls.delete(ball);
+                    }
+                    // mark all balls that haven't been released yet with a collision filter
+                    //  that keeps them in the drop
+                    for (const ball of balls) {
+                        if (!this._releasedBalls.has(ball)) {
+                            ball.body.collisionFilter.category = constants_1.UNRELEASED_BALL_CATEGORY;
+                            ball.body.collisionFilter.mask = constants_1.UNRELEASED_BALL_MASK;
+                        }
+                    }
+                }
+                // release a ball from a drop
+                _releaseBall(balls) {
+                    if (!balls)
+                        return;
+                    if (!this._releasedBalls)
+                        this._releasedBalls = new Set();
                     // find the ball closest to the bottom right
                     let closest;
                     let maxSum = -Infinity;
-                    for (const ballPartBody of ballPartBodies) {
-                        // never release a ball twice (returned balls are actually recreated)
-                        if (ballPartBody.body.collisionFilter.mask === constants_1.BALL_MASK_RELEASED)
+                    for (const ball of balls) {
+                        // never release a ball twice until it exits the drop
+                        if (this._releasedBalls.has(ball))
                             continue;
-                        let dc = ballPartBody.part.column - this.part.column;
+                        let dc = ball.part.column - this.part.column;
                         if (this.part.isFlipped)
                             dc *= -1;
-                        const d = dc + ballPartBody.part.row;
+                        const d = dc + ball.part.row;
                         if (d > maxSum) {
-                            closest = ballPartBody;
+                            closest = ball;
                             maxSum = d;
                         }
                     }
@@ -1885,7 +1922,9 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     if (!closest)
                         return;
                     // change the collision mask of the ball so it goes through the gate
-                    closest.body.collisionFilter.mask = constants_1.BALL_MASK_RELEASED;
+                    closest.body.collisionFilter.category = constants_1.BALL_CATEGORY;
+                    closest.body.collisionFilter.mask = constants_1.BALL_MASK;
+                    this._releasedBalls.add(closest);
                 }
             };
             exports_21("PartBody", PartBody);
@@ -1911,10 +1950,10 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
         }
     };
 });
-System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gearbit", "parts/partbody", "board/constants", "ui/animator"], function (exports_22, context_22) {
+System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gearbit", "parts/partbody", "board/constants", "ui/animator", "parts/drop"], function (exports_22, context_22) {
     "use strict";
     var __moduleName = context_22 && context_22.id;
-    var PIXI, matter_js_2, renderer_2, gearbit_2, partbody_1, constants_2, animator_2, PhysicalBallRouter;
+    var PIXI, matter_js_2, renderer_2, gearbit_2, partbody_1, constants_2, animator_2, drop_3, PhysicalBallRouter;
     return {
         setters: [
             function (PIXI_3) {
@@ -1937,6 +1976,9 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
             },
             function (animator_2_1) {
                 animator_2 = animator_2_1;
+            },
+            function (drop_3_1) {
+                drop_3 = drop_3_1;
             }
         ],
         execute: function () {
@@ -2193,6 +2235,10 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                     partBody.addToWorld(this.engine.world);
                     if (partBody.body)
                         this._bodies.set(partBody.body, partBody);
+                    // if there was a pending drop request after the last ball exited,
+                    //  clear it now
+                    if (part instanceof drop_3.Drop)
+                        part.releaseBall = false;
                 }
                 removePart(part) {
                     if (!this._parts.has(part))
@@ -2370,7 +2416,7 @@ System.register("board/controls", ["pixi.js", "renderer"], function (exports_23,
 System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball", "board/constants", "board/physics", "parts/drop", "board/controls", "ui/animator", "parts/turnstile"], function (exports_24, context_24) {
     "use strict";
     var __moduleName = context_24 && context_24.id;
-    var filter, fence_3, gearbit_3, disjoint_1, renderer_4, ball_3, constants_3, physics_1, drop_3, controls_1, animator_3, turnstile_3, SPACING_FACTOR, Board;
+    var filter, fence_3, gearbit_3, disjoint_1, renderer_4, ball_3, constants_3, physics_1, drop_4, controls_1, animator_3, turnstile_3, SPACING_FACTOR, Board;
     return {
         setters: [
             function (filter_1) {
@@ -2397,8 +2443,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             function (physics_1_1) {
                 physics_1 = physics_1_1;
             },
-            function (drop_3_1) {
-                drop_3 = drop_3_1;
+            function (drop_4_1) {
+                drop_4 = drop_4_1;
             },
             function (controls_1_1) {
                 controls_1 = controls_1_1;
@@ -2851,16 +2897,16 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this._updateSlopes();
                     }
                     // maintain our set of drops
-                    if ((oldPart instanceof drop_3.Drop) && (oldPart !== this.partPrototype)) {
+                    if ((oldPart instanceof drop_4.Drop) && (oldPart !== this.partPrototype)) {
                         this.drops.delete(oldPart);
                         for (const ball of oldPart.balls) {
                             this.removeBall(ball);
                         }
                     }
-                    if (newPart instanceof drop_3.Drop) {
+                    if (newPart instanceof drop_4.Drop) {
                         this.drops.add(newPart);
                     }
-                    if ((oldPart instanceof drop_3.Drop) || (newPart instanceof drop_3.Drop) ||
+                    if ((oldPart instanceof drop_4.Drop) || (newPart instanceof drop_4.Drop) ||
                         (oldPart instanceof turnstile_3.Turnstile) || (newPart instanceof turnstile_3.Turnstile)) {
                         this._connectTurnstiles();
                     }
@@ -3011,7 +3057,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         if (!p)
                             break;
                         // if we hit a drop we're done
-                        if (p instanceof drop_3.Drop)
+                        if (p instanceof drop_4.Drop)
                             return (p);
                         else if (p.type == 11 /* SLOPE */) {
                             c += p.isFlipped ? -1 : 1;
@@ -3317,7 +3363,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         const radians = Math.atan2(currentY - startY, currentX - startX);
                         this._colorWheel.hue = this._actionHue +
                             (f * (((radians * 180) / Math.PI) - 90));
-                        if (this._actionPart instanceof drop_3.Drop) {
+                        if (this._actionPart instanceof drop_4.Drop) {
                             this._actionPart.hue = this._colorWheel.hue;
                         }
                     }
@@ -3326,7 +3372,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._dragFlippedParts.clear();
                     if ((this._action === 5 /* DRAG_PART */) && (this.partPrototype)) {
                         // don't copy drops since we want to keep their associations
-                        const part = this.partPrototype instanceof drop_3.Drop ? this.partPrototype :
+                        const part = this.partPrototype instanceof drop_4.Drop ? this.partPrototype :
                             this.partFactory.copy(this.partPrototype);
                         this.partPrototype = null;
                         if (part instanceof ball_3.Ball) {
@@ -3363,7 +3409,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this.view.cursor = 'pointer';
                     }
                     else if ((this.tool == 3 /* HAND */) &&
-                        (this._actionPart instanceof drop_3.Drop) &&
+                        (this._actionPart instanceof drop_4.Drop) &&
                         (this.partSize > 12) &&
                         (Math.abs((row - 0.3) - r) < 0.2)) {
                         if ((this._actionPart.isFlipped) != (c < column)) {
@@ -3401,10 +3447,10 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     // respond to the part under the cursor changing
                     if (this._actionPart !== oldActionPart) {
                         // show/hide drop controls
-                        if (oldActionPart instanceof drop_3.Drop) {
+                        if (oldActionPart instanceof drop_4.Drop) {
                             animator_3.Animator.current.animate(oldActionPart, 'controlsAlpha', 1, 0, 0.25 /* HIDE_CONTROL */);
                         }
-                        if ((this._actionPart instanceof drop_3.Drop) &&
+                        if ((this._actionPart instanceof drop_4.Drop) &&
                             (this.tool == 3 /* HAND */)) {
                             animator_3.Animator.current.animate(this._actionPart, 'controlsAlpha', 0, 1, 0.1 /* SHOW_CONTROL */);
                         }
@@ -3486,7 +3532,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this.flipPart(this._actionColumn, this._actionRow);
                     }
                     else if ((this._action === 7 /* DROP_BALL */) &&
-                        (this._actionPart instanceof drop_3.Drop)) {
+                        (this._actionPart instanceof drop_4.Drop)) {
                         this._actionPart.releaseBall = true;
                     }
                 }

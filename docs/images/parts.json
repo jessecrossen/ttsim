@@ -2376,6 +2376,30 @@
       }, 
       "trimmed": false
     }, 
+    "Turnstile-t": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 836, 
+        "y": 212
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
     "faster": {
       "frame": {
         "h": 96, 

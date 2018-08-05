@@ -504,30 +504,6 @@
       }, 
       "trimmed": false
     }, 
-    "Fence-bs3": {
-      "frame": {
-        "h": 96, 
-        "w": 96, 
-        "x": 420, 
-        "y": 524
-      }, 
-      "pivot": {
-        "x": 0.5, 
-        "y": 0.5
-      }, 
-      "rotated": false, 
-      "sourceSize": {
-        "h": 96, 
-        "w": 96
-      }, 
-      "spriteSourceSize": {
-        "h": 96, 
-        "w": 96, 
-        "x": 0, 
-        "y": 0
-      }, 
-      "trimmed": false
-    }, 
     "Fence-s4": {
       "frame": {
         "h": 96, 
@@ -1446,6 +1422,30 @@
         "w": 96, 
         "x": 420, 
         "y": 628
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Slope-b3": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 420, 
+        "y": 524
       }, 
       "pivot": {
         "x": 0.5, 

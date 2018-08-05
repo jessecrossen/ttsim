@@ -119,11 +119,13 @@ export class PartButton extends Button {
     }
     this._normalView = new PIXI.Container();
     this.addChild(this._normalView);
-    let firstLayer:number = Layer.BACK;
-    let lastLayer:number = Layer.FRONT;
-    for (let i:number = firstLayer; i <= lastLayer; i++) {
-      const sprite = part.getSpriteForLayer(i);
-      if (sprite) this._normalView.addChild(sprite);
+    const toolSprite = part.getSpriteForLayer(Layer.TOOL);
+    if (toolSprite) this._normalView.addChild(toolSprite);
+    else {
+      for (let i:number = Layer.BACK; i <= Layer.FRONT; i++) {
+        const sprite = part.getSpriteForLayer(i);
+        if (sprite) this._normalView.addChild(sprite);
+      }
     }
     this.onSizeChanged();
   }
@@ -148,7 +150,7 @@ export class PartButton extends Button {
 
   protected onSizeChanged():void {
     super.onSizeChanged();
-    if (this.part) this.part.size = Math.floor(this.size * 0.5);
+    if (this.part) this.part.size = Math.floor(this.size * 0.75);
   }
 
 }

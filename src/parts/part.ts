@@ -12,6 +12,7 @@ export const enum Layer {
   SCHEMATIC,
   SCHEMATIC_2,
   SCHEMATIC_4,
+  TOOL,
   CONTROL,
   COUNT // keep this at the end to allow iteration through all layers
 };
@@ -103,8 +104,10 @@ export abstract class Part {
       //  (note that we don't refer to Gearbase to avoid a circular reference)
       if ((this.type == PartType.GEAR) || (this.type == PartType.GEARBIT)) {
         const connected = (this as any).connected as Set<Part>;
-        for (const gear of connected) {
-          if (gear !== this) Animator.current.stopAnimating(gear, 'rotation');
+        if (connected) {
+          for (const gear of connected) {
+            if (gear !== this) Animator.current.stopAnimating(gear, 'rotation');
+          }
         }
       }
     }
@@ -167,6 +170,7 @@ export abstract class Part {
     if (layer === Layer.SCHEMATIC) return('-s');
     if (layer === Layer.SCHEMATIC_4) return('-s4');
     if (layer === Layer.SCHEMATIC_2) return('-s2');
+    if (layer === Layer.TOOL) return('-t');
     return('');
   }
   // get texture names for the various layers

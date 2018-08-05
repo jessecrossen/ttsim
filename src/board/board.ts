@@ -912,7 +912,8 @@ export class Board {
         Animator.current.animate(oldActionPart, 'controlsAlpha', 
           1, 0, Delays.HIDE_CONTROL);
       }
-      if (this._actionPart instanceof Drop) {
+      if ((this._actionPart instanceof Drop) && 
+          (this.tool == ToolType.HAND)) {
         Animator.current.animate(this._actionPart, 'controlsAlpha', 
           0, 1, Delays.SHOW_CONTROL);
       }

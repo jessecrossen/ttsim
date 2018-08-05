@@ -296,10 +296,13 @@ System.register("parts/fence", ["parts/part", "board/board"], function (exports_
                         (this.sequence / this.modulus) : -1);
                 }
                 textureSuffix(layer) {
-                    return (super.textureSuffix(layer) + this.modulus);
+                    let suffix = super.textureSuffix(layer);
+                    if (layer != 7 /* TOOL */)
+                        suffix += this.modulus;
+                    return (suffix);
                 }
                 _updateTexture() {
-                    for (let layer = 0 /* BACK */; layer < 8 /* COUNT */; layer++) {
+                    for (let layer = 0 /* BACK */; layer < 9 /* COUNT */; layer++) {
                         const sprite = this.getSpriteForLayer(layer);
                         if (!sprite)
                             continue;
@@ -883,9 +886,11 @@ System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (
                         //  (note that we don't refer to Gearbase to avoid a circular reference)
                         if ((this.type == 8 /* GEAR */) || (this.type == 7 /* GEARBIT */)) {
                             const connected = this.connected;
-                            for (const gear of connected) {
-                                if (gear !== this)
-                                    animator_1.Animator.current.stopAnimating(gear, 'rotation');
+                            if (connected) {
+                                for (const gear of connected) {
+                                    if (gear !== this)
+                                        animator_1.Animator.current.stopAnimating(gear, 'rotation');
+                                }
                             }
                         }
                     }
@@ -948,6 +953,8 @@ System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (
                         return ('-s4');
                     if (layer === 5 /* SCHEMATIC_2 */)
                         return ('-s2');
+                    if (layer === 7 /* TOOL */)
+                        return ('-t');
                     return ('');
                 }
                 // get texture names for the various layers
@@ -990,7 +997,7 @@ System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (
                 }
                 // update all sprites to track the part's state
                 _updateSprites() {
-                    for (let i = 0 /* BACK */; i < 8 /* COUNT */; i++) {
+                    for (let i = 0 /* BACK */; i < 9 /* COUNT */; i++) {
                         if (this._sprites.has(i))
                             this._updateSprite(i);
                     }
@@ -2266,7 +2273,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._setContainer(4 /* SCHEMATIC */, true);
                     this._setContainer(6 /* SCHEMATIC_4 */, true);
                     this._setContainer(5 /* SCHEMATIC_2 */, true);
-                    this._setContainer(7 /* CONTROL */, false);
+                    this._setContainer(8 /* CONTROL */, false);
                     this._updateLayerVisibility();
                 }
                 _setContainer(layer, highPerformance = false) {
@@ -2303,7 +2310,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._containers.get(2 /* FRONT */).filters = [
                         this._makeShadow(this.partSize / 8.0)
                     ];
-                    this._containers.get(7 /* CONTROL */).filters = [
+                    this._containers.get(8 /* CONTROL */).filters = [
                         this._makeShadow(8.0)
                     ];
                 }
@@ -2348,7 +2355,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             break;
                         }
                     }
-                    showContainer(7 /* CONTROL */, showControls);
+                    showContainer(8 /* CONTROL */, showControls);
                     renderer_4.Renderer.needsUpdate();
                 }
                 // controls
@@ -2357,7 +2364,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._colorWheel.visible = false;
                     this._colorWheel.size = 0.33 /* COLORWHEEL_HIDE_SIZE */;
                     this._controls.push(this._colorWheel);
-                    const container = this._containers.get(7 /* CONTROL */);
+                    const container = this._containers.get(8 /* CONTROL */);
                     for (const control of this._controls) {
                         container.addChild(control);
                     }
@@ -3055,7 +3062,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         if (oldActionPart instanceof drop_2.Drop) {
                             animator_3.Animator.current.animate(oldActionPart, 'controlsAlpha', 1, 0, 0.25 /* HIDE_CONTROL */);
                         }
-                        if (this._actionPart instanceof drop_2.Drop) {
+                        if ((this._actionPart instanceof drop_2.Drop) &&
+                            (this.tool == 3 /* HAND */)) {
                             animator_3.Animator.current.animate(this._actionPart, 'controlsAlpha', 0, 1, 0.1 /* SHOW_CONTROL */);
                         }
                     }
@@ -3264,12 +3272,15 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_24, cont
                     }
                     this._normalView = new PIXI.Container();
                     this.addChild(this._normalView);
-                    let firstLayer = 0 /* BACK */;
-                    let lastLayer = 2 /* FRONT */;
-                    for (let i = firstLayer; i <= lastLayer; i++) {
-                        const sprite = part.getSpriteForLayer(i);
-                        if (sprite)
-                            this._normalView.addChild(sprite);
+                    const toolSprite = part.getSpriteForLayer(7 /* TOOL */);
+                    if (toolSprite)
+                        this._normalView.addChild(toolSprite);
+                    else {
+                        for (let i = 0 /* BACK */; i <= 2 /* FRONT */; i++) {
+                            const sprite = part.getSpriteForLayer(i);
+                            if (sprite)
+                                this._normalView.addChild(sprite);
+                        }
                     }
                     this.onSizeChanged();
                 }
@@ -3291,7 +3302,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_24, cont
                 onSizeChanged() {
                     super.onSizeChanged();
                     if (this.part)
-                        this.part.size = Math.floor(this.size * 0.5);
+                        this.part.size = Math.floor(this.size * 0.75);
                 }
             };
             exports_24("PartButton", PartButton);

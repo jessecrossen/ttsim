@@ -49,7 +49,9 @@ export class Slope extends Part {
   }
   
   public textureSuffix(layer:Layer):string {
-    return(super.textureSuffix(layer)+this.modulus);
+    let suffix = super.textureSuffix(layer);
+    if (layer != Layer.TOOL) suffix += this.modulus;
+    return(suffix);
   }
 
   protected _updateTexture():void {

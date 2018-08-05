@@ -16,7 +16,7 @@ export class BoardBuilder {
     const collectLevel:number = dropLevel + verticalDrop;
     const steps:number = Math.ceil(center / Slope.maxModulus);
     const maxModulus:number = Math.ceil(center / steps);
-    const height:number = collectLevel + steps + 2;
+    const height:number = collectLevel + steps + 3;
     board.setSize(width, height);
     // block out unreachable locations at the top
     const blank = board.partFactory.make(PartType.BLANK);
@@ -50,13 +50,13 @@ export class BoardBuilder {
     flippedSlope.flip();
     r = collectLevel;
     run = 0;
-    for (c = 0; c < center; c++, run++) {
+    for (c = 0; c < center - 1; c++, run++) {
       if (run >= maxModulus) { r++; run = 0; }
       board.setPart(board.partFactory.copy(slope), c, r);
     }
     r = collectLevel;
     run = 0;
-    for (c = width - 1; c > center; c--, run++) {
+    for (c = width - 1; c > center + 1; c--, run++) {
       if (run >= maxModulus) { r++; run = 0; }
       board.setPart(board.partFactory.copy(flippedSlope), c, r);
     }
@@ -86,6 +86,10 @@ export class BoardBuilder {
     }
     board.setPart(board.partFactory.copy(side), rightSide, r);
     board.setPart(board.partFactory.copy(side), rightSide, r - 1);
+    r--;
+    for (c = center - 3; c < center; c++) {
+      board.setPart(board.partFactory.copy(slope), c, r);
+    }
     // make a ball drops
     const blueDrop:Drop = board.partFactory.make(PartType.DROP) as Drop;
     board.setPart(blueDrop, blueColumn - 1, dropLevel);
@@ -96,6 +100,12 @@ export class BoardBuilder {
     board.setPart(redDrop, redColumn + 1, dropLevel);
     redDrop.hue = 0;
     redDrop.isLocked = true;
+    // make turnstiles
+    const blueTurnstile = board.partFactory.make(PartType.TURNSTILE);
+    blueTurnstile.isFlipped = true;
+    board.setPart(blueTurnstile, center - 1, collectLevel + 1);
+    const redTurnstile = board.partFactory.make(PartType.TURNSTILE);
+    board.setPart(redTurnstile, center + 1, collectLevel + 1);
   }
 
 }

@@ -440,7 +440,7 @@ System.register("parts/ball", ["parts/part", "ui/config"], function (exports_10,
                         const sprite = this.getSpriteForLayer(layer);
                         if (!sprite)
                             return;
-                        sprite.tint = this._color;
+                        sprite.tint = this.color;
                     }
                 }
                 get bodyCanMove() { return (true); }
@@ -450,22 +450,110 @@ System.register("parts/ball", ["parts/part", "ui/config"], function (exports_10,
         }
     };
 });
-System.register("parts/drop", ["parts/part"], function (exports_11, context_11) {
+System.register("parts/turnstile", ["parts/part", "parts/ball"], function (exports_11, context_11) {
     "use strict";
     var __moduleName = context_11 && context_11.id;
-    var part_10, Drop;
+    var part_10, ball_1, Turnstile;
     return {
         setters: [
             function (part_10_1) {
                 part_10 = part_10_1;
+            },
+            function (ball_1_1) {
+                ball_1 = ball_1_1;
             }
         ],
         execute: function () {
-            Drop = class Drop extends part_10.Part {
+            Turnstile = class Turnstile extends part_10.Part {
+                constructor() {
+                    super(...arguments);
+                    this._centerBall = new ball_1.Ball(this.textures);
+                }
+                get canRotate() { return (true); }
+                get canMirror() { return (false); }
+                get canFlip() { return (true); }
+                get type() { return (13 /* TURNSTILE */); }
+                // the drop the turnstile is connected to
+                get drop() { return (this._drop); }
+                set drop(newDrop) {
+                    if (newDrop === this.drop)
+                        return;
+                    if (this._drop)
+                        this._drop.turnstiles.delete(this);
+                    this._drop = newDrop;
+                    if (this._drop) {
+                        this._drop.turnstiles.add(this);
+                        this.hue = this._drop.hue;
+                    }
+                }
+                // put a ball in the center to show the color of the associated drop
+                _initSprite(layer) {
+                    const sprite = super._initSprite(layer);
+                    if ((layer == 2 /* FRONT */) && (!this._ballContainer)) {
+                        this._ballContainer = new PIXI.Container();
+                        this._ballContainer.addChild(this._centerBall.getSpriteForLayer(1 /* MID */));
+                        this._ballContainer.addChild(this._centerBall.getSpriteForLayer(2 /* FRONT */));
+                        sprite.addChild(this._ballContainer);
+                    }
+                    return (sprite);
+                }
+                // keep the ball the same size as the component
+                get size() { return (super.size); }
+                set size(s) {
+                    if (s === this.size)
+                        return;
+                    super.size = s;
+                    this._centerBall.size = s;
+                }
+                // pass hue through to the center ball
+                get hue() { return (this._centerBall.hue); }
+                set hue(v) {
+                    this._centerBall.hue = v;
+                }
+                // don't rotate or flip the ball or the highlight will look strange
+                _shouldRotateLayer(layer) {
+                    return ((layer !== 0 /* BACK */) && (layer !== 2 /* FRONT */));
+                }
+                _shouldFlipLayer(layer) {
+                    return (layer !== 2 /* FRONT */);
+                }
+                // release a ball when the turnstile makes a turn
+                get rotation() { return (super.rotation); }
+                set rotation(r) {
+                    const oldRotation = this.rotation;
+                    super.rotation = r;
+                    if ((this.rotation < oldRotation) && (this.drop)) {
+                        this.drop.releaseBall = true;
+                    }
+                }
+                // configure for continuous rotation
+                get biasRotation() { return (false); }
+                get restingRotation() {
+                    return (Math.round(this.rotation));
+                }
+            };
+            exports_11("Turnstile", Turnstile);
+        }
+    };
+});
+System.register("parts/drop", ["parts/part"], function (exports_12, context_12) {
+    "use strict";
+    var __moduleName = context_12 && context_12.id;
+    var part_11, Drop;
+    return {
+        setters: [
+            function (part_11_1) {
+                part_11 = part_11_1;
+            }
+        ],
+        execute: function () {
+            Drop = class Drop extends part_11.Part {
                 constructor() {
                     super(...arguments);
                     // a set of balls associated with the drop
                     this.balls = new Set();
+                    // a set of turnstiles associated with the drop
+                    this.turnstiles = new Set();
                     // a flag to set signalling a desire to release a ball, which will be cleared
                     //  after a ball is released
                     this.releaseBall = false;
@@ -506,16 +594,19 @@ System.register("parts/drop", ["parts/part"], function (exports_11, context_11) 
                     for (const ball of this.balls) {
                         ball.hue = this.hue;
                     }
+                    for (const turnstile of this.turnstiles) {
+                        turnstile.hue = this.hue;
+                    }
                 }
             };
-            exports_11("Drop", Drop);
+            exports_12("Drop", Drop);
         }
     };
 });
-System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit", "parts/fence", "parts/blank", "parts/drop", "parts/ball"], function (exports_12, context_12) {
+System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossover", "parts/interceptor", "parts/bit", "parts/gearbit", "parts/fence", "parts/blank", "parts/drop", "parts/ball", "parts/turnstile"], function (exports_13, context_13) {
     "use strict";
-    var __moduleName = context_12 && context_12.id;
-    var location_1, ramp_1, crossover_1, interceptor_1, bit_1, gearbit_1, fence_1, blank_1, drop_1, ball_1, PartFactory;
+    var __moduleName = context_13 && context_13.id;
+    var location_1, ramp_1, crossover_1, interceptor_1, bit_1, gearbit_1, fence_1, blank_1, drop_1, ball_2, turnstile_1, PartFactory;
     return {
         setters: [
             function (location_1_1) {
@@ -545,8 +636,11 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
             function (drop_1_1) {
                 drop_1 = drop_1_1;
             },
-            function (ball_1_1) {
-                ball_1 = ball_1_1;
+            function (ball_2_1) {
+                ball_2 = ball_2_1;
+            },
+            function (turnstile_1_1) {
+                turnstile_1 = turnstile_1_1;
             }
         ],
         execute: function () {
@@ -565,10 +659,11 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
                         case 6 /* BIT */: return (bit_1.Bit);
                         case 8 /* GEAR */: return (gearbit_1.Gear);
                         case 7 /* GEARBIT */: return (gearbit_1.Gearbit);
-                        case 9 /* BALL */: return (ball_1.Ball);
+                        case 9 /* BALL */: return (ball_2.Ball);
                         case 10 /* SIDE */: return (fence_1.Side);
                         case 11 /* SLOPE */: return (fence_1.Slope);
                         case 12 /* DROP */: return (drop_1.Drop);
+                        case 13 /* TURNSTILE */: return (turnstile_1.Turnstile);
                         default: return (null);
                     }
                 }
@@ -590,19 +685,19 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
                         newPart.isLocked = part.isLocked;
                         newPart.hue = part.hue;
                     }
-                    if ((newPart instanceof ball_1.Ball) && (part instanceof ball_1.Ball)) {
+                    if ((newPart instanceof ball_2.Ball) && (part instanceof ball_2.Ball)) {
                         newPart.drop = part.drop;
                     }
                     return (newPart);
                 }
             };
-            exports_12("PartFactory", PartFactory);
+            exports_13("PartFactory", PartFactory);
         }
     };
 });
-System.register("renderer", ["pixi.js"], function (exports_13, context_13) {
+System.register("renderer", ["pixi.js"], function (exports_14, context_14) {
     "use strict";
-    var __moduleName = context_13 && context_13.id;
+    var __moduleName = context_14 && context_14.id;
     var PIXI, Renderer;
     return {
         setters: [
@@ -632,13 +727,13 @@ System.register("renderer", ["pixi.js"], function (exports_13, context_13) {
             });
             Renderer.stage = new PIXI.Container();
             Renderer._counter = 0;
-            exports_13("Renderer", Renderer);
+            exports_14("Renderer", Renderer);
         }
     };
 });
-System.register("ui/animator", [], function (exports_14, context_14) {
+System.register("ui/animator", [], function (exports_15, context_15) {
     "use strict";
-    var __moduleName = context_14 && context_14.id;
+    var __moduleName = context_15 && context_15.id;
     var Animator;
     return {
         setters: [],
@@ -754,13 +849,13 @@ System.register("ui/animator", [], function (exports_14, context_14) {
                     }
                 }
             };
-            exports_14("Animator", Animator);
+            exports_15("Animator", Animator);
         }
     };
 });
-System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (exports_15, context_15) {
+System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (exports_16, context_16) {
     "use strict";
-    var __moduleName = context_15 && context_15.id;
+    var __moduleName = context_16 && context_16.id;
     var PIXI, renderer_1, animator_1, Part;
     return {
         setters: [
@@ -986,10 +1081,10 @@ System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (
                     sprite.width = size;
                     sprite.height = size;
                     // apply flipping
-                    let xScale = this._flipX ?
+                    let xScale = (this._flipX && this._shouldFlipLayer(layer)) ?
                         -Math.abs(sprite.scale.x) : Math.abs(sprite.scale.x);
                     // apply rotation on all layers but the background
-                    if (layer != 0 /* BACK */) {
+                    if (this._shouldRotateLayer(layer)) {
                         // if we can, flip the sprite when it rotates past the center so there's
                         //  less distortion from the rotation transform
                         if ((this.canMirror) && (this.rotation > 0.5)) {
@@ -1009,6 +1104,14 @@ System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (
                     sprite.alpha = this._layerAlpha(layer);
                     // schedule rendering
                     renderer_1.Renderer.needsUpdate();
+                }
+                // control the rotation of layers
+                _shouldRotateLayer(layer) {
+                    return (layer !== 0 /* BACK */);
+                }
+                // control the flipping of layers
+                _shouldFlipLayer(layer) {
+                    return (true);
                 }
                 // control the visibility of layers
                 _isLayerVisible(layer) {
@@ -1039,10 +1142,13 @@ System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (
                 get restingRotation() { return (this.rotation); }
                 // whether the body has a counterweight (like a ramp)
                 get isCounterWeighted() { return (false); }
+                // whether to bias the rotation to either side
+                get biasRotation() { return (!this.isCounterWeighted); }
+                ;
                 // the amount the body will bounce in a collision (0.0 - 1.0)
                 get bodyRestitution() { return (0.1); }
             };
-            exports_15("Part", Part);
+            exports_16("Part", Part);
         }
     };
 });
@@ -1068,9 +1174,9 @@ System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (
  *   out of or in connection with the Software or the use or other dealings in the
  *   Software.
  */
-System.register("util/disjoint", [], function (exports_16, context_16) {
+System.register("util/disjoint", [], function (exports_17, context_17) {
     "use strict";
-    var __moduleName = context_16 && context_16.id;
+    var __moduleName = context_17 && context_17.id;
     var DisjointSet;
     return {
         setters: [],
@@ -1161,70 +1267,68 @@ System.register("util/disjoint", [], function (exports_16, context_16) {
                     }
                 }
             };
-            exports_16("DisjointSet", DisjointSet);
+            exports_17("DisjointSet", DisjointSet);
         }
     };
 });
-System.register("board/router", [], function (exports_17, context_17) {
+System.register("board/router", [], function (exports_18, context_18) {
     "use strict";
-    var __moduleName = context_17 && context_17.id;
+    var __moduleName = context_18 && context_18.id;
     return {
         setters: [],
         execute: function () {
         }
     };
 });
-System.register("board/constants", [], function (exports_18, context_18) {
+System.register("board/constants", [], function (exports_19, context_19) {
     "use strict";
-    var __moduleName = context_18 && context_18.id;
-    var PART_SIZE, SPACING, BALL_RADIUS, PART_DENSITY, BALL_DENSITY, BALL_FRICTION, PART_FRICTION, DROP_FRICTION, BALL_FRICTION_STATIC, PART_FRICTION_STATIC, DROP_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V, DAMPER_RADIUS, BIAS_STIFFNESS, BIAS_DAMPING, COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, DEFAULT_MASK, PART_CATEGORY, BALL_CATEGORY, PIN_CATEGORY, GATE_CATEGORY, PART_MASK, BALL_MASK, BALL_MASK_RELEASED, GATE_MASK, PIN_MASK;
+    var __moduleName = context_19 && context_19.id;
+    var PART_SIZE, SPACING, BALL_RADIUS, PART_DENSITY, BALL_DENSITY, BALL_FRICTION, PART_FRICTION, DROP_FRICTION, BALL_FRICTION_STATIC, PART_FRICTION_STATIC, DROP_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V, DAMPER_RADIUS, BIAS_STIFFNESS, BIAS_DAMPING, COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, DEFAULT_MASK, PART_CATEGORY, BALL_CATEGORY, GATE_CATEGORY, PART_MASK, BALL_MASK, BALL_MASK_RELEASED, GATE_MASK;
     return {
         setters: [],
         execute: function () {
             // the canonical part size the simulator runs at
-            exports_18("PART_SIZE", PART_SIZE = 64);
-            exports_18("SPACING", SPACING = 68);
+            exports_19("PART_SIZE", PART_SIZE = 64);
+            exports_19("SPACING", SPACING = 68);
             // the size of a ball in simulator units
-            exports_18("BALL_RADIUS", BALL_RADIUS = 10);
-            exports_18("PART_DENSITY", PART_DENSITY = 0.100);
-            exports_18("BALL_DENSITY", BALL_DENSITY = 0.008);
-            exports_18("BALL_FRICTION", BALL_FRICTION = 0.03);
-            exports_18("PART_FRICTION", PART_FRICTION = 0.03);
-            exports_18("DROP_FRICTION", DROP_FRICTION = 0);
-            exports_18("BALL_FRICTION_STATIC", BALL_FRICTION_STATIC = 0.03);
-            exports_18("PART_FRICTION_STATIC", PART_FRICTION_STATIC = 0.03);
-            exports_18("DROP_FRICTION_STATIC", DROP_FRICTION_STATIC = 0);
+            exports_19("BALL_RADIUS", BALL_RADIUS = 10);
+            exports_19("PART_DENSITY", PART_DENSITY = 0.100);
+            exports_19("BALL_DENSITY", BALL_DENSITY = 0.008);
+            exports_19("BALL_FRICTION", BALL_FRICTION = 0.03);
+            exports_19("PART_FRICTION", PART_FRICTION = 0.03);
+            exports_19("DROP_FRICTION", DROP_FRICTION = 0);
+            exports_19("BALL_FRICTION_STATIC", BALL_FRICTION_STATIC = 0.03);
+            exports_19("PART_FRICTION_STATIC", PART_FRICTION_STATIC = 0.03);
+            exports_19("DROP_FRICTION_STATIC", DROP_FRICTION_STATIC = 0);
             // the ideal horizontal velocity at which a ball should be moving
-            exports_18("IDEAL_VX", IDEAL_VX = 1.5);
+            exports_19("IDEAL_VX", IDEAL_VX = 1.5);
             // the maximum acceleration to use when nudging the ball
-            exports_18("NUDGE_ACCEL", NUDGE_ACCEL = 0.001);
+            exports_19("NUDGE_ACCEL", NUDGE_ACCEL = 0.001);
             // the maximum speed at which a part can move
-            exports_18("MAX_V", MAX_V = 12);
+            exports_19("MAX_V", MAX_V = 12);
             // damping/counterweight constraint parameters
-            exports_18("DAMPER_RADIUS", DAMPER_RADIUS = PART_SIZE / 2);
-            exports_18("BIAS_STIFFNESS", BIAS_STIFFNESS = BALL_DENSITY / 16);
-            exports_18("BIAS_DAMPING", BIAS_DAMPING = 0.3);
-            exports_18("COUNTERWEIGHT_STIFFNESS", COUNTERWEIGHT_STIFFNESS = BALL_DENSITY / 32);
-            exports_18("COUNTERWEIGHT_DAMPING", COUNTERWEIGHT_DAMPING = 0.1);
+            exports_19("DAMPER_RADIUS", DAMPER_RADIUS = PART_SIZE / 2);
+            exports_19("BIAS_STIFFNESS", BIAS_STIFFNESS = BALL_DENSITY / 16);
+            exports_19("BIAS_DAMPING", BIAS_DAMPING = 0.3);
+            exports_19("COUNTERWEIGHT_STIFFNESS", COUNTERWEIGHT_STIFFNESS = BALL_DENSITY / 32);
+            exports_19("COUNTERWEIGHT_DAMPING", COUNTERWEIGHT_DAMPING = 0.1);
             // collision filtering categories
-            exports_18("DEFAULT_MASK", DEFAULT_MASK = 0xFFFFFF);
-            exports_18("PART_CATEGORY", PART_CATEGORY = 0x0001);
-            exports_18("BALL_CATEGORY", BALL_CATEGORY = 0x0002);
-            exports_18("PIN_CATEGORY", PIN_CATEGORY = 0x0004);
-            exports_18("GATE_CATEGORY", GATE_CATEGORY = 0x0008);
-            exports_18("PART_MASK", PART_MASK = BALL_CATEGORY | PIN_CATEGORY);
-            exports_18("BALL_MASK", BALL_MASK = DEFAULT_MASK);
-            exports_18("BALL_MASK_RELEASED", BALL_MASK_RELEASED = BALL_MASK ^ GATE_CATEGORY);
-            exports_18("GATE_MASK", GATE_MASK = DEFAULT_MASK);
-            exports_18("PIN_MASK", PIN_MASK = PART_CATEGORY);
+            exports_19("DEFAULT_MASK", DEFAULT_MASK = 0xFFFFFF);
+            exports_19("PART_CATEGORY", PART_CATEGORY = 0x0001);
+            exports_19("BALL_CATEGORY", BALL_CATEGORY = 0x0002);
+            exports_19("GATE_CATEGORY", GATE_CATEGORY = 0x0008);
+            exports_19("PART_MASK", PART_MASK = BALL_CATEGORY);
+            exports_19("BALL_MASK", BALL_MASK = DEFAULT_MASK);
+            exports_19("BALL_MASK_RELEASED", BALL_MASK_RELEASED = BALL_MASK ^ GATE_CATEGORY);
+            exports_19("GATE_MASK", GATE_MASK = DEFAULT_MASK);
         }
     };
 });
 // WARNING: this file is autogenerated from src/svg/parts.svg
 //  (any changes you make will be overwritten)
-System.register("parts/partvertices", [], function (exports_19, context_19) {
+System.register("parts/partvertices", [], function (exports_20, context_20) {
     "use strict";
-    var __moduleName = context_19 && context_19.id;
+    var __moduleName = context_20 && context_20.id;
     function getVertexSets(name) {
         switch (name) {
             case 'Bit':
@@ -1257,28 +1361,30 @@ System.register("parts/partvertices", [], function (exports_19, context_19) {
                 return ([[{ x: -34.000000, y: -36.999975 }, { x: 34.999961, y: -23.999973 }, { x: 33.999973, y: -16.999975 }, { x: -36.000012, y: -30.999975 }]]);
             case 'Slope-6':
                 return ([[{ x: -34.000029, y: -35.999970 }, { x: 33.999995, y: -26.999965 }, { x: 33.999975, y: -19.999971 }, { x: -34.000017, y: -30.999971 }]]);
+            case 'Turnstile':
+                return ([[{ x: -32.500399, y: -33.999980 }, { x: 15.254061, y: -9.330725 }, { x: 12.500283, y: -3.999993 }, { x: -35.254177, y: -28.669248 }], [{ x: 32.500295, y: 34.000001 }, { x: -15.254147, y: 9.330754 }, { x: -12.500384, y: 4.000021 }, { x: 35.254059, y: 28.669280 }], [{ x: 33.999936, y: -32.500316 }, { x: 9.330696, y: 15.254112 }, { x: 3.999975, y: 12.500364 }, { x: 28.669215, y: -35.254079 }], [{ x: -34.000037, y: 32.500360 }, { x: -9.330796, y: -15.254067 }, { x: -4.000075, y: -12.500303 }, { x: -28.669316, y: 35.254124 }]]);
             default:
                 return (null);
         }
     }
-    exports_19("getVertexSets", getVertexSets);
+    exports_20("getVertexSets", getVertexSets);
     function getPinLocations(name) {
         switch (name) {
             default:
                 return (null);
         }
     }
-    exports_19("getPinLocations", getPinLocations);
+    exports_20("getPinLocations", getPinLocations);
     return {
         setters: [],
         execute: function () {
         }
     };
 });
-System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvertices", "board/constants", "parts/fence", "parts/drop"], function (exports_20, context_20) {
+System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvertices", "board/constants", "parts/fence", "parts/drop", "parts/turnstile"], function (exports_21, context_21) {
     "use strict";
-    var __moduleName = context_20 && context_20.id;
-    var matter_js_1, factory_1, partvertices_1, constants_1, fence_2, drop_2, PartBody, PartBodyFactory;
+    var __moduleName = context_21 && context_21.id;
+    var matter_js_1, factory_1, partvertices_1, constants_1, fence_2, drop_2, turnstile_2, PartBody, PartBodyFactory;
     return {
         setters: [
             function (matter_js_1_1) {
@@ -1298,6 +1404,9 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
             },
             function (drop_2_1) {
                 drop_2 = drop_2_1;
+            },
+            function (turnstile_2_1) {
+                turnstile_2 = turnstile_2_1;
             }
         ],
         execute: function () {
@@ -1394,7 +1503,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     if (this._part.isCounterWeighted) {
                         this._counterweightDamper = this._makeDamper(this._part.isFlipped, true, constants_1.COUNTERWEIGHT_STIFFNESS, constants_1.COUNTERWEIGHT_DAMPING);
                     }
-                    else {
+                    else if (this._part.biasRotation) {
                         this._biasDamper = this._makeDamper(false, false, constants_1.BIAS_STIFFNESS, constants_1.BIAS_DAMPING);
                     }
                 }
@@ -1544,7 +1653,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                 cheat(contacts, nearby) {
                     if ((!this._body) || (!this._part))
                         return;
-                    this._controlRotation(contacts);
+                    this._controlRotation(contacts, nearby);
                     this._controlVelocity();
                     // ball drop
                     if ((this._part instanceof drop_2.Drop) && (this._part.releaseBall)) {
@@ -1567,7 +1676,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                 }
                 // constrain the position and angle of the part to simulate 
                 //  an angle-constrained revolute joint
-                _controlRotation(contacts) {
+                _controlRotation(contacts, nearby) {
                     const positionDelta = { x: 0, y: 0 };
                     let angleDelta = 0;
                     let moved = false;
@@ -1579,8 +1688,26 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     }
                     if (this._part.bodyCanRotate) {
                         const r = this._part.rotationForAngle(this._body.angle);
-                        if ((r <= 0.0) || (r >= 1.0)) {
-                            const target = this._part.angleForRotation(Math.min(Math.max(0.0, r), 1.0));
+                        let target = this._part.angleForRotation(Math.min(Math.max(0.0, r), 1.0));
+                        let lock = false;
+                        if (this._part instanceof turnstile_2.Turnstile) {
+                            // turnstiles can only rotate in one direction
+                            if (((!this._part.isFlipped) && (this._body.angularVelocity < 0)) ||
+                                ((this._part.isFlipped) && (this._body.angularVelocity > 0))) {
+                                matter_js_1.Body.setAngularVelocity(this._body, 0);
+                            }
+                            // engage and disengage based on ball contact
+                            const engaged = ((nearby instanceof Set) && (nearby.size > 0));
+                            if (!engaged) {
+                                target = this._part.angleForRotation(0);
+                                lock = true;
+                            }
+                            else if (r >= 1.0)
+                                lock = true;
+                        }
+                        else if ((r <= 0.0) || (r >= 1.0))
+                            lock = true;
+                        if (lock) {
                             angleDelta = target - this._body.angle;
                             matter_js_1.Body.rotate(this._body, angleDelta);
                             matter_js_1.Body.setAngularVelocity(this._body, 0);
@@ -1761,7 +1888,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     closest.body.collisionFilter.mask = constants_1.BALL_MASK_RELEASED;
                 }
             };
-            exports_20("PartBody", PartBody);
+            exports_21("PartBody", PartBody);
             // FACTORY / CACHE ************************************************************
             // maintain a cache of PartBody instances
             PartBodyFactory = class PartBodyFactory {
@@ -1780,13 +1907,13 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                 release(instance) {
                 }
             };
-            exports_20("PartBodyFactory", PartBodyFactory);
+            exports_21("PartBodyFactory", PartBodyFactory);
         }
     };
 });
-System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gearbit", "parts/partbody", "board/constants", "ui/animator"], function (exports_21, context_21) {
+System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gearbit", "parts/partbody", "board/constants", "ui/animator"], function (exports_22, context_22) {
     "use strict";
-    var __moduleName = context_21 && context_21.id;
+    var __moduleName = context_22 && context_22.id;
     var PIXI, matter_js_2, renderer_2, gearbit_2, partbody_1, constants_2, animator_2, PhysicalBallRouter;
     return {
         setters: [
@@ -2178,13 +2305,13 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                     }
                 }
             };
-            exports_21("PhysicalBallRouter", PhysicalBallRouter);
+            exports_22("PhysicalBallRouter", PhysicalBallRouter);
         }
     };
 });
-System.register("board/controls", ["pixi.js", "renderer"], function (exports_22, context_22) {
+System.register("board/controls", ["pixi.js", "renderer"], function (exports_23, context_23) {
     "use strict";
-    var __moduleName = context_22 && context_22.id;
+    var __moduleName = context_23 && context_23.id;
     var PIXI, renderer_3, ColorWheel;
     return {
         setters: [
@@ -2236,14 +2363,14 @@ System.register("board/controls", ["pixi.js", "renderer"], function (exports_22,
                     renderer_3.Renderer.needsUpdate();
                 }
             };
-            exports_22("ColorWheel", ColorWheel);
+            exports_23("ColorWheel", ColorWheel);
         }
     };
 });
-System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball", "board/constants", "board/physics", "parts/drop", "board/controls", "ui/animator"], function (exports_23, context_23) {
+System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball", "board/constants", "board/physics", "parts/drop", "board/controls", "ui/animator", "parts/turnstile"], function (exports_24, context_24) {
     "use strict";
-    var __moduleName = context_23 && context_23.id;
-    var filter, fence_3, gearbit_3, disjoint_1, renderer_4, ball_2, constants_3, physics_1, drop_3, controls_1, animator_3, SPACING_FACTOR, Board;
+    var __moduleName = context_24 && context_24.id;
+    var filter, fence_3, gearbit_3, disjoint_1, renderer_4, ball_3, constants_3, physics_1, drop_3, controls_1, animator_3, turnstile_3, SPACING_FACTOR, Board;
     return {
         setters: [
             function (filter_1) {
@@ -2261,8 +2388,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             function (renderer_4_1) {
                 renderer_4 = renderer_4_1;
             },
-            function (ball_2_1) {
-                ball_2 = ball_2_1;
+            function (ball_3_1) {
+                ball_3 = ball_3_1;
             },
             function (constants_3_1) {
                 constants_3 = constants_3_1;
@@ -2278,10 +2405,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             },
             function (animator_3_1) {
                 animator_3 = animator_3_1;
+            },
+            function (turnstile_3_1) {
+                turnstile_3 = turnstile_3_1;
             }
         ],
         execute: function () {
-            exports_23("SPACING_FACTOR", SPACING_FACTOR = 1.0625);
+            exports_24("SPACING_FACTOR", SPACING_FACTOR = 1.0625);
             Board = class Board {
                 constructor(partFactory) {
                     this.partFactory = partFactory;
@@ -2664,7 +2794,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._partPrototype = p;
                     if (this._partPrototype) {
                         // clear the part if the prototype is being pulled off the board
-                        if (p instanceof ball_2.Ball)
+                        if (p instanceof ball_3.Ball)
                             this.removeBall(p);
                         else if (this.getPart(p.column, p.row) === p) {
                             this.clearPart(p.column, p.row);
@@ -2729,6 +2859,10 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                     if (newPart instanceof drop_3.Drop) {
                         this.drops.add(newPart);
+                    }
+                    if ((oldPart instanceof drop_3.Drop) || (newPart instanceof drop_3.Drop) ||
+                        (oldPart instanceof turnstile_3.Turnstile) || (newPart instanceof turnstile_3.Turnstile)) {
+                        this._connectTurnstiles();
                     }
                     this.onChange();
                 }
@@ -2843,7 +2977,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             continue;
                         // add balls behind other parts to prevent ball highlights from
                         //  displaying on top of gears, etc.
-                        if (part instanceof ball_2.Ball) {
+                        if (part instanceof ball_3.Ball) {
                             this._containers.get(layer).addChildAt(sprite, 0);
                         }
                         else {
@@ -2983,6 +3117,16 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         const set = sets.get(label);
                         set.add(part);
                         part.connected = set;
+                    }
+                }
+                // connect turnstiles to their nearest drops
+                _connectTurnstiles() {
+                    for (const row of this._grid) {
+                        for (const part of row) {
+                            if (part instanceof turnstile_3.Turnstile) {
+                                part.drop = this.nearestDrop(part.column, part.row);
+                            }
+                        }
                     }
                 }
                 // configure slope angles by grouping adjacent ones
@@ -3185,7 +3329,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         const part = this.partPrototype instanceof drop_3.Drop ? this.partPrototype :
                             this.partFactory.copy(this.partPrototype);
                         this.partPrototype = null;
-                        if (part instanceof ball_2.Ball) {
+                        if (part instanceof ball_3.Ball) {
                             this.partPrototype = null;
                             this.addBall(part, this.columnForX(this._actionX), this.rowForY(this._actionY));
                         }
@@ -3347,13 +3491,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                 }
             };
-            exports_23("Board", Board);
+            exports_24("Board", Board);
         }
     };
 });
-System.register("ui/button", ["pixi.js", "renderer"], function (exports_24, context_24) {
+System.register("ui/button", ["pixi.js", "renderer"], function (exports_25, context_25) {
     "use strict";
-    var __moduleName = context_24 && context_24.id;
+    var __moduleName = context_25 && context_25.id;
     var PIXI, renderer_5, Button, PartButton, SpriteButton, ButtonBar;
     return {
         setters: [
@@ -3462,7 +3606,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_24, cont
                     renderer_5.Renderer.needsUpdate();
                 }
             };
-            exports_24("Button", Button);
+            exports_25("Button", Button);
             PartButton = class PartButton extends Button {
                 constructor(part) {
                     super();
@@ -3507,7 +3651,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_24, cont
                         this.part.size = Math.floor(this.size * 0.75);
                 }
             };
-            exports_24("PartButton", PartButton);
+            exports_25("PartButton", PartButton);
             SpriteButton = class SpriteButton extends Button {
                 constructor(sprite) {
                     super();
@@ -3527,7 +3671,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_24, cont
                     }
                 }
             };
-            exports_24("SpriteButton", SpriteButton);
+            exports_25("SpriteButton", SpriteButton);
             ButtonBar = class ButtonBar extends PIXI.Container {
                 constructor() {
                     super();
@@ -3615,13 +3759,13 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_24, cont
                     renderer_5.Renderer.needsUpdate();
                 }
             };
-            exports_24("ButtonBar", ButtonBar);
+            exports_25("ButtonBar", ButtonBar);
         }
     };
 });
-System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (exports_25, context_25) {
+System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (exports_26, context_26) {
     "use strict";
-    var __moduleName = context_25 && context_25.id;
+    var __moduleName = context_26 && context_26.id;
     var PIXI, button_1, renderer_6, Toolbar;
     return {
         setters: [
@@ -3647,7 +3791,7 @@ System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (ex
                     this._eraserButton = new button_1.PartButton(this.board.partFactory.make(1 /* PARTLOC */));
                     this.addButton(this._eraserButton);
                     // add buttons for parts
-                    for (let i = 3 /* TOOLBOX_MIN */; i <= 12 /* TOOLBOX_MAX */; i++) {
+                    for (let i = 3 /* TOOLBOX_MIN */; i <= 13 /* TOOLBOX_MAX */; i++) {
                         const part = board.partFactory.make(i);
                         if (!part)
                             continue;
@@ -3697,13 +3841,13 @@ System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (ex
                     renderer_6.Renderer.needsUpdate();
                 }
             };
-            exports_25("Toolbar", Toolbar);
+            exports_26("Toolbar", Toolbar);
         }
     };
 });
-System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/config", "renderer"], function (exports_26, context_26) {
+System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/config", "renderer"], function (exports_27, context_27) {
     "use strict";
-    var __moduleName = context_26 && context_26.id;
+    var __moduleName = context_27 && context_27.id;
     var PIXI, board_2, button_2, config_2, renderer_7, Actionbar;
     return {
         setters: [
@@ -3887,13 +4031,13 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     return (config_2.Zooms.indexOf(this.board.partSize));
                 }
             };
-            exports_26("Actionbar", Actionbar);
+            exports_27("Actionbar", Actionbar);
         }
     };
 });
-System.register("ui/keyboard", [], function (exports_27, context_27) {
+System.register("ui/keyboard", [], function (exports_28, context_28) {
     "use strict";
-    var __moduleName = context_27 && context_27.id;
+    var __moduleName = context_28 && context_28.id;
     function makeKeyHandler(key) {
         const handler = {
             key: key,
@@ -3923,16 +4067,16 @@ System.register("ui/keyboard", [], function (exports_27, context_27) {
         window.addEventListener('keyup', handler.upHandler.bind(handler), false);
         return (handler);
     }
-    exports_27("makeKeyHandler", makeKeyHandler);
+    exports_28("makeKeyHandler", makeKeyHandler);
     return {
         setters: [],
         execute: function () {
         }
     };
 });
-System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "ui/animator", "ui/keyboard", "parts/gearbit"], function (exports_28, context_28) {
+System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "ui/animator", "ui/keyboard", "parts/gearbit"], function (exports_29, context_29) {
     "use strict";
-    var __moduleName = context_28 && context_28.id;
+    var __moduleName = context_29 && context_29.id;
     var PIXI, board_3, factory_2, toolbar_1, actionbar_1, renderer_8, animator_4, keyboard_1, gearbit_4, SimulatorApp;
     return {
         setters: [
@@ -4023,13 +4167,13 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     };
                 }
             };
-            exports_28("SimulatorApp", SimulatorApp);
+            exports_29("SimulatorApp", SimulatorApp);
         }
     };
 });
-System.register("board/builder", ["parts/fence"], function (exports_29, context_29) {
+System.register("board/builder", ["parts/fence"], function (exports_30, context_30) {
     "use strict";
-    var __moduleName = context_29 && context_29.id;
+    var __moduleName = context_30 && context_30.id;
     var fence_4, BoardBuilder;
     return {
         setters: [
@@ -4049,7 +4193,7 @@ System.register("board/builder", ["parts/fence"], function (exports_29, context_
                     const collectLevel = dropLevel + verticalDrop;
                     const steps = Math.ceil(center / fence_4.Slope.maxModulus);
                     const maxModulus = Math.ceil(center / steps);
-                    const height = collectLevel + steps + 2;
+                    const height = collectLevel + steps + 3;
                     board.setSize(width, height);
                     // block out unreachable locations at the top
                     const blank = board.partFactory.make(0 /* BLANK */);
@@ -4081,7 +4225,7 @@ System.register("board/builder", ["parts/fence"], function (exports_29, context_
                     flippedSlope.flip();
                     r = collectLevel;
                     run = 0;
-                    for (c = 0; c < center; c++, run++) {
+                    for (c = 0; c < center - 1; c++, run++) {
                         if (run >= maxModulus) {
                             r++;
                             run = 0;
@@ -4090,7 +4234,7 @@ System.register("board/builder", ["parts/fence"], function (exports_29, context_
                     }
                     r = collectLevel;
                     run = 0;
-                    for (c = width - 1; c > center; c--, run++) {
+                    for (c = width - 1; c > center + 1; c--, run++) {
                         if (run >= maxModulus) {
                             r++;
                             run = 0;
@@ -4125,6 +4269,10 @@ System.register("board/builder", ["parts/fence"], function (exports_29, context_
                     }
                     board.setPart(board.partFactory.copy(side), rightSide, r);
                     board.setPart(board.partFactory.copy(side), rightSide, r - 1);
+                    r--;
+                    for (c = center - 3; c < center; c++) {
+                        board.setPart(board.partFactory.copy(slope), c, r);
+                    }
                     // make a ball drops
                     const blueDrop = board.partFactory.make(12 /* DROP */);
                     board.setPart(blueDrop, blueColumn - 1, dropLevel);
@@ -4135,15 +4283,21 @@ System.register("board/builder", ["parts/fence"], function (exports_29, context_
                     board.setPart(redDrop, redColumn + 1, dropLevel);
                     redDrop.hue = 0;
                     redDrop.isLocked = true;
+                    // make turnstiles
+                    const blueTurnstile = board.partFactory.make(13 /* TURNSTILE */);
+                    blueTurnstile.isFlipped = true;
+                    board.setPart(blueTurnstile, center - 1, collectLevel + 1);
+                    const redTurnstile = board.partFactory.make(13 /* TURNSTILE */);
+                    board.setPart(redTurnstile, center + 1, collectLevel + 1);
                 }
             };
-            exports_29("BoardBuilder", BoardBuilder);
+            exports_30("BoardBuilder", BoardBuilder);
         }
     };
 });
-System.register("index", ["pixi.js", "app", "renderer", "board/builder"], function (exports_30, context_30) {
+System.register("index", ["pixi.js", "app", "renderer", "board/builder"], function (exports_31, context_31) {
     "use strict";
-    var __moduleName = context_30 && context_30.id;
+    var __moduleName = context_31 && context_31.id;
     var PIXI, app_1, renderer_9, builder_1, sim, container, resizeApp, loader;
     return {
         setters: [

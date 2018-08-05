@@ -9,6 +9,7 @@ import { Slope, Side } from './fence';
 import { Blank } from './blank';
 import { Drop } from './drop';
 import { Ball } from './ball';
+import { Turnstile } from './turnstile';
 
 export const enum PartType {
   BLANK = 0, 
@@ -23,7 +24,8 @@ export const enum PartType {
   BALL, 
   SIDE,
   SLOPE, 
-  DROP,       TOOLBOX_MAX = DROP
+  DROP,       
+  TURNSTILE,  TOOLBOX_MAX = TURNSTILE
 }
 
 type PartConstructor = { new(textures:PIXI.loaders.TextureDictionary):Part };
@@ -49,6 +51,7 @@ export class PartFactory {
       case PartType.SIDE: return(Side);
       case PartType.SLOPE: return(Slope);
       case PartType.DROP: return(Drop);
+      case PartType.TURNSTILE: return(Turnstile);
       default: return(null);
     }
   }

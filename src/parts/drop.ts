@@ -1,6 +1,7 @@
 import { Part, Layer } from './part';
 import { PartType } from './factory';
 import { Ball } from './ball';
+import { Turnstile } from './turnstile';
 
 export class Drop extends Part {
 
@@ -11,6 +12,9 @@ export class Drop extends Part {
 
   // a set of balls associated with the drop
   public readonly balls:Set<Ball> = new Set();
+
+  // a set of turnstiles associated with the drop
+  public readonly turnstiles:Set<Turnstile> = new Set();
 
   // a flag to set signalling a desire to release a ball, which will be cleared
   //  after a ball is released
@@ -41,6 +45,9 @@ export class Drop extends Part {
     this._hue = v;
     for (const ball of this.balls) {
       ball.hue = this.hue;
+    }
+    for (const turnstile of this.turnstiles) {
+      turnstile.hue = this.hue;
     }
   }
   private _hue:number = 0.0;

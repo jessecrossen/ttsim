@@ -2,17 +2,17 @@ import { Body, Bodies, Composite, Constraint, Vector, Vertices, World, IBodyDefi
 
 import { Part } from './part';
 import { PartType, PartFactory } from './factory';
-import { getVertexSets, getPinLocations, PinLocation } from './partvertices';
+import { getVertexSets } from './partvertices';
 import { SPACING, PART_SIZE, BALL_MASK, BALL_CATEGORY, PART_CATEGORY, 
-         PART_MASK, PIN_CATEGORY, PIN_MASK, DAMPER_RADIUS, BALL_DENSITY, 
+         PART_MASK, DAMPER_RADIUS, BALL_DENSITY, 
          COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, BIAS_STIFFNESS, 
          BIAS_DAMPING,  PART_DENSITY, BALL_FRICTION, PART_FRICTION,
          BALL_FRICTION_STATIC, PART_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V, DROP_FRICTION, DROP_FRICTION_STATIC, BALL_MASK_RELEASED, GATE_CATEGORY, GATE_MASK} from 'board/constants';
-import { GearBase } from './gearbit';
 import { PartBallContact } from 'board/physics';
 import { Ball } from './ball';
 import { Slope } from './fence';
 import { Drop } from './drop';
+import { Turnstile } from './turnstile';
 
 // this composes a part with a matter.js body which simulates it
 export class PartBody {
@@ -110,7 +110,7 @@ export class PartBody {
       this._counterweightDamper = this._makeDamper(this._part.isFlipped, true, 
         COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING);
     }
-    else {
+    else if (this._part.biasRotation) {
       this._biasDamper = this._makeDamper(false, false,
         BIAS_STIFFNESS, BIAS_DAMPING);
     }
@@ -280,7 +280,7 @@ export class PartBody {
   // apply corrections to the body and any balls contacting it
   public cheat(contacts:Set<PartBallContact>, nearby:Set<PartBody>):void {
     if ((! this._body) || (! this._part)) return;
-    this._controlRotation(contacts);
+    this._controlRotation(contacts, nearby);
     this._controlVelocity();
     // ball drop
     if ((this._part instanceof Drop) && (this._part.releaseBall)) {
@@ -303,7 +303,7 @@ export class PartBody {
 
   // constrain the position and angle of the part to simulate 
   //  an angle-constrained revolute joint
-  private _controlRotation(contacts:Set<PartBallContact>):void {
+  private _controlRotation(contacts:Set<PartBallContact>, nearby:Set<PartBody>):void {
     const positionDelta:Vector = { x: 0, y: 0 };
     let angleDelta:number = 0;
     let moved:boolean = false;
@@ -315,9 +315,25 @@ export class PartBody {
     }
     if (this._part.bodyCanRotate) {
       const r:number = this._part.rotationForAngle(this._body.angle);
-      if ((r <= 0.0) || (r >= 1.0)) {
-        const target:number = 
-          this._part.angleForRotation(Math.min(Math.max(0.0, r), 1.0));
+      let target:number = 
+        this._part.angleForRotation(Math.min(Math.max(0.0, r), 1.0));
+      let lock:boolean = false;
+      if (this._part instanceof Turnstile) {
+        // turnstiles can only rotate in one direction
+        if (((! this._part.isFlipped) && (this._body.angularVelocity < 0)) ||
+            ((this._part.isFlipped) && (this._body.angularVelocity > 0))) {
+          Body.setAngularVelocity(this._body, 0);
+        }
+        // engage and disengage based on ball contact
+        const engaged = ((nearby instanceof Set) && (nearby.size > 0));
+        if (! engaged) {
+          target = this._part.angleForRotation(0);
+          lock = true;
+        }
+        else if (r >= 1.0) lock = true;
+      }
+      else if ((r <= 0.0) || (r >= 1.0)) lock = true;
+      if (lock) {
         angleDelta = target - this._body.angle;
         Body.rotate(this._body, angleDelta);
         Body.setAngularVelocity(this._body, 0);

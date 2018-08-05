@@ -234,10 +234,10 @@ export abstract class Part {
     sprite.width = size;
     sprite.height = size;
     // apply flipping
-    let xScale:number = this._flipX ? 
+    let xScale:number = (this._flipX && this._shouldFlipLayer(layer)) ? 
       - Math.abs(sprite.scale.x) : Math.abs(sprite.scale.x);
     // apply rotation on all layers but the background
-    if (layer != Layer.BACK) {
+    if (this._shouldRotateLayer(layer)) {
       // if we can, flip the sprite when it rotates past the center so there's
       //  less distortion from the rotation transform
       if ((this.canMirror) && (this.rotation > 0.5)) {
@@ -258,6 +258,14 @@ export abstract class Part {
     sprite.alpha = this._layerAlpha(layer);
     // schedule rendering
     Renderer.needsUpdate();
+  }
+  // control the rotation of layers
+  protected _shouldRotateLayer(layer:Layer):boolean {
+    return(layer !== Layer.BACK);
+  }
+  // control the flipping of layers
+  protected _shouldFlipLayer(layer:Layer):boolean {
+    return(true);
   }
   // control the visibility of layers
   protected _isLayerVisible(layer:Layer):boolean {
@@ -294,6 +302,8 @@ export abstract class Part {
   public get restingRotation():number { return(this.rotation); }
   // whether the body has a counterweight (like a ramp)
   public get isCounterWeighted():boolean { return(false); }
+  // whether to bias the rotation to either side
+  public get biasRotation():boolean { return(! this.isCounterWeighted);};
   // the amount the body will bounce in a collision (0.0 - 1.0)
   public get bodyRestitution():number { return(0.1); }
 

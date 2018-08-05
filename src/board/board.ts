@@ -14,6 +14,7 @@ import { PhysicalBallRouter } from './physics';
 import { Drop } from 'parts/drop';
 import { ColorWheel } from './controls';
 import { Animator } from 'ui/animator';
+import { Turnstile } from 'parts/turnstile';
 
 export const enum ToolType {
   NONE,
@@ -490,6 +491,10 @@ export class Board {
     if (newPart instanceof Drop) {
       this.drops.add(newPart);
     }
+    if ((oldPart instanceof Drop) || (newPart instanceof Drop) ||
+        (oldPart instanceof Turnstile) || (newPart instanceof Turnstile)) {
+      this._connectTurnstiles();
+    }
     this.onChange();
   }
   
@@ -738,6 +743,17 @@ export class Board {
       const set = sets.get(label);
       set.add(part);
       part.connected = set;
+    }
+  }
+
+  // connect turnstiles to their nearest drops
+  protected _connectTurnstiles():void {
+    for (const row of this._grid) {
+      for (const part of row) {
+        if (part instanceof Turnstile) {
+          part.drop = this.nearestDrop(part.column, part.row);
+        }
+      }
     }
   }
 

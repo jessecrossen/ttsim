@@ -44,7 +44,7 @@ export class Ball extends Part {
     if (layer !== Layer.FRONT) {
       const sprite = this.getSpriteForLayer(layer);
       if (! sprite) return;
-      sprite.tint = this._color;
+      sprite.tint = this.color;
     }
   }
 

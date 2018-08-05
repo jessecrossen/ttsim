@@ -121,11 +121,6 @@ export class PartButton extends Button {
     this.addChild(this._normalView);
     let firstLayer:number = Layer.BACK;
     let lastLayer:number = Layer.FRONT;
-    // show only the darker back layer for fence-like components 
-    //  because otherwise they're hard to see
-    if ((part.type == PartType.FENCE) || (part.type == PartType.DROP)) {
-      lastLayer = firstLayer;
-    }
     for (let i:number = firstLayer; i <= lastLayer; i++) {
       const sprite = part.getSpriteForLayer(i);
       if (sprite) this._normalView.addChild(sprite);

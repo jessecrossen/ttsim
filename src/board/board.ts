@@ -1,7 +1,7 @@
 import * as filter from 'pixi-filters';
 
 import { Part, Layer } from 'parts/part';
-import { Fence, FenceVariant } from 'parts/fence';
+import { Slope, Side } from 'parts/fence';
 import { PartFactory, PartType } from 'parts/factory';
 import { GearBase, Gear } from 'parts/gearbit';
 import { Alphas, Delays, Sizes } from 'ui/config';
@@ -374,7 +374,8 @@ export class Board {
     const oldPart = this.getPart(column, row);
     if ((oldPart) && (oldPart.isLocked)) return(false);
     else if ((type == PartType.PARTLOC) || (type == PartType.GEARLOC) ||
-             (type == PartType.GEAR) || (type == PartType.FENCE)) return(true);
+             (type == PartType.GEAR) || (type == PartType.SLOPE) ||
+             (type == PartType.SIDE)) return(true);
     else return((row + column) % 2 == 0);
   }
 
@@ -471,8 +472,8 @@ export class Board {
       }
     }
     // update fences
-    if ((oldPart instanceof Fence) || (newPart instanceof Fence)) {
-      this._updateFences();
+    if ((oldPart instanceof Slope) || (newPart instanceof Slope)) {
+      this._updateSlopes();
     }
     this.onChange();
   }
@@ -480,7 +481,7 @@ export class Board {
   // flip the part at the given coordinates
   public flipPart(column:number, row:number):void {
     const part = this.getPart(column, row);
-    if (part instanceof Fence) {
+    if ((part instanceof Slope) || (part instanceof Side)) {
       this._flipFence(column, row);
     }
     else if (part) part.flip(Delays.FLIP);
@@ -621,90 +622,52 @@ export class Board {
   }
 
   // configure fences
-  protected _updateFences():void {
-    let slopeParts:Fence[] = [ ];
-    let northPart:Part;
-    let leftNorthFence:Fence;
-    let rightNorthFence:Fence;
-    let r:number = 0;
-    let c:number;
+  protected _updateSlopes():void {
+    let slopes:Slope[] = [ ];
     for (const row of this._grid) {
-      c = 0;
       for (const part of row) {
-        if (part instanceof Fence) {
-          northPart = this.getPart(c, r - 1);
-          // track the parts above the ends of the slope
-          if ((northPart instanceof Fence) && 
-              (northPart.variant == FenceVariant.SIDE)) {
-            if (slopeParts.length == 0) leftNorthFence = northPart;
-            else rightNorthFence = northPart;
+        if (part instanceof Slope) {
+          if ((slopes.length > 0) && 
+              (slopes[0].isFlipped !== part.isFlipped)) {
+            this._makeSlope(slopes);
           }
-          else {
-            rightNorthFence = null;
-          }
-          if ((slopeParts.length > 0) && 
-              (slopeParts[0].isFlipped !== part.isFlipped)) {
-            this._makeSlope(slopeParts, leftNorthFence, rightNorthFence);
-            leftNorthFence = rightNorthFence = null;
-          }
-          slopeParts.push(part);
+          slopes.push(part);
         }
-        else if (slopeParts.length > 0) {
-          this._makeSlope(slopeParts, leftNorthFence, rightNorthFence);
-          leftNorthFence = rightNorthFence = null;
+        else if (slopes.length > 0) {
+          this._makeSlope(slopes);
         }
-        c++;
       }
-      if (slopeParts.length > 0) {
-        this._makeSlope(slopeParts, leftNorthFence, rightNorthFence);
-        leftNorthFence = rightNorthFence = null;
+      if (slopes.length > 0) {
+        this._makeSlope(slopes);
       }
-      r++;
     }
   }
   // configure a horizontal run of fence parts
-  protected _makeSlope(fences:Fence[], leftNorthFence:Fence, rightNorthFence:Fence):void {
-    if (! (fences.length > 0)) return;
-    // allow for acute angles with a side at the lower end of a slope
-    //  by converting slope ends to sides if the flip direction matches
-    if ((fences[0].isFlipped) && (leftNorthFence) && 
-        (leftNorthFence.isFlipped)) {
-      const side = fences.shift();
-      side.variant = FenceVariant.SIDE;
+  protected _makeSlope(slopes:Slope[]):void {
+    if (! (slopes.length > 0)) return;
+    for (let i:number = 0; i < slopes.length; i++) {
+      slopes[i].modulus = slopes.length;
+      slopes[i].sequence = slopes[i].isFlipped ? 
+        ((slopes.length - 1) - i) : i;
     }
-    else if ((! fences[0].isFlipped) && (rightNorthFence) &&
-             (! rightNorthFence.isFlipped)) {
-      const side = fences.pop();
-      side.variant = FenceVariant.SIDE;
-    }
-    if (fences.length == 1) fences[0].variant = FenceVariant.SIDE;
-    else {
-      for (let i:number = 0; i < fences.length; i++) {
-        fences[i].variant = FenceVariant.SLOPE;
-        fences[i].modulus = fences.length;
-        fences[i].sequence = fences[i].isFlipped ? 
-          ((fences.length - 1) - i) : i;
-      }
-    }
-    fences.splice(0, fences.length);
+    slopes.splice(0, slopes.length);
   }
   // flip a fence part
   protected _flipFence(column:number, row:number) {
-    const fence:Part = this.getPart(column, row);
-    if (! (fence instanceof Fence)) return;
-    const wasFlipped:boolean = fence.isFlipped;
-    const variant:FenceVariant = fence.variant;
-    fence.flip();
+    const part:Part = this.getPart(column, row);
+    if ((! (part instanceof Slope)) && (! (part instanceof Side))) return;
+    const wasFlipped:boolean = part.isFlipped;
+    const type:PartType = part.type;
+    part.flip();
     // make a test function to shorten the code below
     const shouldContinue = (part:Part):boolean => {
-      if ((part instanceof Fence) && (part.isFlipped == wasFlipped) &&
-          (part.variant == variant)) {
+      if ((part.isFlipped == wasFlipped) && (part.type == type)) {
         part.flip();
         return(true);
       }
       return(false);
     };
-    if (variant == FenceVariant.SLOPE) {
+    if (part instanceof Slope) {
       // go right
       for (let c:number = column + 1; c < this._columnCount; c++) {
         if (! shouldContinue(this.getPart(c, row))) break;
@@ -714,7 +677,7 @@ export class Board {
         if (! shouldContinue(this.getPart(c, row))) break;
       }
     }
-    else if (variant == FenceVariant.SIDE) {
+    else if (part instanceof Side) {
       // go down
       for (let r:number = row + 1; r < this._rowCount; r++) {
         if (! shouldContinue(this.getPart(column, r))) break;
@@ -725,7 +688,7 @@ export class Board {
       }
     }
     // update sequence numbers for slopes
-    this._updateFences();
+    this._updateSlopes();
   }
 
   // INTERACTION **************************************************************

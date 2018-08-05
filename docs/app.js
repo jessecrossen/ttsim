@@ -241,7 +241,7 @@ System.register("parts/gearbit", ["parts/part"], function (exports_6, context_6)
 System.register("parts/fence", ["parts/part", "board/board"], function (exports_7, context_7) {
     "use strict";
     var __moduleName = context_7 && context_7.id;
-    var part_7, board_1, Fence;
+    var part_7, board_1, Side, Slope;
     return {
         setters: [
             function (part_7_1) {
@@ -252,31 +252,28 @@ System.register("parts/fence", ["parts/part", "board/board"], function (exports_
             }
         ],
         execute: function () {
-            Fence = class Fence extends part_7.Part {
+            Side = class Side extends part_7.Part {
+                get canRotate() { return (false); }
+                get canMirror() { return (false); }
+                get canFlip() { return (true); }
+                get type() { return (10 /* SIDE */); }
+            };
+            exports_7("Side", Side);
+            Slope = class Slope extends part_7.Part {
                 constructor() {
                     super(...arguments);
-                    this._variant = 0 /* PREVIEW */;
                     this._modulus = 1;
                     this._sequence = 1;
                 }
                 get canRotate() { return (false); }
                 get canMirror() { return (false); }
                 get canFlip() { return (true); }
-                get type() { return (11 /* FENCE */); }
-                // the type of fence segment to display
-                get variant() { return (this._variant); }
-                set variant(v) {
-                    if (v === this.variant)
-                        return;
-                    this._variant = v;
-                    this._updateTexture();
-                    this.changeCounter++;
-                }
+                get type() { return (11 /* SLOPE */); }
                 static get maxModulus() { return (6); }
                 // for slopes, the number of part units in the slope
                 get modulus() { return (this._modulus); }
                 set modulus(v) {
-                    v = Math.min(Math.max(1, Math.round(v)), Fence.maxModulus);
+                    v = Math.min(Math.max(0, Math.round(v)), Slope.maxModulus);
                     if (v === this.modulus)
                         return;
                     this._modulus = v;
@@ -295,27 +292,24 @@ System.register("parts/fence", ["parts/part", "board/board"], function (exports_
                 }
                 // a number that uniquely identifies the fence body type
                 get signature() {
-                    return (this.variant == 2 /* SLOPE */ ?
-                        (this.sequence / this.modulus) : 0);
+                    return (this.modulus > 0 ?
+                        (this.sequence / this.modulus) : -1);
+                }
+                textureSuffix(layer) {
+                    return (super.textureSuffix(layer) + this.modulus);
                 }
                 _updateTexture() {
                     for (let layer = 0 /* BACK */; layer < 8 /* COUNT */; layer++) {
                         const sprite = this.getSpriteForLayer(layer);
                         if (!sprite)
                             continue;
-                        let suffix = this.textureSuffix(layer);
-                        if (this.variant === 1 /* SIDE */) {
-                            suffix += 'l';
-                            this._yOffset = 0.0;
-                        }
-                        else if (this.variant === 2 /* SLOPE */) {
-                            suffix += 's' + this.modulus;
+                        if (this.modulus > 0) {
                             this._yOffset = ((this.sequence % this.modulus) / this.modulus) * board_1.SPACING_FACTOR;
                         }
                         else {
-                            this._yOffset = 0.0;
+                            this._yOffset = 0;
                         }
-                        const textureName = this.texturePrefix + suffix;
+                        const textureName = this.getTextureNameForLayer(layer);
                         if (textureName in this.textures) {
                             sprite.texture = this.textures[textureName];
                         }
@@ -323,7 +317,7 @@ System.register("parts/fence", ["parts/part", "board/board"], function (exports_
                     this._updateSprites();
                 }
             };
-            exports_7("Fence", Fence);
+            exports_7("Slope", Slope);
         }
     };
 });
@@ -368,7 +362,7 @@ System.register("parts/drop", ["parts/part"], function (exports_9, context_9) {
                 get canRotate() { return (false); }
                 get canMirror() { return (false); }
                 get canFlip() { return (true); }
-                get type() { return (10 /* DROP */); }
+                get type() { return (12 /* DROP */); }
                 // show and hide the controls on the front layer
                 get controlsAlpha() { return (this._controlsAlpha); }
                 set controlsAlpha(v) {
@@ -602,8 +596,9 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
                         case 8 /* GEAR */: return (gearbit_1.Gear);
                         case 7 /* GEARBIT */: return (gearbit_1.Gearbit);
                         case 9 /* BALL */: return (ball_1.Ball);
-                        case 10 /* DROP */: return (drop_1.Drop);
-                        case 11 /* FENCE */: return (fence_1.Fence);
+                        case 10 /* SIDE */: return (fence_1.Side);
+                        case 11 /* SLOPE */: return (fence_1.Slope);
+                        case 12 /* DROP */: return (drop_1.Drop);
                         default: return (null);
                     }
                 }
@@ -1211,20 +1206,6 @@ System.register("parts/partvertices", [], function (exports_19, context_19) {
                 return ([[{ x: -0.125001, y: -48.250007 }, { x: -2.750000, y: -46.000016 }, { x: -2.750000, y: -15.874990 }, { x: 3.000000, y: -15.874990 }, { x: 3.000000, y: -46.374983 }], [{ x: -3.000008, y: -15.999979 }, { x: -12.000004, y: -9.999979 }, { x: -2.249998, y: 4.250011 }, { x: 2.374998, y: 4.250011 }, { x: 11.999992, y: -9.999979 }, { x: 2.999992, y: -15.999979 }], [{ x: -32.250001, y: 31.999982 }, { x: -0.051776, y: 29.502583 }, { x: 31.124998, y: 31.499988 }, { x: 32.874999, y: 34.374999 }, { x: 30.375000, y: 36.999994 }, { x: -30.250000, y: 36.999994 }, { x: -32.749999, y: 35.125008 }], [{ x: -36.000003, y: -27.999979 }, { x: -43.000005, y: -5.000005 }, { x: -48.000003, y: -2.999992 }, { x: -45.000003, y: -20.999992 }, { x: -36.000003, y: -35.999991 }], [{ x: -43.000005, y: -5.000005 }, { x: -33.000003, y: 6.999995 }, { x: -39.000003, y: 6.999995 }, { x: -48.000003, y: -2.999992 }], [{ x: -35.999992, y: -35.999991 }, { x: -32.000004, y: -35.999991 }, { x: -31.999993, y: -31.999966 }, { x: -35.999999, y: -27.999979 }], [{ x: 35.999938, y: -27.999979 }, { x: 42.999941, y: -5.000005 }, { x: 47.999938, y: -2.999992 }, { x: 44.999938, y: -20.999992 }, { x: 35.999938, y: -35.999991 }], [{ x: 42.999941, y: -5.000005 }, { x: 32.999938, y: 6.999995 }, { x: 38.999938, y: 6.999995 }, { x: 47.999938, y: -2.999992 }], [{ x: 35.999927, y: -35.999991 }, { x: 31.999993, y: -35.999991 }, { x: 31.999989, y: -31.999966 }, { x: 35.999935, y: -27.999979 }]]);
             case 'Drop':
                 return ([[{ x: 30.999929, y: -36.999967 }, { x: 36.999929, y: -36.999967 }, { x: 36.999929, y: 11.000032 }, { x: 30.999929, y: 11.000032 }], [{ x: -37.000007, y: -36.999967 }, { x: -31.000044, y: -36.999967 }, { x: -31.000044, y: 21.000015 }, { x: -37.000007, y: 21.000015 }], [{ x: -24.987710, y: 28.000296 }, { x: 35.938473, y: 31.000031 }, { x: 35.643417, y: 36.992772 }, { x: -25.282766, y: 33.993037 }], [{ x: -31.000044, y: 21.000015 }, { x: -25.000045, y: 28.000003 }, { x: -25.000045, y: 34.000002 }, { x: -28.000045, y: 34.000002 }, { x: -34.000044, y: 29.000028 }, { x: -37.000044, y: 24.000015 }, { x: -37.000044, y: 21.000015 }]]);
-            case 'Fence-l':
-                return ([[{ x: -37.000036, y: -33.999997 }, { x: -31.000036, y: -33.999997 }, { x: -31.000036, y: 34.000014 }, { x: -37.000036, y: 34.000014 }]]);
-            case 'Fence-s1':
-                return ([[{ x: -32.000020, y: -35.999989 }, { x: 35.999990, y: 30.999929 }, { x: 31.999965, y: 36.000017 }, { x: -36.000008, y: -31.999990 }]]);
-            case 'Fence-s2':
-                return ([[{ x: -32.000020, y: -35.999984 }, { x: 35.999990, y: -2.999985 }, { x: 32.999990, y: 3.000015 }, { x: -35.000020, y: -30.999986 }]]);
-            case 'Fence-s3':
-                return ([[{ x: -33.000008, y: -35.999982 }, { x: 35.999990, y: -13.999980 }, { x: 33.999978, y: -7.999981 }, { x: -35.000020, y: -30.999981 }]]);
-            case 'Fence-s4':
-                return ([[{ x: -33.000011, y: -36.999976 }, { x: 34.999962, y: -19.999979 }, { x: 32.999987, y: -13.999979 }, { x: -35.000024, y: -30.999976 }]]);
-            case 'Fence-s5':
-                return ([[{ x: -33.999999, y: -36.999974 }, { x: 34.999962, y: -23.999972 }, { x: 33.999974, y: -16.999974 }, { x: -36.000011, y: -30.999975 }]]);
-            case 'Fence-s6':
-                return ([[{ x: -34.000028, y: -35.999970 }, { x: 33.999996, y: -26.999965 }, { x: 33.999976, y: -19.999970 }, { x: -34.000015, y: -30.999970 }]]);
             case 'GearLocation':
                 return ([[{ x: -0.015621, y: -4.546895 }, { x: 2.093748, y: -4.046864 }, { x: 4.046880, y: -2.046889 }, { x: 4.562502, y: 0.015637 }, { x: 4.031251, y: 2.062516 }, { x: 2.093748, y: 4.015624 }, { x: -0.015621, y: 4.468752 }, { x: -2.031251, y: 4.000015 }, { x: -4.015620, y: 2.015612 }, { x: -4.546870, y: -0.031267 }, { x: -4.031252, y: -2.031242 }, { x: -2.046871, y: -3.999997 }]]);
             case 'Gearbit':
@@ -1235,6 +1216,20 @@ System.register("parts/partvertices", [], function (exports_19, context_19) {
                 return ([[{ x: -0.015621, y: -4.546889 }, { x: 2.093748, y: -4.046857 }, { x: 4.046880, y: -2.046883 }, { x: 4.562502, y: 0.015643 }, { x: 4.031251, y: 2.062522 }, { x: 2.093748, y: 4.015631 }, { x: -0.015621, y: 4.468758 }, { x: -2.031251, y: 4.000021 }, { x: -4.015620, y: 2.015618 }, { x: -4.546870, y: -0.031261 }, { x: -4.031252, y: -2.031235 }, { x: -2.046871, y: -3.999991 }]]);
             case 'Ramp':
                 return ([[{ x: 13.000002, y: -13.999995 }, { x: -44.999999, y: -28.000007 }, { x: -44.999999, y: -34.000007 }, { x: -44.000000, y: -37.000007 }, { x: 16.000002, y: -21.000020 }], [{ x: 16.000002, y: -21.000020 }, { x: 25.000002, y: -24.000019 }, { x: 30.000003, y: -21.000020 }, { x: 23.000000, y: -16.000007 }, { x: 14.000001, y: -16.000007 }], [{ x: 25.000002, y: -24.000019 }, { x: 27.759382, y: -30.974457 }, { x: 30.000003, y: -31.999994 }, { x: 33.000003, y: -30.000019 }, { x: 30.000003, y: -21.000020 }], [{ x: -15.999999, y: 10.999992 }, { x: -27.999998, y: 10.999992 }, { x: -32.999999, y: 18.000017 }, { x: -32.999999, y: 25.999992 }, { x: -27.999998, y: 33.000017 }, { x: -15.999999, y: 33.000017 }, { x: -10.999997, y: 25.999992 }, { x: -10.999997, y: 18.000017 }], [{ x: -17.000001, y: 12.000017 }, { x: -7.999998, y: 2.999980 }, { x: -4.999998, y: 5.999980 }, { x: -12.999999, y: 15.000017 }], [{ x: -3.999999, y: -7.000007 }, { x: -7.999998, y: -3.000020 }, { x: -7.999998, y: 1.999992 }, { x: -3.999999, y: 7.000005 }, { x: 9.000000, y: 13.999992 }, { x: 14.000001, y: 13.999992 }, { x: 14.000001, y: 9.000017 }, { x: 6.000000, y: -6.000020 }], [{ x: -3.999999, y: -17.999982 }, { x: 12.999998, y: -13.999995 }, { x: 6.000000, y: -6.000020 }, { x: -3.999999, y: -7.000007 }]]);
+            case 'Side':
+                return ([[{ x: -37.000036, y: -34.000009 }, { x: -31.000036, y: -34.000009 }, { x: -31.000036, y: 34.000001 }, { x: -37.000036, y: 34.000001 }]]);
+            case 'Slope-1':
+                return ([[{ x: -32.000020, y: -35.999989 }, { x: 35.999990, y: 30.999929 }, { x: 31.999965, y: 36.000017 }, { x: -36.000008, y: -31.999990 }]]);
+            case 'Slope-2':
+                return ([[{ x: -32.000020, y: -35.999984 }, { x: 35.999990, y: -2.999985 }, { x: 32.999990, y: 3.000015 }, { x: -35.000020, y: -30.999986 }]]);
+            case 'Slope-3':
+                return ([[{ x: -33.000008, y: -35.999982 }, { x: 35.999990, y: -13.999980 }, { x: 33.999978, y: -7.999981 }, { x: -35.000020, y: -30.999981 }]]);
+            case 'Slope-4':
+                return ([[{ x: -33.000011, y: -36.999976 }, { x: 34.999962, y: -19.999979 }, { x: 32.999987, y: -13.999979 }, { x: -35.000024, y: -30.999976 }]]);
+            case 'Slope-5':
+                return ([[{ x: -33.999999, y: -36.999974 }, { x: 34.999962, y: -23.999972 }, { x: 33.999974, y: -16.999974 }, { x: -36.000011, y: -30.999975 }]]);
+            case 'Slope-6':
+                return ([[{ x: -34.000028, y: -35.999970 }, { x: 33.999996, y: -26.999965 }, { x: 33.999976, y: -19.999970 }, { x: -34.000015, y: -30.999970 }]]);
             default:
                 return (null);
         }
@@ -1281,7 +1276,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                 constructor(part) {
                     this._body = undefined;
                     // the fence parameters last time we constructed a fence
-                    this._fenceSignature = NaN;
+                    this._slopeSignature = NaN;
                     this._composite = matter_js_1.Composite.create();
                     this._compositePosition = { x: 0.0, y: 0.0 };
                     this._bodyOffset = { x: 0.0, y: 0.0 };
@@ -1320,9 +1315,9 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                             frictionStatic: constants_1.BALL_FRICTION_STATIC,
                             collisionFilter: { category: constants_1.BALL_CATEGORY, mask: constants_1.BALL_MASK, group: 0 } });
                     }
-                    else if (this._part instanceof fence_2.Fence) {
-                        this._body = this._bodyForFence(this._part);
-                        this._fenceSignature = this._part.signature;
+                    else if (this._part instanceof fence_2.Slope) {
+                        this._body = this._bodyForSlope(this._part);
+                        this._slopeSignature = this._part.signature;
                     }
                     else {
                         const constructor = factory_1.PartFactory.constructorForType(this.type);
@@ -1405,9 +1400,9 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     if ((!this._body) || (!this._part) ||
                         (this._part.changeCounter === this._partChangeCounter))
                         return;
-                    // rebuild the body if the fence signature changes
-                    if ((this._part instanceof fence_2.Fence) &&
-                        (this._part.signature != this._fenceSignature)) {
+                    // rebuild the body if the slope signature changes
+                    if ((this._part instanceof fence_2.Slope) &&
+                        (this._part.signature != this._slopeSignature)) {
                         matter_js_1.Composite.remove(this._composite, this._body);
                         this._makeBody();
                     }
@@ -1472,10 +1467,9 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     matter_js_1.World.remove(world, this._composite);
                 }
                 // construct a body for the current fence configuration
-                _bodyForFence(fence) {
-                    const name = (fence.variant == 1 /* SIDE */) ?
-                        'Fence-l' : 'Fence-s' + fence.modulus;
-                    const y = -((fence.sequence % fence.modulus) / fence.modulus) * constants_1.SPACING;
+                _bodyForSlope(slope) {
+                    const name = 'Slope-' + slope.modulus;
+                    const y = -((slope.sequence % slope.modulus) / slope.modulus) * constants_1.SPACING;
                     return (this._bodyFromVertexSets(partvertices_1.getVertexSets(name), 0, y));
                 }
                 // construct a body from a set of vertex lists
@@ -1613,8 +1607,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         if (ball.row < this._part.row)
                             mag *= 16;
                     }
-                    else if ((this._part instanceof fence_2.Fence) &&
-                        (this._part.variant == 2 /* SLOPE */)) {
+                    else if (this._part instanceof fence_2.Slope) {
                         mag = 2;
                         sign = this._part.isFlipped ? -1 : 1;
                         // the tangent is always the same for slopes, and setting it explicitly
@@ -2539,7 +2532,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     if ((oldPart) && (oldPart.isLocked))
                         return (false);
                     else if ((type == 1 /* PARTLOC */) || (type == 2 /* GEARLOC */) ||
-                        (type == 8 /* GEAR */) || (type == 11 /* FENCE */))
+                        (type == 8 /* GEAR */) || (type == 11 /* SLOPE */) ||
+                        (type == 10 /* SIDE */))
                         return (true);
                     else
                         return ((row + column) % 2 == 0);
@@ -2636,15 +2630,15 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                     }
                     // update fences
-                    if ((oldPart instanceof fence_3.Fence) || (newPart instanceof fence_3.Fence)) {
-                        this._updateFences();
+                    if ((oldPart instanceof fence_3.Slope) || (newPart instanceof fence_3.Slope)) {
+                        this._updateSlopes();
                     }
                     this.onChange();
                 }
                 // flip the part at the given coordinates
                 flipPart(column, row) {
                     const part = this.getPart(column, row);
-                    if (part instanceof fence_3.Fence) {
+                    if ((part instanceof fence_3.Slope) || (part instanceof fence_3.Side)) {
                         this._flipFence(column, row);
                     }
                     else if (part)
@@ -2785,95 +2779,54 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                 }
                 // configure fences
-                _updateFences() {
-                    let slopeParts = [];
-                    let northPart;
-                    let leftNorthFence;
-                    let rightNorthFence;
-                    let r = 0;
-                    let c;
+                _updateSlopes() {
+                    let slopes = [];
                     for (const row of this._grid) {
-                        c = 0;
                         for (const part of row) {
-                            if (part instanceof fence_3.Fence) {
-                                northPart = this.getPart(c, r - 1);
-                                // track the parts above the ends of the slope
-                                if ((northPart instanceof fence_3.Fence) &&
-                                    (northPart.variant == 1 /* SIDE */)) {
-                                    if (slopeParts.length == 0)
-                                        leftNorthFence = northPart;
-                                    else
-                                        rightNorthFence = northPart;
+                            if (part instanceof fence_3.Slope) {
+                                if ((slopes.length > 0) &&
+                                    (slopes[0].isFlipped !== part.isFlipped)) {
+                                    this._makeSlope(slopes);
                                 }
-                                else {
-                                    rightNorthFence = null;
-                                }
-                                if ((slopeParts.length > 0) &&
-                                    (slopeParts[0].isFlipped !== part.isFlipped)) {
-                                    this._makeSlope(slopeParts, leftNorthFence, rightNorthFence);
-                                    leftNorthFence = rightNorthFence = null;
-                                }
-                                slopeParts.push(part);
+                                slopes.push(part);
                             }
-                            else if (slopeParts.length > 0) {
-                                this._makeSlope(slopeParts, leftNorthFence, rightNorthFence);
-                                leftNorthFence = rightNorthFence = null;
+                            else if (slopes.length > 0) {
+                                this._makeSlope(slopes);
                             }
-                            c++;
                         }
-                        if (slopeParts.length > 0) {
-                            this._makeSlope(slopeParts, leftNorthFence, rightNorthFence);
-                            leftNorthFence = rightNorthFence = null;
+                        if (slopes.length > 0) {
+                            this._makeSlope(slopes);
                         }
-                        r++;
                     }
                 }
                 // configure a horizontal run of fence parts
-                _makeSlope(fences, leftNorthFence, rightNorthFence) {
-                    if (!(fences.length > 0))
+                _makeSlope(slopes) {
+                    if (!(slopes.length > 0))
                         return;
-                    // allow for acute angles with a side at the lower end of a slope
-                    //  by converting slope ends to sides if the flip direction matches
-                    if ((fences[0].isFlipped) && (leftNorthFence) &&
-                        (leftNorthFence.isFlipped)) {
-                        const side = fences.shift();
-                        side.variant = 1 /* SIDE */;
+                    for (let i = 0; i < slopes.length; i++) {
+                        slopes[i].modulus = slopes.length;
+                        slopes[i].sequence = slopes[i].isFlipped ?
+                            ((slopes.length - 1) - i) : i;
                     }
-                    else if ((!fences[0].isFlipped) && (rightNorthFence) &&
-                        (!rightNorthFence.isFlipped)) {
-                        const side = fences.pop();
-                        side.variant = 1 /* SIDE */;
-                    }
-                    if (fences.length == 1)
-                        fences[0].variant = 1 /* SIDE */;
-                    else {
-                        for (let i = 0; i < fences.length; i++) {
-                            fences[i].variant = 2 /* SLOPE */;
-                            fences[i].modulus = fences.length;
-                            fences[i].sequence = fences[i].isFlipped ?
-                                ((fences.length - 1) - i) : i;
-                        }
-                    }
-                    fences.splice(0, fences.length);
+                    slopes.splice(0, slopes.length);
                 }
                 // flip a fence part
                 _flipFence(column, row) {
-                    const fence = this.getPart(column, row);
-                    if (!(fence instanceof fence_3.Fence))
+                    const part = this.getPart(column, row);
+                    if ((!(part instanceof fence_3.Slope)) && (!(part instanceof fence_3.Side)))
                         return;
-                    const wasFlipped = fence.isFlipped;
-                    const variant = fence.variant;
-                    fence.flip();
+                    const wasFlipped = part.isFlipped;
+                    const type = part.type;
+                    part.flip();
                     // make a test function to shorten the code below
                     const shouldContinue = (part) => {
-                        if ((part instanceof fence_3.Fence) && (part.isFlipped == wasFlipped) &&
-                            (part.variant == variant)) {
+                        if ((part.isFlipped == wasFlipped) && (part.type == type)) {
                             part.flip();
                             return (true);
                         }
                         return (false);
                     };
-                    if (variant == 2 /* SLOPE */) {
+                    if (part instanceof fence_3.Slope) {
                         // go right
                         for (let c = column + 1; c < this._columnCount; c++) {
                             if (!shouldContinue(this.getPart(c, row)))
@@ -2885,7 +2838,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                                 break;
                         }
                     }
-                    else if (variant == 1 /* SIDE */) {
+                    else if (part instanceof fence_3.Side) {
                         // go down
                         for (let r = row + 1; r < this._rowCount; r++) {
                             if (!shouldContinue(this.getPart(column, r)))
@@ -2898,7 +2851,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                     }
                     // update sequence numbers for slopes
-                    this._updateFences();
+                    this._updateSlopes();
                 }
                 // INTERACTION **************************************************************
                 _bindMouseEvents() {
@@ -3313,11 +3266,6 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_24, cont
                     this.addChild(this._normalView);
                     let firstLayer = 0 /* BACK */;
                     let lastLayer = 2 /* FRONT */;
-                    // show only the darker back layer for fence-like components 
-                    //  because otherwise they're hard to see
-                    if ((part.type == 11 /* FENCE */) || (part.type == 10 /* DROP */)) {
-                        lastLayer = firstLayer;
-                    }
                     for (let i = firstLayer; i <= lastLayer; i++) {
                         const sprite = part.getSpriteForLayer(i);
                         if (sprite)
@@ -3486,7 +3434,7 @@ System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (ex
                     this._eraserButton = new button_1.PartButton(this.board.partFactory.make(1 /* PARTLOC */));
                     this.addButton(this._eraserButton);
                     // add buttons for parts
-                    for (let i = 3 /* TOOLBOX_MIN */; i <= 11 /* TOOLBOX_MAX */; i++) {
+                    for (let i = 3 /* TOOLBOX_MIN */; i <= 12 /* TOOLBOX_MAX */; i++) {
                         const part = board.partFactory.make(i);
                         if (!part)
                             continue;
@@ -3879,7 +3827,7 @@ System.register("board/builder", ["parts/fence"], function (exports_29, context_
                     const redColumn = center + Math.floor(redBlueDistance / 2);
                     const dropLevel = (blueColumn % 2 == 0) ? 1 : 0;
                     const collectLevel = dropLevel + verticalDrop;
-                    const steps = Math.ceil(center / fence_4.Fence.maxModulus);
+                    const steps = Math.ceil(center / fence_4.Slope.maxModulus);
                     const maxModulus = Math.ceil(center / steps);
                     const height = collectLevel + steps + 2;
                     board.setSize(width, height);
@@ -3898,15 +3846,19 @@ System.register("board/builder", ["parts/fence"], function (exports_29, context_
                         }
                     }
                     // add fences on the sides
-                    const fence = board.partFactory.make(11 /* FENCE */);
-                    fence.isLocked = true;
-                    const flippedFence = board.partFactory.copy(fence);
-                    flippedFence.flip();
+                    const side = board.partFactory.make(10 /* SIDE */);
+                    side.isLocked = true;
+                    const flippedSide = board.partFactory.copy(side);
+                    flippedSide.flip();
                     for (r = dropLevel; r < collectLevel; r++) {
-                        board.setPart(board.partFactory.copy(fence), 0, r);
-                        board.setPart(board.partFactory.copy(flippedFence), width - 1, r);
+                        board.setPart(board.partFactory.copy(side), 0, r);
+                        board.setPart(board.partFactory.copy(flippedSide), width - 1, r);
                     }
-                    // add collection fences at the bottom
+                    // add collection slopes at the bottom
+                    const slope = board.partFactory.make(11 /* SLOPE */);
+                    slope.isLocked = true;
+                    const flippedSlope = board.partFactory.copy(slope);
+                    flippedSlope.flip();
                     r = collectLevel;
                     run = 0;
                     for (c = 0; c < center; c++, run++) {
@@ -3914,7 +3866,7 @@ System.register("board/builder", ["parts/fence"], function (exports_29, context_
                             r++;
                             run = 0;
                         }
-                        board.setPart(board.partFactory.copy(fence), c, r);
+                        board.setPart(board.partFactory.copy(slope), c, r);
                     }
                     r = collectLevel;
                     run = 0;
@@ -3923,33 +3875,35 @@ System.register("board/builder", ["parts/fence"], function (exports_29, context_
                             r++;
                             run = 0;
                         }
-                        board.setPart(board.partFactory.copy(flippedFence), c, r);
+                        board.setPart(board.partFactory.copy(flippedSlope), c, r);
                     }
                     // block out the unreachable locations at the bottom
                     for (r = collectLevel; r < height; r++) {
                         for (c = 0; c < width; c++) {
-                            if (board.getPart(c, r) instanceof fence_4.Fence)
+                            const p = board.getPart(c, r);
+                            if ((p instanceof fence_4.Side) || (p instanceof fence_4.Slope))
                                 break;
                             board.setPart(board.partFactory.copy(blank), c, r);
                         }
                         for (c = width - 1; c >= 0; c--) {
-                            if (board.getPart(c, r) instanceof fence_4.Fence)
+                            const p = board.getPart(c, r);
+                            if ((p instanceof fence_4.Side) || (p instanceof fence_4.Slope))
                                 break;
                             board.setPart(board.partFactory.copy(blank), c, r);
                         }
                     }
                     // make a fence to collect balls
                     r = height - 1;
-                    const rightSide = Math.min(center + fence_4.Fence.maxModulus, height - 1);
+                    const rightSide = Math.min(center + fence_4.Slope.maxModulus, height - 1);
                     for (c = center; c < rightSide; c++) {
-                        board.setPart(board.partFactory.copy(fence), c, r);
+                        board.setPart(board.partFactory.copy(slope), c, r);
                     }
-                    board.setPart(board.partFactory.copy(fence), rightSide, r);
-                    board.setPart(board.partFactory.copy(fence), rightSide, r - 1);
+                    board.setPart(board.partFactory.copy(side), rightSide, r);
+                    board.setPart(board.partFactory.copy(side), rightSide, r - 1);
                     // make a ball drops
-                    const blueDrop = board.partFactory.make(10 /* DROP */);
+                    const blueDrop = board.partFactory.make(12 /* DROP */);
                     board.setPart(blueDrop, blueColumn - 1, dropLevel);
-                    const redDrop = board.partFactory.make(10 /* DROP */);
+                    const redDrop = board.partFactory.make(12 /* DROP */);
                     redDrop.isFlipped = true;
                     board.setPart(redDrop, redColumn + 1, dropLevel);
                 }

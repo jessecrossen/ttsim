@@ -5,7 +5,7 @@ import { Crossover } from './crossover';
 import { Interceptor } from './interceptor';
 import { Bit } from './bit';
 import { Gear, Gearbit } from './gearbit';
-import { Fence } from './fence';
+import { Slope, Side } from './fence';
 import { Blank } from './blank';
 import { Drop } from './drop';
 import { Ball } from './ball';
@@ -20,9 +20,10 @@ export const enum PartType {
   BIT,
   GEARBIT,
   GEAR,
-  BALL,  
-  DROP,
-  FENCE,      TOOLBOX_MAX = FENCE
+  BALL, 
+  SIDE,
+  SLOPE, 
+  DROP,       TOOLBOX_MAX = DROP
 }
 
 type PartConstructor = { new(textures:PIXI.loaders.TextureDictionary):Part };
@@ -45,8 +46,9 @@ export class PartFactory {
       case PartType.GEAR: return(Gear);
       case PartType.GEARBIT: return(Gearbit);
       case PartType.BALL: return(Ball);
+      case PartType.SIDE: return(Side);
+      case PartType.SLOPE: return(Slope);
       case PartType.DROP: return(Drop);
-      case PartType.FENCE: return(Fence);
       default: return(null);
     }
   }

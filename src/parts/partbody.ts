@@ -11,7 +11,7 @@ import { SPACING, PART_SIZE, BALL_MASK, BALL_CATEGORY, PART_CATEGORY,
 import { GearBase } from './gearbit';
 import { PartBallContact } from 'board/physics';
 import { Ball } from './ball';
-import { Fence, FenceVariant } from './fence';
+import { Slope } from './fence';
 
 // this composes a part with a matter.js body which simulates it
 export class PartBody {
@@ -52,9 +52,9 @@ export class PartBody {
         collisionFilter: { category: BALL_CATEGORY, mask: BALL_MASK, group: 0 } });
     }
     // construct fences based on their configuration params
-    else if (this._part instanceof Fence) {
-      this._body = this._bodyForFence(this._part);
-      this._fenceSignature = this._part.signature;
+    else if (this._part instanceof Slope) {
+      this._body = this._bodyForSlope(this._part);
+      this._slopeSignature = this._part.signature;
     }
     // construct other parts from stored vertices
     else {
@@ -70,7 +70,7 @@ export class PartBody {
   protected _body:Body = undefined;
   
   // the fence parameters last time we constructed a fence
-  private _fenceSignature:number = NaN;
+  private _slopeSignature:number = NaN;
 
   // a composite representing the body and related constraints, etc.
   public get composite():Composite { return(this._composite); }
@@ -151,9 +151,9 @@ export class PartBody {
     // skip the update if the part hasn't changed
     if ((! this._body) || (! this._part) || 
         (this._part.changeCounter === this._partChangeCounter)) return;
-    // rebuild the body if the fence signature changes
-    if ((this._part instanceof Fence) && 
-        (this._part.signature != this._fenceSignature)) {
+    // rebuild the body if the slope signature changes
+    if ((this._part instanceof Slope) && 
+        (this._part.signature != this._slopeSignature)) {
       Composite.remove(this._composite, this._body);
       this._makeBody();
     }
@@ -229,10 +229,9 @@ export class PartBody {
   }
 
   // construct a body for the current fence configuration
-  protected _bodyForFence(fence:Fence):Body {
-    const name:string = (fence.variant == FenceVariant.SIDE) ?
-      'Fence-l' : 'Fence-s'+fence.modulus;
-    const y:number = - ((fence.sequence % fence.modulus) / fence.modulus) * SPACING;
+  protected _bodyForSlope(slope:Slope):Body {
+    const name:string = 'Slope-'+slope.modulus;
+    const y:number = - ((slope.sequence % slope.modulus) / slope.modulus) * SPACING;
     return(this._bodyFromVertexSets(getVertexSets(name), 0, y));
   }
 
@@ -369,10 +368,9 @@ export class PartBody {
       }
       if (ball.row < this._part.row) mag *= 16;
     }
-    // fences slopes always nudge, and the ball can move fast because
+    // slopes always nudge, and the ball can move fast because
     //  interactions are simple
-    else if ((this._part instanceof Fence) && 
-             (this._part.variant == FenceVariant.SLOPE)) {
+    else if (this._part instanceof Slope) {
       mag = 2;
       sign = this._part.isFlipped ? -1 : 1;
       // the tangent is always the same for slopes, and setting it explicitly

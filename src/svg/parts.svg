@@ -290,11 +290,11 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="16"
-     inkscape:cx="773.01437"
-     inkscape:cy="485.96418"
+     inkscape:zoom="5.6568542"
+     inkscape:cx="510.23115"
+     inkscape:cy="884.29657"
      inkscape:document-units="px"
-     inkscape:current-layer="parts"
+     inkscape:current-layer="spritesheet"
      showgrid="true"
      units="px"
      inkscape:pagecheckerboard="false"
@@ -1272,12 +1272,12 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.23333359px;line-height:5.29166651px;font-family:monospace;-inkscape-font-specification:monospace;text-align:start;letter-spacing:0px;word-spacing:0px;text-anchor:start;display:inline;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
-       x="110.53796"
-       y="36.952774"
+       x="110.25373"
+       y="47.051399"
        id="text1689-40-6-5-8"><tspan
          sodipodi:role="line"
-         x="110.53796"
-         y="36.952774"
+         x="110.25373"
+         y="47.051399"
          style="font-size:4.23333359px;text-align:start;text-anchor:start;stroke-width:0.26458332"
          id="tspan3854">TINY</tspan></text>
     <rect
@@ -1286,14 +1286,14 @@
        width="16.933334"
        height="16.933334"
        x="115.35835"
-       y="221.19167" />
+       y="248.70831" />
     <rect
        style="display:inline;opacity:1;vector-effect:none;fill:#000000;fill-opacity:0.25098039;stroke:none;stroke-width:1.05833328;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="rect4765-4-4-8-8-6"
        width="16.933334"
        height="16.933334"
        x="115.35835"
-       y="248.70834" />
+       y="221.19171" />
     <rect
        style="display:inline;opacity:1;vector-effect:none;fill:#000000;fill-opacity:0.25098039;stroke:none;stroke-width:1.05833328;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="rect4765-4-4-8-8-8"
@@ -1354,14 +1354,14 @@
        width="16.933334"
        height="16.933334"
        x="142.87502"
-       y="221.19167" />
+       y="248.70831" />
     <rect
        style="display:inline;opacity:1;vector-effect:none;fill:#000000;fill-opacity:0.25098039;stroke:none;stroke-width:1.05833328;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="rect4765-4-4-8-8-6-9"
        width="16.933334"
        height="16.933334"
        x="142.87502"
-       y="248.70837" />
+       y="221.19174" />
     <rect
        style="display:inline;opacity:1;vector-effect:none;fill:#000000;fill-opacity:0.25098039;stroke:none;stroke-width:1.05833328;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="rect4765-4-4-8-8-8-6"
@@ -1407,12 +1407,12 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.23333359px;line-height:5.29166698px;font-family:monospace;-inkscape-font-specification:monospace;text-align:start;letter-spacing:0px;word-spacing:0px;text-anchor:start;display:inline;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
-       x="275.48602"
+       x="275.75061"
        y="-149.80064"
        id="text1689-40-6-5-3-0"
        transform="rotate(90)"><tspan
          sodipodi:role="line"
-         x="275.48602"
+         x="275.75061"
          y="-149.80064"
          style="font-size:4.23333359px;text-align:start;text-anchor:start;stroke-width:0.26458332"
          id="tspan1787-5-9-5-9-4">FENCE MID</tspan></text>
@@ -1422,14 +1422,14 @@
        width="16.933334"
        height="16.933334"
        x="170.39169"
-       y="221.19167" />
+       y="248.70831" />
     <rect
        style="display:inline;opacity:1;vector-effect:none;fill:#000000;fill-opacity:0.25098039;stroke:none;stroke-width:1.05833328;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="rect4765-4-4-8-8-6-9-2"
        width="16.933334"
        height="16.933334"
        x="170.39169"
-       y="248.70837" />
+       y="221.19174" />
     <rect
        style="display:inline;opacity:1;vector-effect:none;fill:#000000;fill-opacity:0.25098039;stroke:none;stroke-width:1.05833328;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="rect4765-4-4-8-8-8-6-0"
@@ -1562,7 +1562,8 @@
      inkscape:groupmode="layer"
      id="parts"
      transform="translate(0,-21.833326)"
-     style="display:inline;opacity:1">
+     style="display:inline;opacity:1"
+     sodipodi:insensitive="true">
     <path
        style="opacity:1;vector-effect:none;fill:#00b9fb;fill-opacity:1;stroke:#005e80;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        d="m 161.65625,470.82617 -2.82813,2.82813 5.49415,5.49414 a 3,3 0 0 0 0.87109,2.28711 3,3 0 0 0 4.24219,0 3,3 0 0 0 0,-4.24219 3,3 0 0 0 -2.28516,-0.87305 z"
@@ -1910,7 +1911,7 @@
        sodipodi:nodetypes="cc" />
     <path
        style="fill:none;stroke:#808080;stroke-width:1.58749998;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m 114.82917,246.72916 v 17.99167"
+       d="m 114.82917,274.24578 v 17.99167"
        id="path3799"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cc" />
@@ -1954,10 +1955,10 @@
        width="17.991667"
        height="17.991667"
        x="114.82917"
-       y="274.24582" />
+       y="246.7291" />
     <path
        style="display:inline;opacity:1;fill:none;stroke:#d7d7d7;stroke-width:2.11666679;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m 169.86255,246.72917 v 17.99167"
+       d="m 169.86255,274.24579 v 17.99167"
        id="path3799-5"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cc" />
@@ -2001,7 +2002,7 @@
        width="17.991667"
        height="17.991667"
        x="169.8625"
-       y="274.24582" />
+       y="246.7291" />
     <rect
        style="opacity:1;vector-effect:none;fill:#808080;fill-opacity:1;stroke:none;stroke-width:2.11666679;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="rect4786"
@@ -2514,7 +2515,7 @@
        sodipodi:nodetypes="cc" />
     <path
        style="display:inline;opacity:0.97000002;fill:none;stroke:#f0f0f0;stroke-width:1.0583334;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m 142.34586,246.72916 v 17.99167"
+       d="m 142.34586,274.24578 v 17.99167"
        id="path3799-0"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cc" />
@@ -2558,7 +2559,7 @@
        width="17.991667"
        height="17.991667"
        x="142.34583"
-       y="274.24582" />
+       y="246.7291" />
     <path
        style="display:inline;opacity:0.97000002;fill:none;stroke:#808080;stroke-width:1.5875001;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="m 215.38738,127.12098 -15.13842,-0.60259 c 0,0 -1.04066,-0.0282 -1.88068,-0.8649 -1.13847,-1.13394 -0.98911,-2.48473 -0.98911,-2.48473 v -14.02294"
@@ -3750,15 +3751,16 @@
        r="2.6458335" />
     <path
        style="color:#000000;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:medium;line-height:normal;font-family:sans-serif;font-variant-ligatures:normal;font-variant-position:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-alternates:normal;font-feature-settings:normal;text-indent:0;text-align:start;text-decoration:none;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:#000000;letter-spacing:normal;word-spacing:normal;text-transform:none;writing-mode:lr-tb;direction:ltr;text-orientation:mixed;dominant-baseline:auto;baseline-shift:baseline;text-anchor:start;white-space:normal;shape-padding:0;clip-rule:nonzero;display:inline;overflow:visible;visibility:visible;opacity:1;isolation:auto;mix-blend-mode:normal;color-interpolation:sRGB;color-interpolation-filters:linearRGB;solid-color:#000000;solid-opacity:1;vector-effect:none;fill:#808080;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:3;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;color-rendering:auto;image-rendering:auto;shape-rendering:auto;text-rendering:auto;enable-background:accumulate"
-       d="M 794 543 C 792.892 543 792 543.892 792 545 L 792 549.50391 L 788.49609 549.50391 A 1.50015 1.50015 0 0 0 787.44141 552.05664 L 793.44336 558.05859 A 1.50015 1.50015 0 0 0 795.56055 558.05859 L 801.5625 552.05664 A 1.50015 1.50015 0 0 0 800.5 549.50391 L 797 549.50391 L 797 545 C 797 543.892 796.108 543 795 543 L 794 543 z "
+       d="m 794,543 c -1.108,0 -2,0.892 -2,2 v 4.50391 h -3.50391 a 1.50015,1.50015 0 0 0 -1.05468,2.55273 l 6.00195,6.00195 a 1.50015,1.50015 0 0 0 2.11719,0 l 6.00195,-6.00195 A 1.50015,1.50015 0 0 0 800.5,549.50391 H 797 V 545 c 0,-1.108 -0.892,-2 -2,-2 z"
        transform="matrix(0.26458334,0,0,0.26458334,0,21.833326)"
-       id="path4100" />
+       id="path4100"
+       inkscape:connector-curvature="0" />
   </g>
   <g
      inkscape:groupmode="layer"
      id="physics"
      inkscape:label="physics"
-     style="display:none"
+     style="display:inline"
      sodipodi:insensitive="true">
     <g
        id="g6039">
@@ -4129,7 +4131,7 @@
            y="57.17757"
            x="113.69366"
            id="tspan5865-6-0"
-           sodipodi:role="line">~Fence-s6</tspan></text>
+           sodipodi:role="line">~Slope-6</tspan></text>
       <rect
          ry="0"
          y="58.208344"
@@ -4160,7 +4162,7 @@
            y="84.694237"
            x="113.69366"
            id="tspan5865-6-0-9"
-           sodipodi:role="line">~Fence-s5</tspan></text>
+           sodipodi:role="line">~Slope-5</tspan></text>
       <rect
          ry="0"
          y="85.725014"
@@ -4192,7 +4194,7 @@
            y="84.694237"
            x="113.69366"
            id="tspan5865-6-0-9-8"
-           sodipodi:role="line">~Fence-s4</tspan></text>
+           sodipodi:role="line">~Slope-4</tspan></text>
       <rect
          ry="0"
          y="85.725014"
@@ -4224,7 +4226,7 @@
            y="84.694237"
            x="113.69366"
            id="tspan5865-6-0-9-8-1"
-           sodipodi:role="line">~Fence-s3</tspan></text>
+           sodipodi:role="line">~Slope-3</tspan></text>
       <rect
          ry="0"
          y="85.725014"
@@ -4256,7 +4258,7 @@
            y="84.694237"
            x="113.69366"
            id="tspan5865-6-0-9-8-1-5"
-           sodipodi:role="line">~Fence-s2</tspan></text>
+           sodipodi:role="line">~Slope-2</tspan></text>
       <rect
          ry="0"
          y="85.725014"
@@ -4288,7 +4290,7 @@
            y="84.694237"
            x="113.69366"
            id="tspan5865-6-0-9-8-1-5-2"
-           sodipodi:role="line">~Fence-s1</tspan></text>
+           sodipodi:role="line">~Slope-1</tspan></text>
       <rect
          ry="0"
          y="85.725014"
@@ -4307,7 +4309,8 @@
          style="display:inline;opacity:1;vector-effect:none;fill:none;fill-opacity:1;stroke:#ff0000;stroke-width:0.26458335;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:0.50196078" />
     </g>
     <g
-       id="g13263">
+       id="g13263"
+       transform="translate(0,27.516664)">
       <text
          id="text5867-9-5-8-0-2-5-8-7"
          y="222.27753"
@@ -4318,7 +4321,7 @@
            y="222.27753"
            x="113.69366"
            id="tspan5865-6-0-9-8-1-5-2-7"
-           sodipodi:role="line">~Fence-l</tspan></text>
+           sodipodi:role="line">~Side</tspan></text>
       <rect
          ry="0"
          y="223.3083"
@@ -4385,8 +4388,7 @@
      id="spritesheet"
      inkscape:label="spritesheet"
      style="display:inline"
-     transform="translate(0,4.2333333)"
-     sodipodi:insensitive="true">
+     transform="translate(0,4.2333333)">
     <g
        id="g9984">
       <rect
@@ -5487,7 +5489,7 @@
     <g
        style="display:inline"
        id="g9984-2-8-2-1"
-       transform="translate(110.06668,9.5555936e-6)">
+       transform="translate(110.06668,-27.516654)">
       <rect
          y="244.47499"
          x="1.0583333"
@@ -5505,12 +5507,12 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8"
-           sodipodi:role="line">=Fence-b</tspan></text>
+           sodipodi:role="line">=Slope-b0</tspan></text>
     </g>
     <g
        style="display:inline"
        id="g9984-2-8-2-1-5"
-       transform="translate(110.06668,-27.516659)">
+       transform="translate(110.06668,6.3601443e-6)">
       <rect
          y="244.47499"
          x="1.0583333"
@@ -5528,7 +5530,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-4"
-           sodipodi:role="line">=Fence-bl</tspan></text>
+           sodipodi:role="line">=Side-b</tspan></text>
     </g>
     <g
        style="display:inline"
@@ -5551,7 +5553,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-8"
-           sodipodi:role="line">=Fence-bs1</tspan></text>
+           sodipodi:role="line">=Slope-b1</tspan></text>
     </g>
     <g
        style="display:inline"
@@ -5574,7 +5576,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-4-4"
-           sodipodi:role="line">=Fence-bs2</tspan></text>
+           sodipodi:role="line">=Slope-b2</tspan></text>
     </g>
     <g
        style="display:inline"
@@ -5620,7 +5622,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-4-0"
-           sodipodi:role="line">=Fence-bs4</tspan></text>
+           sodipodi:role="line">=Slope-b4</tspan></text>
     </g>
     <g
        style="display:inline"
@@ -5643,7 +5645,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-8-1"
-           sodipodi:role="line">=Fence-bs5</tspan></text>
+           sodipodi:role="line">=Slope-b5</tspan></text>
     </g>
     <g
        style="display:inline"
@@ -5666,12 +5668,12 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-4-4-4"
-           sodipodi:role="line">=Fence-bs6</tspan></text>
+           sodipodi:role="line">=Slope-b6</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
        id="g9984-2-8-2-1-2"
-       transform="translate(137.58337,8.7286704e-6)">
+       transform="translate(137.58337,-27.516655)">
       <rect
          y="244.47499"
          x="1.0583333"
@@ -5689,12 +5691,12 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-5"
-           sodipodi:role="line">=Fence-m</tspan></text>
+           sodipodi:role="line">=Slope-m0</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
        id="g9984-2-8-2-1-5-69"
-       transform="translate(137.58337,-27.51666)">
+       transform="translate(137.58337,5.3601442e-6)">
       <rect
          y="244.47499"
          x="1.0583333"
@@ -5712,7 +5714,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-4-2"
-           sodipodi:role="line">=Fence-ml</tspan></text>
+           sodipodi:role="line">=Side-m</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
@@ -5735,7 +5737,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-8-6"
-           sodipodi:role="line">=Fence-ms1</tspan></text>
+           sodipodi:role="line">=Slope-m1</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
@@ -5758,7 +5760,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-4-4-6"
-           sodipodi:role="line">=Fence-ms2</tspan></text>
+           sodipodi:role="line">=Slope-m2</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
@@ -5781,7 +5783,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-6-1"
-           sodipodi:role="line">=Fence-ms3</tspan></text>
+           sodipodi:role="line">=Slope-m3</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
@@ -5804,7 +5806,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-4-0-1"
-           sodipodi:role="line">=Fence-ms4</tspan></text>
+           sodipodi:role="line">=Slope-m4</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
@@ -5827,7 +5829,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-8-1-0"
-           sodipodi:role="line">=Fence-ms5</tspan></text>
+           sodipodi:role="line">=Slope-m5</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
@@ -5850,12 +5852,12 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-4-4-4-7"
-           sodipodi:role="line">=Fence-ms6</tspan></text>
+           sodipodi:role="line">=Slope-m6</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
        id="g9984-2-8-2-1-2-3"
-       transform="translate(165.10006,1.0971344e-5)">
+       transform="translate(165.10006,-27.516653)">
       <rect
          y="244.47499"
          x="1.0583333"
@@ -5873,12 +5875,12 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-5-4"
-           sodipodi:role="line">=Fence-s</tspan></text>
+           sodipodi:role="line">=Slope-s0</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
        id="g9984-2-8-2-1-5-69-0"
-       transform="translate(165.10006,-27.516656)">
+       transform="translate(165.10006,9.3601442e-6)">
       <rect
          y="244.47499"
          x="1.0583333"
@@ -5896,7 +5898,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-4-2-9"
-           sodipodi:role="line">=Fence-sl</tspan></text>
+           sodipodi:role="line">=Side-s</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
@@ -5919,7 +5921,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-8-6-4"
-           sodipodi:role="line">=Fence-ss1</tspan></text>
+           sodipodi:role="line">=Slope-s1</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
@@ -5942,7 +5944,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-4-4-6-3"
-           sodipodi:role="line">=Fence-ss2</tspan></text>
+           sodipodi:role="line">=Slope-s2</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
@@ -5965,7 +5967,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-6-1-0"
-           sodipodi:role="line">=Fence-ss3</tspan></text>
+           sodipodi:role="line">=Slope-s3</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
@@ -5988,7 +5990,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-4-0-1-3"
-           sodipodi:role="line">=Fence-ss4</tspan></text>
+           sodipodi:role="line">=Fence-s4</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
@@ -6011,7 +6013,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-8-1-0-4"
-           sodipodi:role="line">=Fence-ss5</tspan></text>
+           sodipodi:role="line">=Slope-s5</tspan></text>
     </g>
     <g
        style="display:inline;opacity:0.97000002"
@@ -6034,7 +6036,7 @@
            y="247.15288"
            x="1.9202962"
            id="tspan9977-0-1-7-8-4-4-4-7-6"
-           sodipodi:role="line">=Fence-ss6</tspan></text>
+           sodipodi:role="line">=Slope-s6</tspan></text>
     </g>
     <g
        transform="translate(-1.9758431e-5,-26.987414)"
@@ -6057,7 +6059,7 @@
            y="53.477802"
            x="113.04531"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-6">=Fence-s4s6</tspan></text>
+           id="tspan5763-9-9-8-6-6">=Slope-s46</tspan></text>
     </g>
     <g
        transform="translate(-2.0388184e-5,-24.870749)"
@@ -6080,7 +6082,7 @@
            y="53.477802"
            x="113.04531"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-6-8">=Fence-s4s5</tspan></text>
+           id="tspan5763-9-9-8-6-6-8">=Slope-s45</tspan></text>
     </g>
     <g
        transform="translate(-2.0388184e-5,-22.754078)"
@@ -6103,7 +6105,7 @@
            y="53.477802"
            x="113.04531"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-6-3">=Fence-s4s4</tspan></text>
+           id="tspan5763-9-9-8-6-6-3">=Slope-s44</tspan></text>
     </g>
     <g
        transform="translate(-2.0388184e-5,-20.637412)"
@@ -6126,7 +6128,7 @@
            y="53.477802"
            x="113.04531"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-6-8-3">=Fence-s4s3</tspan></text>
+           id="tspan5763-9-9-8-6-6-8-3">=Slope-s43</tspan></text>
     </g>
     <g
        transform="translate(-2.0388184e-5,-18.520742)"
@@ -6149,7 +6151,7 @@
            y="53.477802"
            x="113.04531"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-6-6">=Fence-s4s2</tspan></text>
+           id="tspan5763-9-9-8-6-6-6">=Slope-s42</tspan></text>
     </g>
     <g
        transform="translate(-2.0388184e-5,-16.404076)"
@@ -6172,7 +6174,7 @@
            y="53.477802"
            x="113.04531"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-6-8-8">=Fence-s4s1</tspan></text>
+           id="tspan5763-9-9-8-6-6-8-8">=Slope-s41</tspan></text>
     </g>
     <g
        transform="translate(-2.0388184e-5,-14.287406)"
@@ -6195,7 +6197,7 @@
            y="53.477802"
            x="113.04531"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-6-3-3">=Fence-s4l</tspan></text>
+           id="tspan5763-9-9-8-6-6-3-3">=Side-s4</tspan></text>
     </g>
     <g
        transform="translate(-2.0388184e-5,-12.17074)"
@@ -6218,7 +6220,7 @@
            y="53.477802"
            x="113.04531"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-6-8-3-3">=Fence-s4</tspan></text>
+           id="tspan5763-9-9-8-6-6-8-3-3">=Slope-s40</tspan></text>
     </g>
     <g
        style="display:inline"
@@ -6234,7 +6236,7 @@
            y="269.90701"
            x="112.51614"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-2-5">=Fence-s2s6</tspan></text>
+           id="tspan5763-9-9-8-6-2-5">=Slope-s26</tspan></text>
       <rect
          y="269.08142"
          x="111.12502"
@@ -6257,7 +6259,7 @@
            y="269.90701"
            x="112.51614"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-2-5-8">=Fence-s2s5</tspan></text>
+           id="tspan5763-9-9-8-6-2-5-8">=Slope-s25</tspan></text>
       <rect
          y="269.08142"
          x="111.12502"
@@ -6280,7 +6282,7 @@
            y="269.90701"
            x="112.51614"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-2-5-0">=Fence-s2s4</tspan></text>
+           id="tspan5763-9-9-8-6-2-5-0">=Slope-s24</tspan></text>
       <rect
          y="269.08142"
          x="111.12502"
@@ -6303,7 +6305,7 @@
            y="269.90701"
            x="112.51614"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-2-5-8-4">=Fence-s2s3</tspan></text>
+           id="tspan5763-9-9-8-6-2-5-8-4">=Slope-s23</tspan></text>
       <rect
          y="269.08142"
          x="111.12502"
@@ -6326,7 +6328,7 @@
            y="269.90701"
            x="112.51614"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-2-5-86">=Fence-s2s2</tspan></text>
+           id="tspan5763-9-9-8-6-2-5-86">=Slope-s22</tspan></text>
       <rect
          y="269.08142"
          x="111.12502"
@@ -6349,7 +6351,7 @@
            y="269.90701"
            x="112.51614"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-2-5-8-9">=Fence-s2s1</tspan></text>
+           id="tspan5763-9-9-8-6-2-5-8-9">=Slope-s21</tspan></text>
       <rect
          y="269.08142"
          x="111.12502"
@@ -6372,7 +6374,7 @@
            y="269.90701"
            x="112.51614"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-2-5-0-8">=Fence-s2l</tspan></text>
+           id="tspan5763-9-9-8-6-2-5-0-8">=Side-s2</tspan></text>
       <rect
          y="269.08142"
          x="111.12502"
@@ -6395,7 +6397,7 @@
            y="269.90701"
            x="112.51614"
            sodipodi:role="line"
-           id="tspan5763-9-9-8-6-2-5-8-4-7">=Fence-s2</tspan></text>
+           id="tspan5763-9-9-8-6-2-5-8-4-7">=Slope-s20</tspan></text>
       <rect
          y="269.08142"
          x="111.12502"

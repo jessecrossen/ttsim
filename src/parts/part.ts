@@ -12,6 +12,7 @@ export const enum Layer {
   SCHEMATIC,
   SCHEMATIC_2,
   SCHEMATIC_4,
+  CONTROL,
   COUNT // keep this at the end to allow iteration through all layers
 };
 
@@ -243,10 +244,14 @@ export abstract class Part {
     sprite.position.set(this.x + (this._xOffset * this.size), 
                         this.y + (this._yOffset * this.size));
     // apply opacity and visibility
-    sprite.visible = this.visible;
+    sprite.visible = this._isLayerVisible(layer);
     sprite.alpha = sprite.visible ? this.alpha : 0;
     // schedule rendering
     Renderer.needsUpdate();
+  }
+  // control the visibility of layers
+  protected _isLayerVisible(layer:Layer):boolean {
+    return(this.visible);
   }
   // adjustable offsets for textures (as a fraction of the size)
   protected _xOffset:number = 0.0;

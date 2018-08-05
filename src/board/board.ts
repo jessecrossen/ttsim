@@ -11,6 +11,8 @@ import { Ball } from 'parts/ball';
 import { IBallRouter } from './router';
 import { BALL_RADIUS, SPACING } from './constants';
 import { PhysicalBallRouter } from './physics';
+import { Drop } from 'parts/drop';
+import { ColorWheel } from './controls';
 
 export const enum ToolType {
   NONE,
@@ -25,7 +27,9 @@ export const enum ActionType {
   PLACE_BALL,
   CLEAR_PART,
   FLIP_PART,
-  DRAG_PART
+  DRAG_PART,
+  COLOR_WHEEL,
+  DROP_BALL
 }
 
 export const SPACING_FACTOR:number = 1.0625;
@@ -39,6 +43,7 @@ export class Board {
     this.view.addChild(this._layers);
     this._initContainers();
     this._updateDropShadows();
+    this._makeControls();
   }
   public readonly view:PIXI.Sprite = new PIXI.Sprite();
   public readonly _layers:PIXI.Container = new PIXI.Container();
@@ -84,6 +89,7 @@ export class Board {
     this._setContainer(Layer.SCHEMATIC, true);
     this._setContainer(Layer.SCHEMATIC_4, true);
     this._setContainer(Layer.SCHEMATIC_2, true);
+    this._setContainer(Layer.CONTROL, false);
     this._updateLayerVisibility();
   }
   private _containers:LayerToContainerMap = new Map();
@@ -120,6 +126,8 @@ export class Board {
       this._makeShadow(this.partSize / 16.0) ];
     this._containers.get(Layer.FRONT).filters = [
       this._makeShadow(this.partSize / 8.0) ];
+    this._containers.get(Layer.CONTROL).filters = [
+      this._makeShadow(8.0) ];
   }
 
   protected _makeShadow(size:number):filter.DropShadowFilter {
@@ -158,8 +166,29 @@ export class Board {
     showContainer(Layer.SCHEMATIC, this.schematic);
     showContainer(Layer.SCHEMATIC_4, this.schematic && (this.partSize == 4));
     showContainer(Layer.SCHEMATIC_2, this.schematic && (this.partSize == 2));
+    let showControls:boolean = false;
+    for (const control of this._controls) {
+      if (control.visible) {
+        showControls = true;
+        break;
+      }
+    }
+    showContainer(Layer.CONTROL, showControls);
     Renderer.needsUpdate();
   }
+
+  // controls
+  protected _makeControls():void {
+    this._colorWheel = new ColorWheel(this.partFactory.textures);
+    this._colorWheel.visible = false;
+    this._controls.push(this._colorWheel);
+    const container = this._containers.get(Layer.CONTROL);
+    for (const control of this._controls) {
+      container.addChild(control);
+    }
+  }
+  private _controls:PIXI.Sprite[] = [ ];
+  private _colorWheel:ColorWheel;
 
   // LAYOUT *******************************************************************
 
@@ -353,6 +382,15 @@ export class Board {
     return((part) && (part.canFlip || part.canRotate));
   }
 
+  // whether the part at the given location can be dragged
+  public canDragPart(column:number, row:number):boolean {
+    const part = this.getPart(column, row);
+    return((part) && (part.type !== PartType.GEARLOC) && 
+                     (part.type !== PartType.PARTLOC) &&
+                     (part.type !== PartType.BLANK) &&
+                     (! part.isLocked));
+  }
+
   // whether the part at the given location is a background part
   public isBackgroundPart(column:number, row:number):boolean {
     const part = this.getPart(column, row);
@@ -374,7 +412,7 @@ export class Board {
     if (v === this._tool) return;
     this._tool = v;
   }
-  private _tool:ToolType = ToolType.NONE;
+  private _tool:ToolType = ToolType.HAND;
 
   // set the part used as a prototype for adding parts
   public get partPrototype():Part { return(this._partPrototype); }
@@ -503,6 +541,7 @@ export class Board {
         this._containers.get(layer).addChild(sprite);
       }
     }
+    Renderer.needsUpdate();
   }
 
   // remove a part from the board's layers
@@ -514,6 +553,7 @@ export class Board {
       if (sprite.parent === container) container.removeChild(sprite);
     }
     part.destroySprites();
+    Renderer.needsUpdate();
   }
 
   // connect adjacent sets of gears
@@ -745,7 +785,8 @@ export class Board {
   private _onDragStart(x:number, y:number):void {
     this._panStartColumn = this.centerColumn;
     this._panStartRow = this.centerRow;
-    if (this._action === ActionType.FLIP_PART) {
+    if ((this._action === ActionType.FLIP_PART) && 
+        (this.canDragPart(this._actionColumn, this._actionRow))) {
       this._action = ActionType.DRAG_PART;
     }
     if ((this._action === ActionType.DRAG_PART) && (this._actionPart)) {
@@ -808,6 +849,18 @@ export class Board {
       this._actionRow = Math.round(this.rowForY(this._actionY));
       this._updatePreview();
     }
+    else if (this._action === ActionType.COLOR_WHEEL) {
+      const dx = Math.abs(currentX - startX);
+      const dy = Math.abs(currentY - startY);
+      const r = Math.sqrt((dx * dx) + (dy * dy));
+      const f = Math.min(r / 20, 1.0);
+      const radians = Math.atan2(currentY - startY, currentX - startX);
+      this._colorWheel.hue = this._actionHue + 
+        (f * (((radians * 180) / Math.PI) - 90));
+      if (this._actionPart instanceof Drop) {
+        this._actionPart.hue = this._colorWheel.hue;
+      }
+    }
   }
   private _dragFlippedParts:Set<Part> = new Set();
 
@@ -832,42 +885,58 @@ export class Board {
 
   private _updateAction(e:PIXI.interaction.InteractionEvent):void {
     const p = e.data.getLocalPosition(this._layers);
-    this._actionPart = null;
     this._actionX = p.x;
     this._actionY = p.y;
-    const column = this._actionColumn = Math.round(this.columnForX(p.x));
-    const row = this._actionRow = Math.round(this.rowForY(p.y));
+    const c = this.columnForX(p.x);
+    const r = this.rowForY(p.y);
+    const column = this._actionColumn = Math.round(c);
+    const row = this._actionRow = Math.round(r);
+    this._actionPart = this.getPart(column, row);
+    let ball:Ball;
     if ((this.tool == ToolType.PART) && (this.partPrototype) &&
         (this.canPlacePart(this.partPrototype.type, column, row))) {
       this._action = this.partPrototype.type == PartType.BALL ?
         ActionType.PLACE_BALL : ActionType.PLACE_PART;
       this.view.cursor = 'pointer';
     }
-    else if ((this.tool == ToolType.ERASER) && 
-             (! this.isBackgroundPart(column, row))) {
+    else if (this.tool == ToolType.ERASER) {
       this._action = ActionType.CLEAR_PART;
       this.view.cursor = 'pointer';
     }
     else if ((this.tool == ToolType.HAND) && 
-             (this._actionPart = 
-              this.ballUnder(this.columnForX(p.x), this.rowForY(p.y)))) {
+             (this._actionPart instanceof Drop) &&
+             (this.partSize > 12) &&
+             (Math.abs((row - 0.3) - r) < 0.2)) {
+      if ((this._actionPart.isFlipped) != (c < column)) {
+        this._action = ActionType.COLOR_WHEEL;
+        this._actionHue = this._actionPart.hue;
+        this._colorWheel.hue = this._actionHue;
+        this.view.cursor = 'move';
+      }
+      else {
+        this._action = ActionType.DROP_BALL;
+        this.view.cursor = 'pointer';
+      }
+    }
+    else if ((this.tool == ToolType.HAND) && 
+             (ball = this.ballUnder(c, r))) {
       this._action = ActionType.DRAG_PART;
+      this._actionPart = ball;
       this.view.cursor = 'move';
     }
     else if ((this.tool == ToolType.HAND) &&
              (this.canFlipPart(column, row))) {
       this._action = ActionType.FLIP_PART;
-      this._actionPart = this.getPart(column, row);
       this.view.cursor = 'pointer';
     }
-    else if ((this.tool == ToolType.HAND) &&
-             (! this.isBackgroundPart(column, row))) {
+    else if ((this.tool == ToolType.HAND) && 
+             (this.canDragPart(column, row))) {
       this._action = ActionType.DRAG_PART;
-      this._actionPart = this.getPart(column, row);
       this.view.cursor = 'move';
     }
     else {
       this._action = ActionType.PAN;
+      this._actionPart = null;
       this.view.cursor = 'auto';
     }
     this._updatePreview();
@@ -878,6 +947,7 @@ export class Board {
   private _actionX:number;
   private _actionY:number;
   private _actionPart:Part;
+  private _actionHue:number;
 
   private _updatePreview():void {
     if (this.partPrototype) {
@@ -899,6 +969,20 @@ export class Board {
       else {
         this.partPrototype.visible = false;
       }
+    }
+    // show/hide the color wheel
+    if ((this._action === ActionType.COLOR_WHEEL) && (this._actionPart)) {
+      const sign = this._actionPart.isFlipped ? 1 : -1;
+      this._colorWheel.x = Math.round(
+          this.xForColumn(this._actionPart.column + (sign * 0.2)));
+      this._colorWheel.y = Math.round(
+          this.yForRow(this._actionPart.row - 0.3));
+      this._colorWheel.visible = true;
+      this._updateLayerVisibility();
+    }
+    else if (this._colorWheel.visible) {
+      this._colorWheel.visible = false;
+      this._updateLayerVisibility();
     }
   }
 
@@ -931,7 +1015,14 @@ export class Board {
     }
     // clear parts
     else if (this._action === ActionType.CLEAR_PART) {
-      this.clearPart(this._actionColumn, this._actionRow);
+      // clearing a background part makes a blank
+      if (this.isBackgroundPart(this._actionColumn, this._actionRow)) {
+        this.setPart(this.partFactory.make(PartType.BLANK), 
+          this._actionColumn, this._actionRow);
+      }
+      else {
+        this.clearPart(this._actionColumn, this._actionRow);
+      }
     }
     // flip parts
     else if (this._action === ActionType.FLIP_PART) {

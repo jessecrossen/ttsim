@@ -3,6 +3,7 @@ import { Body, Bodies } from 'matter-js';
 import { Part, Layer } from './part';
 import { PartType } from './factory';
 import { PART_SIZE } from 'board/constants';
+import { colorFromHSL } from 'ui/config';
 
 export class Ball extends Part {
 
@@ -16,13 +17,21 @@ export class Ball extends Part {
   public lastRow:number;
   public lastDistinctColumn:number = NaN;
 
-  // the color of the ball
-  public get color():number { return(this._color); }
-  public set color(v:number) {
-    if (v === this.color) return;
-    this._color = v;
+  // the hue of the ball in degrees
+  public get hue():number { return(this._hue); }
+  public set hue(v:number) {
+    if (isNaN(v)) return;
+    while (v < 0) v += 360;
+    if (v >= 360) v %= 360;
+    if (v === this._hue) return;
+    this._hue = v;
+    this._color = colorFromHSL(this._hue / 360, 1, 0.53);
     this._updateSprites();
   }
+  private _hue:number = 155;
+
+  // the color of the ball
+  public get color():number { return(this._color); }
   private _color:number = 0x0E63FF;
 
   // update the given sprite to track the part's state

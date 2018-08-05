@@ -531,6 +531,7 @@ export class Board {
   // remove a ball from the board
   public removeBall(ball:Ball) {
     if (this.balls.has(ball)) {
+      if (ball.drop) ball.drop.balls.delete(ball);
       this.balls.delete(ball);
       this.removePart(ball);
       Renderer.needsUpdate();

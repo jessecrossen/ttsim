@@ -2769,6 +2769,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 // remove a ball from the board
                 removeBall(ball) {
                     if (this.balls.has(ball)) {
+                        if (ball.drop)
+                            ball.drop.balls.delete(ball);
                         this.balls.delete(ball);
                         this.removePart(ball);
                         renderer_4.Renderer.needsUpdate();
@@ -4015,8 +4017,10 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                 }
                 _addKeyHandlers() {
                     const w = keyboard_1.makeKeyHandler('w');
-                    w.press = () => { this.board.physicalRouter.showWireframe = true; };
-                    w.release = () => { this.board.physicalRouter.showWireframe = false; };
+                    w.press = () => {
+                        this.board.physicalRouter.showWireframe =
+                            !this.board.physicalRouter.showWireframe;
+                    };
                 }
             };
             exports_28("SimulatorApp", SimulatorApp);
@@ -4125,10 +4129,12 @@ System.register("board/builder", ["parts/fence"], function (exports_29, context_
                     const blueDrop = board.partFactory.make(12 /* DROP */);
                     board.setPart(blueDrop, blueColumn - 1, dropLevel);
                     blueDrop.hue = 155;
+                    blueDrop.isLocked = true;
                     const redDrop = board.partFactory.make(12 /* DROP */);
                     redDrop.isFlipped = true;
                     board.setPart(redDrop, redColumn + 1, dropLevel);
                     redDrop.hue = 0;
+                    redDrop.isLocked = true;
                 }
             };
             exports_29("BoardBuilder", BoardBuilder);

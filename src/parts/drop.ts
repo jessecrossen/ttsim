@@ -1,5 +1,6 @@
 import { Part, Layer } from './part';
 import { PartType } from './factory';
+import { Ball } from './ball';
 
 export class Drop extends Part {
 
@@ -7,6 +8,9 @@ export class Drop extends Part {
   public get canMirror():boolean { return(false); }
   public get canFlip():boolean { return(true); }
   public get type():PartType { return(PartType.DROP); }
+
+  // a set of balls associated with the drop
+  public readonly balls:Set<Ball> = new Set();
 
   // show and hide the controls on the front layer
   public get controlsAlpha():number { return(this._controlsAlpha); }
@@ -31,6 +35,9 @@ export class Drop extends Part {
     if (v >= 360) v %= 360;
     if (v === this._hue) return;
     this._hue = v;
+    for (const ball of this.balls) {
+      ball.hue = this.hue;
+    }
   }
   private _hue:number = 0.0;
 

@@ -136,7 +136,7 @@ export class PartButton extends Button {
   public set schematic(v:boolean) {
     if (v === this._schematic) return;
     this._schematic = v;
-    if (v) {
+    if ((v) && (this.part.type <= PartType.BALL)) {
       this.removeChild(this._normalView);
       this.addChild(this._schematicView);
     }

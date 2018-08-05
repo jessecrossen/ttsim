@@ -57,6 +57,10 @@ export abstract class Part {
   }
   private _row:number = 0.0;
 
+  // a placeholder for the hue property of parts that have it
+  public get hue():number { return(0); }
+  public set hue(v:number) { }
+
   // the unit-size of the part
   public get size():number { return(this._size); }
   public set size(s:number) {

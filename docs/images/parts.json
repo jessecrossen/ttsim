@@ -312,30 +312,6 @@
       }, 
       "trimmed": false
     }, 
-    "Crossover-f": {
-      "frame": {
-        "h": 96, 
-        "w": 96, 
-        "x": 212, 
-        "y": 628
-      }, 
-      "pivot": {
-        "x": 0.5, 
-        "y": 0.5
-      }, 
-      "rotated": false, 
-      "sourceSize": {
-        "h": 96, 
-        "w": 96
-      }, 
-      "spriteSourceSize": {
-        "h": 96, 
-        "w": 96, 
-        "x": 0, 
-        "y": 0
-      }, 
-      "trimmed": false
-    }, 
     "Crossover-m": {
       "frame": {
         "h": 96, 
@@ -556,8 +532,8 @@
       "frame": {
         "h": 96, 
         "w": 96, 
-        "x": 836, 
-        "y": 524
+        "x": 212, 
+        "y": 940
       }, 
       "pivot": {
         "x": 0.5, 
@@ -701,54 +677,6 @@
         "h": 96, 
         "w": 96, 
         "x": 836, 
-        "y": 836
-      }, 
-      "pivot": {
-        "x": 0.5, 
-        "y": 0.5
-      }, 
-      "rotated": false, 
-      "sourceSize": {
-        "h": 96, 
-        "w": 96
-      }, 
-      "spriteSourceSize": {
-        "h": 96, 
-        "w": 96, 
-        "x": 0, 
-        "y": 0
-      }, 
-      "trimmed": false
-    }, 
-    "GearLocation-b": {
-      "frame": {
-        "h": 96, 
-        "w": 96, 
-        "x": 4, 
-        "y": 836
-      }, 
-      "pivot": {
-        "x": 0.5, 
-        "y": 0.5
-      }, 
-      "rotated": false, 
-      "sourceSize": {
-        "h": 96, 
-        "w": 96
-      }, 
-      "spriteSourceSize": {
-        "h": 96, 
-        "w": 96, 
-        "x": 0, 
-        "y": 0
-      }, 
-      "trimmed": false
-    }, 
-    "GearLocation-f": {
-      "frame": {
-        "h": 96, 
-        "w": 96, 
-        "x": 212, 
         "y": 836
       }, 
       "pivot": {
@@ -1008,30 +936,6 @@
       }, 
       "trimmed": false
     }, 
-    "Interceptor-f": {
-      "frame": {
-        "h": 96, 
-        "w": 96, 
-        "x": 212, 
-        "y": 524
-      }, 
-      "pivot": {
-        "x": 0.5, 
-        "y": 0.5
-      }, 
-      "rotated": false, 
-      "sourceSize": {
-        "h": 96, 
-        "w": 96
-      }, 
-      "spriteSourceSize": {
-        "h": 96, 
-        "w": 96, 
-        "x": 0, 
-        "y": 0
-      }, 
-      "trimmed": false
-    }, 
     "Interceptor-m": {
       "frame": {
         "h": 96, 
@@ -1176,30 +1080,6 @@
       }, 
       "trimmed": false
     }, 
-    "PartLocation-f": {
-      "frame": {
-        "h": 96, 
-        "w": 96, 
-        "x": 212, 
-        "y": 940
-      }, 
-      "pivot": {
-        "x": 0.5, 
-        "y": 0.5
-      }, 
-      "rotated": false, 
-      "sourceSize": {
-        "h": 96, 
-        "w": 96
-      }, 
-      "spriteSourceSize": {
-        "h": 96, 
-        "w": 96, 
-        "x": 0, 
-        "y": 0
-      }, 
-      "trimmed": false
-    }, 
     "PartLocation-m": {
       "frame": {
         "h": 96, 
@@ -1252,8 +1132,8 @@
       "frame": {
         "h": 96, 
         "w": 96, 
-        "x": 836, 
-        "y": 420
+        "x": 212, 
+        "y": 836
       }, 
       "pivot": {
         "x": 0.5, 

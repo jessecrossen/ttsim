@@ -428,6 +428,11 @@ export class Board {
     }
     this._partPrototype = p;
     if (this._partPrototype) {
+      // clear the part if the prototype is being pulled off the board
+      if (this.getPart(p.column, p.row) === p) {
+        if (p instanceof Ball) this.removeBall(p);
+        else this.clearPart(p.column, p.row);
+      }
       this._partPrototype.alpha = Alphas.PREVIEW_ALPHA;
       this._partPrototype.visible = false;
       this.addPart(this._partPrototype);
@@ -475,6 +480,13 @@ export class Board {
     if ((oldPart instanceof Slope) || (newPart instanceof Slope)) {
       this._updateSlopes();
     }
+    // maintain our set of drops
+    if ((oldPart instanceof Drop) && (oldPart !== this.partPrototype)) {
+      this.drops.delete(oldPart);
+    }
+    if (newPart instanceof Drop) {
+      this.drops.add(newPart);
+    }
     this.onChange();
   }
   
@@ -496,8 +508,19 @@ export class Board {
   public addBall(ball:Ball, x:number, y:number) {
     if (! this.balls.has(ball)) {
       this.balls.add(ball);
-      this.layoutPart(ball, this.columnForX(x), this.rowForY(y));
+      const c = this.columnForX(x);
+      const r = this.rowForY(y);
+      this.layoutPart(ball, c, r);
       this.addPart(ball);
+      // assign the ball to a drop
+      let drop = this.catchmentDrop(c, r);
+      if (! drop) drop = this.nearestDrop(c, r);
+      if (drop) {
+        this.drops.add(drop);
+        drop.balls.add(ball);
+        ball.drop = drop;
+        ball.hue = drop.hue;
+      }
       this.onChange();
     }
   }
@@ -557,6 +580,55 @@ export class Board {
     }
     part.destroySprites();
     Renderer.needsUpdate();
+  }
+
+  // keep a set of all drops on the board
+  public readonly drops:Set<Drop> = new Set();
+
+  // return the drop that would definitely collect a ball dropped at the given
+  //  location, or null if it won't definitely reach one
+  public catchmentDrop(c:number, r:number):Drop {
+    c = Math.round(c);
+    r = Math.round(r);
+    let lc:number = c; // the last column the ball was in
+    while ((r < this.rowCount) && (c >= 0) && (c < this.columnCount)) {
+      const p = this.getPart(c, r);
+      if (p instanceof Drop) return(p);
+      else if (p.type == PartType.SLOPE) {
+        c += p.isFlipped ? -1 : 1;
+      }
+      else if (p.type == PartType.RAMP) {
+        c += p.isFlipped ? -1 : 1;
+        r++;
+      }
+      else if (p.type == PartType.CROSSOVER) {
+        if (lc < c) { c++; r++; }
+        else if (lc > c) { c--; r++; }
+        else break; // a vertical drop onto a crossover is non-deterministic
+      }
+      // this stops the fall
+      else if (p.type == PartType.INTERCEPTOR) break;
+      // these are non-deterministic
+      else if ((p.type == PartType.BIT) || (p.type == PartType.GEARBIT)) break;
+      // in all other cases, assume an uncontrolled fall
+      else r++;
+      lc = c;
+    }
+    return(null);
+  }
+
+  // return the drop that's closest to the given location
+  public nearestDrop(c:number, r:number):Drop {
+    let nearest:Drop = null;
+    let minDistance:number = Infinity;
+    for (const drop of this.drops) {
+      const d = Math.pow(c - drop.column, 2) + Math.pow(r - drop.row, 2);
+      if (d < minDistance) {
+        minDistance = d;
+        nearest = drop;
+      }
+    }
+    return(nearest);
   }
 
   // connect adjacent sets of gears
@@ -621,7 +693,7 @@ export class Board {
     }
   }
 
-  // configure fences
+  // configure slope angles by grouping adjacent ones
   protected _updateSlopes():void {
     let slopes:Slope[] = [ ];
     for (const row of this._grid) {
@@ -755,8 +827,6 @@ export class Board {
       this._action = ActionType.DRAG_PART;
     }
     if ((this._action === ActionType.DRAG_PART) && (this._actionPart)) {
-      if (this._actionPart instanceof Ball) this.removeBall(this._actionPart);
-      else this.clearPart(this._actionColumn, this._actionRow);
       this.partPrototype = this._actionPart;
       this._action = ActionType.DRAG_PART;
       this.view.cursor = 'move';
@@ -832,7 +902,9 @@ export class Board {
   private _onDragFinish():void {
     this._dragFlippedParts.clear();
     if ((this._action === ActionType.DRAG_PART) && (this.partPrototype)) {
-      const part = this.partFactory.copy(this.partPrototype);
+      // don't copy drops since we want to keep their associations
+      const part = this.partPrototype instanceof Drop ? this.partPrototype : 
+        this.partFactory.copy(this.partPrototype);
       this.partPrototype = null;
       if (part instanceof Ball) {
         this.partPrototype = null;

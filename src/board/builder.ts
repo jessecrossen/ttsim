@@ -12,7 +12,7 @@ export class BoardBuilder {
     const center:number = Math.floor(width / 2);
     const blueColumn:number = center - Math.floor(redBlueDistance / 2);
     const redColumn:number = center + Math.floor(redBlueDistance / 2);
-    const dropLevel:number = (blueColumn % 2 == 0) ? 1 : 0;
+    const dropLevel:number = (blueColumn % 2 == 0) ? 2 : 1;
     const collectLevel:number = dropLevel + verticalDrop;
     const steps:number = Math.ceil(center / Slope.maxModulus);
     const maxModulus:number = Math.ceil(center / steps);
@@ -39,7 +39,7 @@ export class BoardBuilder {
     side.isLocked = true;
     const flippedSide = board.partFactory.copy(side);
     flippedSide.flip();
-    for (r = dropLevel; r < collectLevel; r++) {
+    for (r = dropLevel - 1; r < collectLevel; r++) {
       board.setPart(board.partFactory.copy(side), 0, r);
       board.setPart(board.partFactory.copy(flippedSide), width - 1, r);
     }
@@ -60,6 +60,11 @@ export class BoardBuilder {
       if (run >= maxModulus) { r++; run = 0; }
       board.setPart(board.partFactory.copy(flippedSlope), c, r);
     }
+    // add hoppers for extra balls
+    board.setPart(board.partFactory.copy(slope), blueColumn - 2, dropLevel - 1);
+    board.setPart(board.partFactory.copy(flippedSlope), blueColumn, dropLevel - 1);
+    board.setPart(board.partFactory.copy(slope), redColumn, dropLevel - 1);
+    board.setPart(board.partFactory.copy(flippedSlope), redColumn + 2, dropLevel - 1);
     // block out the unreachable locations at the bottom
     for (r = collectLevel; r < height; r++) {
       for (c = 0; c < width; c++) {
@@ -84,9 +89,11 @@ export class BoardBuilder {
     // make a ball drops
     const blueDrop:Drop = board.partFactory.make(PartType.DROP) as Drop;
     board.setPart(blueDrop, blueColumn - 1, dropLevel);
+    blueDrop.hue = 155;
     const redDrop:Drop = board.partFactory.make(PartType.DROP) as Drop;
     redDrop.isFlipped = true;
     board.setPart(redDrop, redColumn + 1, dropLevel);
+    redDrop.hue = 0;
   }
 
 }

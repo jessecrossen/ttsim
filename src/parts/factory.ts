@@ -68,6 +68,7 @@ export class PartFactory {
       newPart.rotation = part.bitValue ? 1.0 : 0.0;
       newPart.isFlipped = part.isFlipped;
       newPart.isLocked = part.isLocked;
+      newPart.hue = part.hue;
     }
     return(newPart);
   }

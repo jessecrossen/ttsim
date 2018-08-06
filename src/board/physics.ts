@@ -27,12 +27,14 @@ export class PhysicalBallRouter implements IBallRouter {
 
   constructor(public readonly board:Board) {
     this.engine = Engine.create();
+    this.balls = this.board.balls;
     // make walls to catch stray balls
     this._createWalls();
     // capture initial board state
     this.beforeUpdate();
   }
   public readonly engine:Engine;
+  public balls:Set<Ball>;
 
   public onBoardSizeChanged():void {
     // update the walls around the board
@@ -155,7 +157,7 @@ export class PhysicalBallRouter implements IBallRouter {
   // map parts to the balls in their grid square
   protected _mapNearby():Map<PartBody,Set<PartBody>> {
     const map:Map<PartBody,Set<PartBody>> = new Map;
-    for (const ball of this.board.balls) {
+    for (const ball of this.balls) {
       const ballPartBody = this._parts.get(ball);
       if (! ballPartBody) continue;
       const part = this.board.getPart(
@@ -216,7 +218,7 @@ export class PhysicalBallRouter implements IBallRouter {
     const addParts:Set<Part> = new Set();
     const removeParts:Set<Part> = new Set(this._parts.keys());
     // update for all balls on the board
-    for (const ball of this.board.balls) {
+    for (const ball of this.balls) {
       // get the ball's current location
       const column = Math.round(ball.column);
       const row = Math.round(ball.row);
@@ -253,11 +255,6 @@ export class PhysicalBallRouter implements IBallRouter {
           removeParts.delete(part);
           neighbors.add(part);
         }
-      }
-      // track the last column the ball was in before the current one
-      if (isNaN(ball.lastDistinctColumn)) ball.lastDistinctColumn = column;
-      else if (ball.lastColumn !== column) {
-        ball.lastDistinctColumn = ball.lastColumn;
       }
       // store the last place we updated the ball
       ball.lastColumn = column;

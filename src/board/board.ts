@@ -11,6 +11,7 @@ import { Ball } from 'parts/ball';
 import { IBallRouter } from './router';
 import { BALL_RADIUS, SPACING } from './constants';
 import { PhysicalBallRouter } from './physics';
+import { SchematicBallRouter } from './schematic';
 import { Drop } from 'parts/drop';
 import { ColorWheel } from './controls';
 import { Animator } from 'ui/animator';
@@ -74,11 +75,13 @@ export class Board {
 
   // routers to manage the positions of the balls
   public readonly physicalRouter:PhysicalBallRouter = new PhysicalBallRouter(this);
-  public readonly router:IBallRouter = this.physicalRouter;
+  public readonly schematicRouter:SchematicBallRouter = 
+    new SchematicBallRouter(this, this.physicalRouter);
 
   // update the board state
   public update(correction:number):void {
-    this.router.update(this.speed, correction);
+    if (this.schematic) this.schematicRouter.update(this.speed, correction);
+    else this.physicalRouter.update(this.speed, correction);
   }
 
   // LAYERS *******************************************************************
@@ -204,7 +207,8 @@ export class Board {
     this._updateDropShadows();
     this._updateLayerVisibility();
     this._updatePan();
-    if (this.router) this.router.onBoardSizeChanged();
+    this.physicalRouter.onBoardSizeChanged();
+    this.schematicRouter.onBoardSizeChanged();
   }
   private _partSize:number = 64;
 
@@ -360,7 +364,8 @@ export class Board {
       }
     }
     this._rowCount = rowCount;
-    if (this.router) this.router.onBoardSizeChanged();
+    this.physicalRouter.onBoardSizeChanged();
+    this.schematicRouter.onBoardSizeChanged();
   }
   private _grid:Part[][] = [ ];
 
@@ -607,13 +612,19 @@ export class Board {
     for (let layer of this._containers.keys()) {
       const sprite = part.getSpriteForLayer(layer);
       if (! sprite) continue;
-      // add balls behind other parts to prevent ball highlights from
-      //  displaying on top of gears, etc.
-      if (part instanceof Ball) {
+      // in non-schematic mode, add balls behind other parts to prevent ball 
+      //  highlights from displaying on top of gears, etc.
+      if ((part instanceof Ball) && (layer < Layer.SCHEMATIC)) {
         this._containers.get(layer).addChildAt(sprite, 0);
       }
       else {
-        this._containers.get(layer).addChild(sprite);
+        // in schematic mode, place other parts behind balls
+        if ((layer >= Layer.SCHEMATIC) && (! (part instanceof Ball))) {
+          this._containers.get(layer).addChildAt(sprite, 0);
+        }
+        else {
+          this._containers.get(layer).addChild(sprite);
+        }
       }
     }
     Renderer.needsUpdate();

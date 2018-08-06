@@ -15,10 +15,21 @@ export class Ball extends Part {
   // the drop associated with the ball
   public drop:Drop;
 
+  // track the last column the ball was in to determine travel direction
+  public get column():number { return(super.column); }
+  public set column(c:number) {
+    const oldColumn:number = Math.round(this.column);
+    const newColumn:number = Math.round(c);
+    super.column = c;
+    if (isNaN(this.lastDistinctColumn)) this.lastDistinctColumn = newColumn;
+    if (newColumn !== oldColumn) {
+      this.lastDistinctColumn = oldColumn;
+    }
+  }
+  public lastDistinctColumn:number = NaN;
   // data used by ball routers
   public lastColumn:number;
   public lastRow:number;
-  public lastDistinctColumn:number = NaN;
 
   // the hue of the ball in degrees
   public get hue():number { return(this._hue); }

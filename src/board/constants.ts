@@ -21,6 +21,12 @@ export const NUDGE_ACCEL:number = 0.001;
 // the maximum speed at which a part can move
 export const MAX_V:number = 12;
 
+// the speed at which a ball should move through schematic parts
+export const SCHEMATIC_STEP:number = 8 / PART_SIZE;
+// the offset the schematic router should move toward when routing a ball,
+//  which must be over 0.5 to allow the next part to capture the ball
+export const SCHEMATIC_EXIT:number = 0.6;
+
 // damping/counterweight constraint parameters
 export const DAMPER_RADIUS:number = PART_SIZE / 2;
 export const BIAS_STIFFNESS:number = BALL_DENSITY / 16;
@@ -30,11 +36,11 @@ export const COUNTERWEIGHT_DAMPING:number = 0.1;
 
 // collision filtering categories
 
-export const PART_CATEGORY:number          = 0x0001;
-export const UNRELEASED_BALL_CATEGORY:number          = 0x0002;
-export const BALL_CATEGORY:number = 0x0004;
-export const GATE_CATEGORY:number          = 0x0008;
-export const DEFAULT_MASK:number           = 0xFFFFFF;
+export const PART_CATEGORY:number            = 0x0001;
+export const UNRELEASED_BALL_CATEGORY:number = 0x0002;
+export const BALL_CATEGORY:number            = 0x0004;
+export const GATE_CATEGORY:number            = 0x0008;
+export const DEFAULT_MASK:number             = 0xFFFFFF;
 export const PART_MASK:number = UNRELEASED_BALL_CATEGORY | BALL_CATEGORY;
 export const UNRELEASED_BALL_MASK:number = DEFAULT_MASK ^ BALL_CATEGORY;
 export const BALL_MASK:number = DEFAULT_MASK;

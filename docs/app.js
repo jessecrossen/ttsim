@@ -408,6 +408,7 @@ System.register("parts/ball", ["parts/part", "ui/config"], function (exports_10,
                 constructor() {
                     super(...arguments);
                     this.lastDistinctColumn = NaN;
+                    this._released = false;
                     this._hue = 155;
                     this._color = 0x0E63FF;
                 }
@@ -426,6 +427,14 @@ System.register("parts/ball", ["parts/part", "ui/config"], function (exports_10,
                     if (newColumn !== oldColumn) {
                         this.lastDistinctColumn = oldColumn;
                     }
+                }
+                // whether the ball has been released from a drop
+                get released() { return (this._released); }
+                set released(v) {
+                    if (v === this.released)
+                        return;
+                    this._released = v;
+                    this.changeCounter++;
                 }
                 // the hue of the ball in degrees
                 get hue() { return (this._hue); }
@@ -538,7 +547,7 @@ System.register("parts/turnstile", ["parts/part", "parts/ball"], function (expor
                     const oldRotation = this.rotation;
                     super.rotation = r;
                     if ((this.rotation < oldRotation) && (this.drop)) {
-                        this.drop.releaseBall = true;
+                        this.drop.releaseBall();
                     }
                 }
                 // configure for continuous rotation
@@ -569,9 +578,6 @@ System.register("parts/drop", ["parts/part"], function (exports_12, context_12) 
                     this.balls = new Set();
                     // a set of turnstiles associated with the drop
                     this.turnstiles = new Set();
-                    // a flag to set signalling a desire to release a ball, which will be cleared
-                    //  after a ball is released
-                    this.releaseBall = false;
                     this._controlsAlpha = 0.0;
                     this._hue = 0.0;
                 }
@@ -579,6 +585,35 @@ System.register("parts/drop", ["parts/part"], function (exports_12, context_12) 
                 get canMirror() { return (false); }
                 get canFlip() { return (true); }
                 get type() { return (12 /* DROP */); }
+                // a flag to set signalling a desire to release a ball, which will be cleared
+                //  after a ball is released
+                releaseBall() {
+                    // find the ball closest to the bottom right
+                    let closest;
+                    let maxSum = -Infinity;
+                    for (const ball of this.balls) {
+                        // skip balls we've already released
+                        if (ball.released)
+                            continue;
+                        // never release a ball that is below the level of the drop,
+                        //  because it must have been released or dropped there
+                        if (ball.row > this.row + 0.5) {
+                            ball.released = true;
+                            continue;
+                        }
+                        let dc = ball.column - this.column;
+                        if (this.isFlipped)
+                            dc *= -1;
+                        const d = dc + ball.row;
+                        if (d > maxSum) {
+                            closest = ball;
+                            maxSum = d;
+                        }
+                    }
+                    // release the ball closest to the exit if we found one
+                    if (closest)
+                        closest.released = true;
+                }
                 // show and hide the controls on the front layer
                 get controlsAlpha() { return (this._controlsAlpha); }
                 set controlsAlpha(v) {
@@ -1293,7 +1328,7 @@ System.register("board/router", [], function (exports_18, context_18) {
 System.register("board/constants", [], function (exports_19, context_19) {
     "use strict";
     var __moduleName = context_19 && context_19.id;
-    var PART_SIZE, SPACING, BALL_RADIUS, PART_DENSITY, BALL_DENSITY, BALL_FRICTION, PART_FRICTION, DROP_FRICTION, BALL_FRICTION_STATIC, PART_FRICTION_STATIC, DROP_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V, SCHEMATIC_STEP, SCHEMATIC_EXIT, DAMPER_RADIUS, BIAS_STIFFNESS, BIAS_DAMPING, COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, PART_CATEGORY, UNRELEASED_BALL_CATEGORY, BALL_CATEGORY, GATE_CATEGORY, DEFAULT_MASK, PART_MASK, UNRELEASED_BALL_MASK, BALL_MASK, GATE_MASK;
+    var PART_SIZE, SPACING, BALL_RADIUS, PART_DENSITY, BALL_DENSITY, BALL_FRICTION, PART_FRICTION, DROP_FRICTION, BALL_FRICTION_STATIC, PART_FRICTION_STATIC, DROP_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V, DAMPER_RADIUS, BIAS_STIFFNESS, BIAS_DAMPING, COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, PART_CATEGORY, UNRELEASED_BALL_CATEGORY, BALL_CATEGORY, GATE_CATEGORY, DEFAULT_MASK, PART_MASK, UNRELEASED_BALL_MASK, BALL_MASK, GATE_MASK;
     return {
         setters: [],
         execute: function () {
@@ -1316,11 +1351,6 @@ System.register("board/constants", [], function (exports_19, context_19) {
             exports_19("NUDGE_ACCEL", NUDGE_ACCEL = 0.001);
             // the maximum speed at which a part can move
             exports_19("MAX_V", MAX_V = 12);
-            // the speed at which a ball should move through schematic parts
-            exports_19("SCHEMATIC_STEP", SCHEMATIC_STEP = 8 / PART_SIZE);
-            // the offset the schematic router should move toward when routing a ball,
-            //  which must be over 0.5 to allow the next part to capture the ball
-            exports_19("SCHEMATIC_EXIT", SCHEMATIC_EXIT = 0.6);
             // damping/counterweight constraint parameters
             exports_19("DAMPER_RADIUS", DAMPER_RADIUS = PART_SIZE / 2);
             exports_19("BIAS_STIFFNESS", BIAS_STIFFNESS = BALL_DENSITY / 16);
@@ -1397,10 +1427,10 @@ System.register("parts/partvertices", [], function (exports_20, context_20) {
         }
     };
 });
-System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvertices", "board/constants", "parts/fence", "parts/drop", "parts/turnstile"], function (exports_21, context_21) {
+System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvertices", "board/constants", "parts/ball", "parts/fence", "parts/drop", "parts/turnstile"], function (exports_21, context_21) {
     "use strict";
     var __moduleName = context_21 && context_21.id;
-    var matter_js_1, factory_1, partvertices_1, constants_1, fence_2, drop_2, turnstile_2, PartBody, PartBodyFactory;
+    var matter_js_1, factory_1, partvertices_1, constants_1, ball_3, fence_2, drop_2, turnstile_2, PartBody, PartBodyFactory;
     return {
         setters: [
             function (matter_js_1_1) {
@@ -1414,6 +1444,9 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
             },
             function (constants_1_1) {
                 constants_1 = constants_1_1;
+            },
+            function (ball_3_1) {
+                ball_3 = ball_3_1;
             },
             function (fence_2_1) {
                 fence_2 = fence_2_1;
@@ -1596,6 +1629,13 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         matter_js_1.Vector.add(this._body.position, this._damperAnchorVector(this._part.isFlipped, false), this._biasDamper.pointB);
                     }
                     matter_js_1.Body.setAngle(this._body, this._part.angleForRotation(this._part.rotation));
+                    // update collision masks
+                    if (this._part instanceof ball_3.Ball) {
+                        this._body.collisionFilter.category = this._part.released ?
+                            constants_1.BALL_CATEGORY : constants_1.UNRELEASED_BALL_CATEGORY;
+                        this._body.collisionFilter.mask = this._part.released ?
+                            constants_1.BALL_MASK : constants_1.UNRELEASED_BALL_MASK;
+                    }
                     // record that we've synced with the part
                     this._partChangeCounter = this._part.changeCounter;
                 }
@@ -1671,14 +1711,6 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         return;
                     this._controlRotation(contacts, nearby);
                     this._controlVelocity();
-                    // ball drop
-                    if (this._part instanceof drop_2.Drop) {
-                        this._updateReleaseFilters(nearby);
-                        if (this._part.releaseBall) {
-                            this._releaseBall(nearby);
-                            this._part.releaseBall = false;
-                        }
-                    }
                     this._nudge(contacts, nearby);
                     if (nearby) {
                         for (const ballPartBody of nearby) {
@@ -1817,8 +1849,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         tangent = matter_js_1.Vector.normalise({ x: this._part.modulus * sign, y: 1 });
                         maxSlope = 1;
                     }
-                    else if ((this._part instanceof drop_2.Drop) &&
-                        (body.collisionFilter.mask === constants_1.BALL_MASK)) {
+                    else if ((this._part instanceof drop_2.Drop) && (ball.released)) {
                         sign = this._part.isFlipped ? -1 : 1;
                     }
                     // exit if we're not nudging
@@ -1888,61 +1919,6 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     }
                     return (false);
                 }
-                // update the collision filters of balls in a drop
-                _updateReleaseFilters(balls) {
-                    if (!balls)
-                        return;
-                    if (!this._releasedBalls)
-                        this._releasedBalls = new Set();
-                    // make a set of balls that have exited successfully
-                    const exitedBalls = new Set(this._releasedBalls);
-                    for (const ball of balls) {
-                        exitedBalls.delete(ball);
-                    }
-                    // remove them from the set of balls we've released, 
-                    //  allowing them to go back into the drop if needed
-                    for (const ball of exitedBalls) {
-                        this._releasedBalls.delete(ball);
-                    }
-                    // mark all balls that haven't been released yet with a collision filter
-                    //  that keeps them in the drop
-                    for (const ball of balls) {
-                        if (!this._releasedBalls.has(ball)) {
-                            ball.body.collisionFilter.category = constants_1.UNRELEASED_BALL_CATEGORY;
-                            ball.body.collisionFilter.mask = constants_1.UNRELEASED_BALL_MASK;
-                        }
-                    }
-                }
-                // release a ball from a drop
-                _releaseBall(balls) {
-                    if (!balls)
-                        return;
-                    if (!this._releasedBalls)
-                        this._releasedBalls = new Set();
-                    // find the ball closest to the bottom right
-                    let closest;
-                    let maxSum = -Infinity;
-                    for (const ball of balls) {
-                        // never release a ball twice until it exits the drop
-                        if (this._releasedBalls.has(ball))
-                            continue;
-                        let dc = ball.part.column - this.part.column;
-                        if (this.part.isFlipped)
-                            dc *= -1;
-                        const d = dc + ball.part.row;
-                        if (d > maxSum) {
-                            closest = ball;
-                            maxSum = d;
-                        }
-                    }
-                    // if there's no ball to release, we're done
-                    if (!closest)
-                        return;
-                    // change the collision mask of the ball so it goes through the gate
-                    closest.body.collisionFilter.category = constants_1.BALL_CATEGORY;
-                    closest.body.collisionFilter.mask = constants_1.BALL_MASK;
-                    this._releasedBalls.add(closest);
-                }
             };
             exports_21("PartBody", PartBody);
             // FACTORY / CACHE ************************************************************
@@ -1967,10 +1943,10 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
         }
     };
 });
-System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gearbit", "parts/partbody", "board/constants", "ui/animator", "parts/drop"], function (exports_22, context_22) {
+System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gearbit", "parts/partbody", "board/constants", "ui/animator"], function (exports_22, context_22) {
     "use strict";
     var __moduleName = context_22 && context_22.id;
-    var PIXI, matter_js_2, renderer_2, gearbit_2, partbody_1, constants_2, animator_2, drop_3, PhysicalBallRouter;
+    var PIXI, matter_js_2, renderer_2, gearbit_2, partbody_1, constants_2, animator_2, PhysicalBallRouter;
     return {
         setters: [
             function (PIXI_3) {
@@ -1993,9 +1969,6 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
             },
             function (animator_2_1) {
                 animator_2 = animator_2_1;
-            },
-            function (drop_3_1) {
-                drop_3 = drop_3_1;
             }
         ],
         execute: function () {
@@ -2247,10 +2220,6 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                     partBody.addToWorld(this.engine.world);
                     if (partBody.body)
                         this._bodies.set(partBody.body, partBody);
-                    // if there was a pending drop request after the last ball exited,
-                    //  clear it now
-                    if (part instanceof drop_3.Drop)
-                        part.releaseBall = false;
                 }
                 removePart(part) {
                     if (!this._parts.has(part))
@@ -2367,10 +2336,10 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
         }
     };
 });
-System.register("board/schematic", ["matter-js", "board/constants"], function (exports_23, context_23) {
+System.register("board/schematic", ["matter-js", "board/constants", "parts/fence"], function (exports_23, context_23) {
     "use strict";
     var __moduleName = context_23 && context_23.id;
-    var matter_js_3, constants_3, SchematicBallRouter;
+    var matter_js_3, constants_3, fence_3, RAD, DIAM, DIAM_2, FENCE, STEP, EXIT, SchematicBallRouter;
     return {
         setters: [
             function (matter_js_3_1) {
@@ -2378,84 +2347,67 @@ System.register("board/schematic", ["matter-js", "board/constants"], function (e
             },
             function (constants_3_1) {
                 constants_3 = constants_3_1;
+            },
+            function (fence_3_1) {
+                fence_3 = fence_3_1;
             }
         ],
         execute: function () {
+            // compute the ball radius and diameter in grid units
+            RAD = constants_3.BALL_RADIUS / constants_3.SPACING;
+            DIAM = 2 * RAD;
+            // square the diameter for fast distance tests
+            DIAM_2 = DIAM * DIAM;
+            // the thickness of fences in grid units
+            FENCE = 0.125;
+            // the speed at which a ball should move through schematic parts
+            STEP = 8 / constants_3.PART_SIZE;
+            // the offset the schematic router should move toward when routing a ball,
+            //  which must be over 0.5 to allow the next part to capture the ball
+            EXIT = 0.51 + RAD;
             SchematicBallRouter = class SchematicBallRouter {
-                constructor(board, backupRouter) {
+                constructor(board) {
                     this.board = board;
-                    this.backupRouter = backupRouter;
                     this._initialBitValue = new WeakMap();
                     this.balls = this.board.balls;
                 }
                 onBoardSizeChanged() { }
                 update(speed, correction) {
-                    // route balls in parts we can route without physics
-                    const unroutable = new Set();
                     for (const ball of this.balls) {
                         if (this.routeBall(ball)) {
                             this.board.layoutPart(ball, ball.column, ball.row);
                         }
                         else {
-                            unroutable.add(ball);
+                            this.board.removeBall(ball);
                         }
                     }
-                    // route any unroutable balls using the backup router
-                    if (unroutable.size > 0) {
-                        const oldBalls = this.backupRouter.balls;
-                        this.backupRouter.balls = unroutable;
-                        this.backupRouter.update(speed, correction);
-                        this.backupRouter.balls = oldBalls;
-                    }
+                    this.stackBalls();
                 }
                 routeBall(ball) {
-                    const c = ball.column;
-                    const r = ball.row;
+                    let part;
                     let method;
-                    // get the part on the grid square containing the ball center
-                    const closest = this.board.getPart(Math.round(c), Math.round(r));
-                    if (closest) {
-                        // if the ball is in a drop and has not been released, leave it alone
-                        if ((closest.type === 12 /* DROP */) && (c - closest.column < 0.8)) {
-                            return (false);
-                        }
-                        else if (closest.type === 13 /* TURNSTILE */)
-                            return (false);
-                        else if (closest.type == 5 /* INTERCEPTOR */)
-                            return (false);
-                        // otherwise if the closest part is routable, use it
-                        if (method = this.routeMethodForPart(closest))
-                            return (method.call(this, closest, ball));
+                    // get the part containing the ball's center
+                    part = this.board.getPart(Math.round(ball.column), Math.round(ball.row));
+                    if ((part) && (method = this.routeMethodForPart(part)) &&
+                        (method.call(this, part, ball)))
+                        return (true);
+                    // get the leading corner of the ball's location if 
+                    //  we know it's moving horizontally
+                    if (ball.lastColumn !== ball.column) {
+                        const sign = ball.lastColumn < ball.column ? 1 : -1;
+                        const c = ball.column + (RAD * sign);
+                        const r = ball.row + RAD;
+                        // get the part on the grid square containing the leading corner
+                        part = this.board.getPart(Math.round(c), Math.round(r));
+                        if ((part) && (method = this.routeMethodForPart(part)) &&
+                            (method.call(this, part, ball)))
+                            return (true);
                     }
-                    // find the four neighboring parts around the ball
-                    const topLeft = this.board.getPart(Math.floor(c), Math.floor(r));
-                    const topRight = this.board.getPart(Math.ceil(c), Math.floor(r));
-                    const bottomLeft = this.board.getPart(Math.floor(c), Math.ceil(r));
-                    const bottomRight = this.board.getPart(Math.ceil(c), Math.ceil(r));
-                    // bias in favor of parts that are diagonally aligned in the direction 
-                    //  of travel, with a preference for the lower part
-                    if (ball.lastDistinctColumn < c) {
-                        if (method = this.routeMethodForPart(bottomRight))
-                            return (method.call(this, bottomRight, ball));
-                        // if (method = this.routeMethodForPart(topLeft))
-                        //   return(method.call(this, topLeft, ball));
-                        if (method = this.routeMethodForPart(bottomLeft))
-                            return (method.call(this, bottomLeft, ball));
-                        // if (method = this.routeMethodForPart(topRight))
-                        //   return(method.call(this, topRight, ball));
-                    }
-                    else {
-                        if (method = this.routeMethodForPart(bottomLeft))
-                            return (method.call(this, bottomLeft, ball));
-                        // if (method = this.routeMethodForPart(topRight))
-                        //   return(method.call(this, topRight, ball));
-                        if (method = this.routeMethodForPart(bottomRight))
-                            return (method.call(this, bottomRight, ball));
-                        // if (method = this.routeMethodForPart(topLeft))
-                        //   return(method.call(this, topLeft, ball));
-                    }
-                    // if we get here, the backup router needs to handle the part
-                    return (null);
+                    // if we get here, the ball was not moved, so let it fall
+                    this.routeFreefall(ball);
+                    if (ball.row > this.board.rowCount + 0.5)
+                        return (false);
+                    return (true);
                 }
                 routeMethodForPart(part) {
                     if (!part)
@@ -2463,8 +2415,12 @@ System.register("board/schematic", ["matter-js", "board/constants"], function (e
                     switch (part.type) {
                         case 3 /* RAMP */: return (this.routeRamp);
                         case 4 /* CROSSOVER */: return (this.routeCrossover);
-                        case 6 /* BIT */: return (this.routeBit);
+                        case 6 /* BIT */: // fall-through
                         case 7 /* GEARBIT */: return (this.routeBit);
+                        case 10 /* SIDE */: return (this.routeSide);
+                        case 11 /* SLOPE */: return (this.routeSlope);
+                        case 12 /* DROP */: return (this.routeDrop);
+                        case 13 /* TURNSTILE */: return (this.routeTurnstile);
                         default: return (null);
                     }
                 }
@@ -2473,7 +2429,7 @@ System.register("board/schematic", ["matter-js", "board/constants"], function (e
                     if (ball.row < part.row)
                         this.approachTarget(ball, part.column, part.row);
                     else {
-                        this.approachTarget(ball, part.column + (part.isFlipped ? -constants_3.SCHEMATIC_EXIT : constants_3.SCHEMATIC_EXIT), part.row + constants_3.SCHEMATIC_EXIT);
+                        this.approachTarget(ball, part.column + (part.isFlipped ? -EXIT : EXIT), part.row + EXIT);
                     }
                     return (true);
                 }
@@ -2482,10 +2438,10 @@ System.register("board/schematic", ["matter-js", "board/constants"], function (e
                     if (ball.row < part.row)
                         this.approachTarget(ball, part.column, part.row);
                     else if (ball.lastDistinctColumn < ball.column) {
-                        this.approachTarget(ball, part.column + constants_3.SCHEMATIC_EXIT, part.row + constants_3.SCHEMATIC_EXIT);
+                        this.approachTarget(ball, part.column + EXIT, part.row + EXIT);
                     }
                     else {
-                        this.approachTarget(ball, part.column - constants_3.SCHEMATIC_EXIT, part.row + constants_3.SCHEMATIC_EXIT);
+                        this.approachTarget(ball, part.column - EXIT, part.row + EXIT);
                     }
                     return (true);
                 }
@@ -2496,11 +2452,11 @@ System.register("board/schematic", ["matter-js", "board/constants"], function (e
                         this._initialBitValue.set(part, part.bitValue);
                         this.approachTarget(ball, part.column, part.row);
                     }
-                    else if (this._initialBitValue.get(part)) {
-                        this.approachTarget(ball, part.column + constants_3.SCHEMATIC_EXIT, part.row + constants_3.SCHEMATIC_EXIT);
+                    else if (!this._initialBitValue.get(part)) {
+                        this.approachTarget(ball, part.column + EXIT, part.row + EXIT);
                     }
                     else {
-                        this.approachTarget(ball, part.column - constants_3.SCHEMATIC_EXIT, part.row + constants_3.SCHEMATIC_EXIT);
+                        this.approachTarget(ball, part.column - EXIT, part.row + EXIT);
                     }
                     // rotate the part as the ball travels through it
                     let r = (part.row + 0.5) - ball.row;
@@ -2509,11 +2465,176 @@ System.register("board/schematic", ["matter-js", "board/constants"], function (e
                     part.rotation = r;
                     return (true);
                 }
+                routeSide(part, ball) {
+                    // if the ball is contacting the side, push it inward
+                    if (part.isFlipped) {
+                        ball.column = Math.min(ball.column, part.column + 0.5 - RAD);
+                    }
+                    else {
+                        ball.column = Math.max(ball.column, part.column - 0.5 + RAD);
+                    }
+                    return (this.routeFreefall(ball));
+                }
+                routeSlope(part, ball) {
+                    if (!(part instanceof fence_3.Slope))
+                        return (false);
+                    // get the ball's row and column as a percentage of the part area
+                    const r = ball.row - (part.row - 0.5);
+                    let c = ball.column - (part.column - 0.5);
+                    if (part.isFlipped)
+                        c = 1 - c;
+                    // get the level the ball center should be at at that column
+                    const m = part.modulus;
+                    const s = part.sequence;
+                    const level = ((c + s - FENCE) / m) - RAD;
+                    // if the ball is above the slope, allow it to drop
+                    if (r + STEP <= level)
+                        return (this.routeFreefall(ball));
+                    // if the ball is well below the slope, allow it to drop
+                    if (r > level + DIAM)
+                        return (this.routeFreefall(ball));
+                    // the ball is near the fence, so put it on top of the fence
+                    ball.row = (part.row - 0.5) + level;
+                    // get the target column to aim for
+                    const sign = part.isFlipped ? -1 : 1;
+                    let target = sign * EXIT;
+                    // stop if there's a side at the bottom of the slope
+                    const next = this.board.getPart(part.column + sign, part.row);
+                    if ((next instanceof fence_3.Side) && (next.isFlipped == part.isFlipped)) {
+                        target = sign * (0.5 - RAD - (FENCE / 2));
+                    }
+                    // roll toward the exit
+                    this.approachTarget(ball, part.column + target, part.row - 0.5 + ((0.5 + (target * sign) + s - FENCE) / m) - RAD);
+                    return (true);
+                }
+                routeDrop(part, ball) {
+                    if (ball.released) {
+                        const sign = part.isFlipped ? -1 : 1;
+                        this.approachTarget(ball, part.column + (sign * EXIT), part.row + 0.5 - RAD);
+                    }
+                    else {
+                        const offset = RAD + (FENCE / 3);
+                        ball.column = Math.min(Math.max(part.column - 0.5 + offset, ball.column), part.column + 0.5 - offset);
+                        this.routeFreefall(ball);
+                        ball.row = Math.min(ball.row, part.row + 0.5 - offset);
+                    }
+                    return (true);
+                }
+                routeTurnstile(part, ball) {
+                    // convert to direction and position neutral coordinates for simplicity
+                    const sign = part.isFlipped ? -1 : 1;
+                    let r = ball.row - part.row;
+                    let tc = NaN;
+                    let tr = NaN;
+                    // lots of magic numbers here because the shape is complicated
+                    const pocketR = -0.35;
+                    const pocketC = 0.13;
+                    if (r < pocketR) {
+                        tc = pocketC;
+                        tr = pocketR;
+                    }
+                    else if ((part.rotation < 1.0) && (r < pocketC)) {
+                        part.rotation += 0.1;
+                        const v = matter_js_3.Vector.rotate({ x: pocketC, y: pocketR }, part.angleForRotation(part.rotation) * sign);
+                        tc = v.x;
+                        tr = v.y;
+                    }
+                    else {
+                        part.rotation = 0.0;
+                        tr = 0.28;
+                        tc = EXIT;
+                    }
+                    // if there is a target, convert back into real coordinates and route
+                    if ((!isNaN(tc)) && (!isNaN(tr))) {
+                        this.approachTarget(ball, part.column + (tc * sign), part.row + tr);
+                    }
+                    return (true);
+                }
+                routeFreefall(ball) {
+                    ball.row += STEP;
+                    return (true);
+                }
                 // move the ball toward the given location
                 approachTarget(ball, c, r) {
                     let v = matter_js_3.Vector.normalise({ x: c - ball.column, y: r - ball.row });
-                    ball.column += v.x * constants_3.SCHEMATIC_STEP;
-                    ball.row += v.y * constants_3.SCHEMATIC_STEP;
+                    ball.column += v.x * STEP;
+                    ball.row += v.y * STEP;
+                    // don't allow the ball to go past the target
+                    if (v.x > 0)
+                        ball.column = Math.min(ball.column, c);
+                    else
+                        ball.column = Math.max(c, ball.column);
+                    if (v.y > 0)
+                        ball.row = Math.min(ball.row, r);
+                    else
+                        ball.row = Math.max(r, ball.row);
+                }
+                // BALL STACKING ************************************************************
+                stackBalls() {
+                    // group balls into columns containing balls that are halfway on either side
+                    const columns = [];
+                    const add = (ball, c) => {
+                        if ((c < 0) || (c >= this.board.rowCount))
+                            return;
+                        if (columns[c] === undefined)
+                            columns[c] = [];
+                        columns[c].push(ball);
+                    };
+                    for (const ball of this.balls) {
+                        const left = Math.floor(ball.column);
+                        const center = Math.round(ball.column);
+                        const right = Math.floor(ball.column);
+                        add(ball, center);
+                        if (left !== center)
+                            add(ball, left);
+                        if (right !== center)
+                            add(ball, right);
+                    }
+                    // sort the balls in each column from bottom to top
+                    for (const c in columns) {
+                        const column = columns[c];
+                        if (!column)
+                            continue;
+                        column.sort((a, b) => a.row > b.row ? -1 : a.row < b.row ? 1 : 0);
+                        this.stackColumn(parseInt(c), column);
+                    }
+                }
+                stackColumn(column, balls) {
+                    let ball;
+                    let r, c, i, j, dc, dr;
+                    const collisions = new Set();
+                    for (i = 0; i < balls.length; i++) {
+                        ball = balls[i];
+                        // don't move balls from other columns, they'll be taken care of there
+                        if (Math.round(ball.column) !== column)
+                            continue;
+                        // iterate over balls below this one to find collisions
+                        collisions.clear();
+                        r = ball.row;
+                        c = ball.column;
+                        for (j = i - 1; j >= 0; j--) {
+                            dc = balls[j].column - c;
+                            dr = balls[j].row - r;
+                            // if we find a ball more than a diameter below this one, 
+                            //  the rest must be lower
+                            if (dr > DIAM)
+                                break;
+                            if ((dr * dr) + (dc * dc) < DIAM_2) {
+                                collisions.add(balls[j]);
+                            }
+                        }
+                        // if there are no collisions, there's nothing to do
+                        if (collisions.size == 0)
+                            continue;
+                        // move away from each other ball
+                        for (const b of collisions) {
+                            const v = { x: ball.column - b.column, y: ball.row - b.row };
+                            const d = matter_js_3.Vector.magnitude(v);
+                            const m = Math.max(0, DIAM - d);
+                            ball.column += (v.x / d) * m;
+                            ball.row += (v.y / d) * m;
+                        }
+                    }
                 }
             };
             exports_23("SchematicBallRouter", SchematicBallRouter);
@@ -2581,14 +2702,14 @@ System.register("board/controls", ["pixi.js", "renderer"], function (exports_24,
 System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball", "board/constants", "board/physics", "board/schematic", "parts/drop", "board/controls", "ui/animator", "parts/turnstile"], function (exports_25, context_25) {
     "use strict";
     var __moduleName = context_25 && context_25.id;
-    var filter, fence_3, gearbit_3, disjoint_1, renderer_4, ball_3, constants_4, physics_1, schematic_1, drop_4, controls_1, animator_3, turnstile_3, SPACING_FACTOR, Board;
+    var filter, fence_4, gearbit_3, disjoint_1, renderer_4, ball_4, constants_4, physics_1, schematic_1, drop_3, controls_1, animator_3, turnstile_3, SPACING_FACTOR, Board;
     return {
         setters: [
             function (filter_1) {
                 filter = filter_1;
             },
-            function (fence_3_1) {
-                fence_3 = fence_3_1;
+            function (fence_4_1) {
+                fence_4 = fence_4_1;
             },
             function (gearbit_3_1) {
                 gearbit_3 = gearbit_3_1;
@@ -2599,8 +2720,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             function (renderer_4_1) {
                 renderer_4 = renderer_4_1;
             },
-            function (ball_3_1) {
-                ball_3 = ball_3_1;
+            function (ball_4_1) {
+                ball_4 = ball_4_1;
             },
             function (constants_4_1) {
                 constants_4 = constants_4_1;
@@ -2611,8 +2732,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             function (schematic_1_1) {
                 schematic_1 = schematic_1_1;
             },
-            function (drop_4_1) {
-                drop_4 = drop_4_1;
+            function (drop_3_1) {
+                drop_3 = drop_3_1;
             },
             function (controls_1_1) {
                 controls_1 = controls_1_1;
@@ -2639,7 +2760,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this.speed = 1.0;
                     // routers to manage the positions of the balls
                     this.physicalRouter = new physics_1.PhysicalBallRouter(this);
-                    this.schematicRouter = new schematic_1.SchematicBallRouter(this, this.physicalRouter);
+                    this.schematicRouter = new schematic_1.SchematicBallRouter(this);
                     this._containers = new Map();
                     this._controls = [];
                     this._partSize = 64;
@@ -3011,7 +3132,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._partPrototype = p;
                     if (this._partPrototype) {
                         // clear the part if the prototype is being pulled off the board
-                        if (p instanceof ball_3.Ball)
+                        if (p instanceof ball_4.Ball)
                             this.removeBall(p);
                         else if (this.getPart(p.column, p.row) === p) {
                             this.clearPart(p.column, p.row);
@@ -3023,7 +3144,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 }
                 // get the part at the given coordinates
                 getPart(column, row) {
-                    if ((column < 0) || (column >= this._columnCount) ||
+                    if ((isNaN(column)) || (isNaN(row)) ||
+                        (column < 0) || (column >= this._columnCount) ||
                         (row < 0) || (row >= this._rowCount))
                         return (null);
                     return (this._grid[row][column]);
@@ -3064,20 +3186,20 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                     }
                     // update fences
-                    if ((oldPart instanceof fence_3.Slope) || (newPart instanceof fence_3.Slope)) {
+                    if ((oldPart instanceof fence_4.Slope) || (newPart instanceof fence_4.Slope)) {
                         this._updateSlopes();
                     }
                     // maintain our set of drops
-                    if ((oldPart instanceof drop_4.Drop) && (oldPart !== this.partPrototype)) {
+                    if ((oldPart instanceof drop_3.Drop) && (oldPart !== this.partPrototype)) {
                         this.drops.delete(oldPart);
                         for (const ball of oldPart.balls) {
                             this.removeBall(ball);
                         }
                     }
-                    if (newPart instanceof drop_4.Drop) {
+                    if (newPart instanceof drop_3.Drop) {
                         this.drops.add(newPart);
                     }
-                    if ((oldPart instanceof drop_4.Drop) || (newPart instanceof drop_4.Drop) ||
+                    if ((oldPart instanceof drop_3.Drop) || (newPart instanceof drop_3.Drop) ||
                         (oldPart instanceof turnstile_3.Turnstile) || (newPart instanceof turnstile_3.Turnstile)) {
                         this._connectTurnstiles();
                     }
@@ -3086,7 +3208,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 // flip the part at the given coordinates
                 flipPart(column, row) {
                     const part = this.getPart(column, row);
-                    if ((part instanceof fence_3.Slope) || (part instanceof fence_3.Side)) {
+                    if ((part instanceof fence_4.Slope) || (part instanceof fence_4.Side)) {
                         this._flipFence(column, row);
                     }
                     else if (part)
@@ -3105,8 +3227,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         // assign the ball to a drop if it doesn't have one
                         if (!ball.drop) {
                             let drop = this.catchmentDrop(c, r);
-                            if (!drop)
+                            if (drop) {
+                                ball.released = false;
+                            }
+                            else {
+                                ball.released = true;
                                 drop = this.nearestDrop(c, r);
+                            }
                             if (drop) {
                                 this.drops.add(drop);
                                 drop.balls.add(ball);
@@ -3194,12 +3321,12 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             continue;
                         // in non-schematic mode, add balls behind other parts to prevent ball 
                         //  highlights from displaying on top of gears, etc.
-                        if ((part instanceof ball_3.Ball) && (layer < 4 /* SCHEMATIC */)) {
+                        if ((part instanceof ball_4.Ball) && (layer < 4 /* SCHEMATIC */)) {
                             this._containers.get(layer).addChildAt(sprite, 0);
                         }
                         else {
                             // in schematic mode, place other parts behind balls
-                            if ((layer >= 4 /* SCHEMATIC */) && (!(part instanceof ball_3.Ball))) {
+                            if ((layer >= 4 /* SCHEMATIC */) && (!(part instanceof ball_4.Ball))) {
                                 this._containers.get(layer).addChildAt(sprite, 0);
                             }
                             else {
@@ -3234,7 +3361,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         if (!p)
                             break;
                         // if we hit a drop we're done
-                        if (p instanceof drop_4.Drop)
+                        if (p instanceof drop_3.Drop)
                             return (p);
                         else if (p.type == 11 /* SLOPE */) {
                             c += p.isFlipped ? -1 : 1;
@@ -3357,7 +3484,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     let slopes = [];
                     for (const row of this._grid) {
                         for (const part of row) {
-                            if (part instanceof fence_3.Slope) {
+                            if (part instanceof fence_4.Slope) {
                                 if ((slopes.length > 0) &&
                                     (slopes[0].isFlipped !== part.isFlipped)) {
                                     this._makeSlope(slopes);
@@ -3387,7 +3514,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 // flip a fence part
                 _flipFence(column, row) {
                     const part = this.getPart(column, row);
-                    if ((!(part instanceof fence_3.Slope)) && (!(part instanceof fence_3.Side)))
+                    if ((!(part instanceof fence_4.Slope)) && (!(part instanceof fence_4.Side)))
                         return;
                     const wasFlipped = part.isFlipped;
                     const type = part.type;
@@ -3400,7 +3527,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                         return (false);
                     };
-                    if (part instanceof fence_3.Slope) {
+                    if (part instanceof fence_4.Slope) {
                         // go right
                         for (let c = column + 1; c < this._columnCount; c++) {
                             if (!shouldContinue(this.getPart(c, row)))
@@ -3412,7 +3539,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                                 break;
                         }
                     }
-                    else if (part instanceof fence_3.Side) {
+                    else if (part instanceof fence_4.Side) {
                         // go down
                         for (let r = row + 1; r < this._rowCount; r++) {
                             if (!shouldContinue(this.getPart(column, r)))
@@ -3540,7 +3667,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         const radians = Math.atan2(currentY - startY, currentX - startX);
                         this._colorWheel.hue = this._actionHue +
                             (f * (((radians * 180) / Math.PI) - 90));
-                        if (this._actionPart instanceof drop_4.Drop) {
+                        if (this._actionPart instanceof drop_3.Drop) {
                             this._actionPart.hue = this._colorWheel.hue;
                         }
                     }
@@ -3549,10 +3676,10 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._dragFlippedParts.clear();
                     if ((this._action === 5 /* DRAG_PART */) && (this.partPrototype)) {
                         // don't copy drops since we want to keep their associations
-                        const part = this.partPrototype instanceof drop_4.Drop ? this.partPrototype :
+                        const part = this.partPrototype instanceof drop_3.Drop ? this.partPrototype :
                             this.partFactory.copy(this.partPrototype);
                         this.partPrototype = null;
-                        if (part instanceof ball_3.Ball) {
+                        if (part instanceof ball_4.Ball) {
                             this.partPrototype = null;
                             this.addBall(part, this.columnForX(this._actionX), this.rowForY(this._actionY));
                         }
@@ -3586,7 +3713,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this.view.cursor = 'pointer';
                     }
                     else if ((this.tool == 3 /* HAND */) &&
-                        (this._actionPart instanceof drop_4.Drop) &&
+                        (this._actionPart instanceof drop_3.Drop) &&
                         (this.partSize > 12) &&
                         (Math.abs((row - 0.3) - r) < 0.2)) {
                         if ((this._actionPart.isFlipped) != (c < column)) {
@@ -3624,10 +3751,10 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     // respond to the part under the cursor changing
                     if (this._actionPart !== oldActionPart) {
                         // show/hide drop controls
-                        if (oldActionPart instanceof drop_4.Drop) {
+                        if (oldActionPart instanceof drop_3.Drop) {
                             animator_3.Animator.current.animate(oldActionPart, 'controlsAlpha', 1, 0, 0.25 /* HIDE_CONTROL */);
                         }
-                        if ((this._actionPart instanceof drop_4.Drop) &&
+                        if ((this._actionPart instanceof drop_3.Drop) &&
                             (this.tool == 3 /* HAND */)) {
                             animator_3.Animator.current.animate(this._actionPart, 'controlsAlpha', 0, 1, 0.1 /* SHOW_CONTROL */);
                         }
@@ -3709,8 +3836,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this.flipPart(this._actionColumn, this._actionRow);
                     }
                     else if ((this._action === 7 /* DROP_BALL */) &&
-                        (this._actionPart instanceof drop_4.Drop)) {
-                        this._actionPart.releaseBall = true;
+                        (this._actionPart instanceof drop_3.Drop)) {
+                        this._actionPart.releaseBall();
                     }
                 }
             };
@@ -4097,7 +4224,7 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     this.board = board;
                     // ZOOMING ******************************************************************
                     // the user's desired shematic setting
-                    this._desiredSchematic = false;
+                    this._desiredSchematic = this.board.schematic;
                     // add a button to toggle schematic view
                     this._schematicButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['schematic']));
                     this.addButton(this._schematicButton);
@@ -4397,11 +4524,11 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
 System.register("board/builder", ["parts/fence"], function (exports_31, context_31) {
     "use strict";
     var __moduleName = context_31 && context_31.id;
-    var fence_4, BoardBuilder;
+    var fence_5, BoardBuilder;
     return {
         setters: [
-            function (fence_4_1) {
-                fence_4 = fence_4_1;
+            function (fence_5_1) {
+                fence_5 = fence_5_1;
             }
         ],
         execute: function () {
@@ -4414,7 +4541,7 @@ System.register("board/builder", ["parts/fence"], function (exports_31, context_
                     const redColumn = center + Math.floor(redBlueDistance / 2);
                     const dropLevel = (blueColumn % 2 == 0) ? 1 : 2;
                     const collectLevel = dropLevel + verticalDrop;
-                    const steps = Math.ceil(center / fence_4.Slope.maxModulus);
+                    const steps = Math.ceil(center / fence_5.Slope.maxModulus);
                     const maxModulus = Math.ceil(center / steps);
                     const height = collectLevel + steps + 3;
                     board.setSize(width, height);
@@ -4473,20 +4600,20 @@ System.register("board/builder", ["parts/fence"], function (exports_31, context_
                     for (r = collectLevel; r < height; r++) {
                         for (c = 0; c < width; c++) {
                             const p = board.getPart(c, r);
-                            if ((p instanceof fence_4.Side) || (p instanceof fence_4.Slope))
+                            if ((p instanceof fence_5.Side) || (p instanceof fence_5.Slope))
                                 break;
                             board.setPart(board.partFactory.copy(blank), c, r);
                         }
                         for (c = width - 1; c >= 0; c--) {
                             const p = board.getPart(c, r);
-                            if ((p instanceof fence_4.Side) || (p instanceof fence_4.Slope))
+                            if ((p instanceof fence_5.Side) || (p instanceof fence_5.Slope))
                                 break;
                             board.setPart(board.partFactory.copy(blank), c, r);
                         }
                     }
                     // make a fence to collect balls
                     r = height - 1;
-                    const rightSide = Math.min(center + fence_4.Slope.maxModulus, height - 1);
+                    const rightSide = Math.min(center + fence_5.Slope.maxModulus, height - 1);
                     for (c = center; c < rightSide; c++) {
                         board.setPart(board.partFactory.copy(slope), c, r);
                     }

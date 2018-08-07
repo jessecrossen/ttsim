@@ -21,12 +21,6 @@ export const NUDGE_ACCEL:number = 0.001;
 // the maximum speed at which a part can move
 export const MAX_V:number = 12;
 
-// the speed at which a ball should move through schematic parts
-export const SCHEMATIC_STEP:number = 8 / PART_SIZE;
-// the offset the schematic router should move toward when routing a ball,
-//  which must be over 0.5 to allow the next part to capture the ball
-export const SCHEMATIC_EXIT:number = 0.6;
-
 // damping/counterweight constraint parameters
 export const DAMPER_RADIUS:number = PART_SIZE / 2;
 export const BIAS_STIFFNESS:number = BALL_DENSITY / 16;

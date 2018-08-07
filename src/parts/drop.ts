@@ -18,7 +18,30 @@ export class Drop extends Part {
 
   // a flag to set signalling a desire to release a ball, which will be cleared
   //  after a ball is released
-  public releaseBall:boolean = false;
+  public releaseBall():void {
+    // find the ball closest to the bottom right
+    let closest:Ball;
+    let maxSum:number = - Infinity;
+    for (const ball of this.balls) {
+      // skip balls we've already released
+      if (ball.released) continue;
+      // never release a ball that is below the level of the drop,
+      //  because it must have been released or dropped there
+      if (ball.row > this.row + 0.5) {
+        ball.released = true;
+        continue;
+      }
+      let dc = ball.column - this.column;
+      if (this.isFlipped) dc *= -1;
+      const d = dc + ball.row;
+      if (d > maxSum) {
+        closest = ball;
+        maxSum = d;
+      }
+    }
+    // release the ball closest to the exit if we found one
+    if (closest) closest.released = true;
+  }
 
   // show and hide the controls on the front layer
   public get controlsAlpha():number { return(this._controlsAlpha); }

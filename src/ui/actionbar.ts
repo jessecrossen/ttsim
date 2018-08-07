@@ -126,7 +126,7 @@ export class Actionbar extends ButtonBar {
   // ZOOMING ******************************************************************
 
   // the user's desired shematic setting
-  protected _desiredSchematic:boolean = false;
+  protected _desiredSchematic:boolean = this.board.schematic;
   // force schematic mode when parts are very small
   protected get forceSchematic():boolean {
     return(this.board.spacing <= this.board.partSize);

@@ -552,30 +552,6 @@
       }, 
       "trimmed": false
     }, 
-    "Fence-s4": {
-      "frame": {
-        "h": 96, 
-        "w": 96, 
-        "x": 628, 
-        "y": 420
-      }, 
-      "pivot": {
-        "x": 0.5, 
-        "y": 0.5
-      }, 
-      "rotated": false, 
-      "sourceSize": {
-        "h": 96, 
-        "w": 96
-      }, 
-      "spriteSourceSize": {
-        "h": 96, 
-        "w": 96, 
-        "x": 0, 
-        "y": 0
-      }, 
-      "trimmed": false
-    }, 
     "Gear-f": {
       "frame": {
         "h": 96, 
@@ -2046,6 +2022,30 @@
         "w": 96, 
         "x": 628, 
         "y": 524
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "Slope-s4": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 628, 
+        "y": 420
       }, 
       "pivot": {
         "x": 0.5, 

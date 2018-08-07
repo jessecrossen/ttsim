@@ -198,6 +198,13 @@ export class PartBody {
         this._biasDamper.pointB);
     }
     Body.setAngle(this._body, this._part.angleForRotation(this._part.rotation));
+    // update collision masks
+    if (this._part instanceof Ball) {
+      this._body.collisionFilter.category = this._part.released ? 
+        BALL_CATEGORY : UNRELEASED_BALL_CATEGORY;
+      this._body.collisionFilter.mask = this._part.released ? 
+        BALL_MASK : UNRELEASED_BALL_MASK;
+    }
     // record that we've synced with the part
     this._partChangeCounter = this._part.changeCounter;
   }
@@ -282,14 +289,6 @@ export class PartBody {
     if ((! this._body) || (! this._part)) return;
     this._controlRotation(contacts, nearby);
     this._controlVelocity();
-    // ball drop
-    if (this._part instanceof Drop) {
-      this._updateReleaseFilters(nearby);
-      if (this._part.releaseBall) {
-        this._releaseBall(nearby);
-        this._part.releaseBall = false;
-      }
-    }
     this._nudge(contacts, nearby);
     if (nearby) {
       for (const ballPartBody of nearby) {
@@ -424,8 +423,7 @@ export class PartBody {
       maxSlope = 1;
     }
     // the ball drop only nudges balls it's dropping
-    else if ((this._part instanceof Drop) &&
-             (body.collisionFilter.mask === BALL_MASK)) {
+    else if ((this._part instanceof Drop) && (ball.released)) {
       sign = this._part.isFlipped ? -1 : 1;
     }
     // exit if we're not nudging
@@ -492,58 +490,6 @@ export class PartBody {
     }
     return(false);
   }
-
-  // update the collision filters of balls in a drop
-  private _updateReleaseFilters(balls:Set<PartBody>):void {
-    if (! balls) return;
-    if (! this._releasedBalls) this._releasedBalls = new Set();
-    // make a set of balls that have exited successfully
-    const exitedBalls:Set<PartBody> = new Set(this._releasedBalls);
-    for (const ball of balls) {
-      exitedBalls.delete(ball);
-    }
-    // remove them from the set of balls we've released, 
-    //  allowing them to go back into the drop if needed
-    for (const ball of exitedBalls) {
-      this._releasedBalls.delete(ball);
-    }
-    // mark all balls that haven't been released yet with a collision filter
-    //  that keeps them in the drop
-    for (const ball of balls) {
-      if (! this._releasedBalls.has(ball)) {
-        ball.body.collisionFilter.category = UNRELEASED_BALL_CATEGORY;
-        ball.body.collisionFilter.mask = UNRELEASED_BALL_MASK;
-      }
-    }
-  }
-  private _releasedBalls:Set<PartBody>;
-
-  // release a ball from a drop
-  private _releaseBall(balls:Set<PartBody>):void {
-    if (! balls) return;
-    if (! this._releasedBalls) this._releasedBalls = new Set();
-    // find the ball closest to the bottom right
-    let closest:PartBody;
-    let maxSum:number = - Infinity;
-    for (const ball of balls) {
-      // never release a ball twice until it exits the drop
-      if (this._releasedBalls.has(ball)) continue;
-      let dc = ball.part.column - this.part.column;
-      if (this.part.isFlipped) dc *= -1;
-      const d = dc + ball.part.row;
-      if (d > maxSum) {
-        closest = ball;
-        maxSum = d;
-      }
-    }
-    // if there's no ball to release, we're done
-    if (! closest) return;
-    // change the collision mask of the ball so it goes through the gate
-    closest.body.collisionFilter.category = BALL_CATEGORY;
-    closest.body.collisionFilter.mask = BALL_MASK;
-    this._releasedBalls.add(closest);
-  }
-
 
 }
 

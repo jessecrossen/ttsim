@@ -76,7 +76,7 @@ export class Board {
   // routers to manage the positions of the balls
   public readonly physicalRouter:PhysicalBallRouter = new PhysicalBallRouter(this);
   public readonly schematicRouter:SchematicBallRouter = 
-    new SchematicBallRouter(this, this.physicalRouter);
+    new SchematicBallRouter(this);
 
   // update the board state
   public update(correction:number):void {
@@ -448,7 +448,8 @@ export class Board {
 
   // get the part at the given coordinates
   public getPart(column:number, row:number):Part {
-    if ((column < 0) || (column >= this._columnCount) ||
+    if ((isNaN(column)) || (isNaN(row)) ||
+        (column < 0) || (column >= this._columnCount) ||
         (row < 0) || (row >= this._rowCount)) return(null);
     return(this._grid[row][column]);
   }
@@ -526,7 +527,13 @@ export class Board {
       // assign the ball to a drop if it doesn't have one
       if (! ball.drop) {
         let drop = this.catchmentDrop(c, r);
-        if (! drop) drop = this.nearestDrop(c, r);
+        if (drop) {
+          ball.released = false;
+        }
+        else {
+          ball.released = true;
+          drop = this.nearestDrop(c, r);
+        }
         if (drop) {
           this.drops.add(drop);
           drop.balls.add(ball);
@@ -1168,7 +1175,7 @@ export class Board {
     // drop balls
     else if ((this._action === ActionType.DROP_BALL) &&
              (this._actionPart instanceof Drop)) {
-      this._actionPart.releaseBall = true;
+      this._actionPart.releaseBall();
     }
   }
 

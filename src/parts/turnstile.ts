@@ -68,7 +68,7 @@ export class Turnstile extends Part {
     const oldRotation = this.rotation;
     super.rotation = r;
     if ((this.rotation < oldRotation) && (this.drop)) {
-      this.drop.releaseBall = true;
+      this.drop.releaseBall();
     }
   }
 

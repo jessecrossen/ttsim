@@ -408,7 +408,8 @@ System.register("parts/ball", ["parts/part", "ui/config"], function (exports_10,
                 constructor() {
                     super(...arguments);
                     this.lastDistinctColumn = NaN;
-                    this._released = false;
+                    // whether the ball has been released from a drop
+                    this.released = false;
                     this._hue = 155;
                     this._color = 0x0E63FF;
                 }
@@ -427,14 +428,6 @@ System.register("parts/ball", ["parts/part", "ui/config"], function (exports_10,
                     if (newColumn !== oldColumn) {
                         this.lastDistinctColumn = oldColumn;
                     }
-                }
-                // whether the ball has been released from a drop
-                get released() { return (this._released); }
-                set released(v) {
-                    if (v === this.released)
-                        return;
-                    this._released = v;
-                    this.changeCounter++;
                 }
                 // the hue of the ball in degrees
                 get hue() { return (this._hue); }
@@ -1599,9 +1592,18 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                 }
                 // transfer relevant properties to the body
                 updateBodyFromPart() {
-                    // skip the update if the part hasn't changed
-                    if ((!this._body) || (!this._part) ||
-                        (this._part.changeCounter === this._partChangeCounter))
+                    // skip the update if we have no part
+                    if ((!this._body) || (!this._part))
+                        return;
+                    // update collision masks for balls
+                    if (this._part instanceof ball_3.Ball) {
+                        this._body.collisionFilter.category = this._part.released ?
+                            constants_1.BALL_CATEGORY : constants_1.UNRELEASED_BALL_CATEGORY;
+                        this._body.collisionFilter.mask = this._part.released ?
+                            constants_1.BALL_MASK : constants_1.UNRELEASED_BALL_MASK;
+                    }
+                    // skip the rest of the update if the part hasn't changed
+                    if (this._part.changeCounter === this._partChangeCounter)
                         return;
                     // rebuild the body if the slope signature changes
                     if ((this._part instanceof fence_2.Slope) &&
@@ -1629,13 +1631,6 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         matter_js_1.Vector.add(this._body.position, this._damperAnchorVector(this._part.isFlipped, false), this._biasDamper.pointB);
                     }
                     matter_js_1.Body.setAngle(this._body, this._part.angleForRotation(this._part.rotation));
-                    // update collision masks
-                    if (this._part instanceof ball_3.Ball) {
-                        this._body.collisionFilter.category = this._part.released ?
-                            constants_1.BALL_CATEGORY : constants_1.UNRELEASED_BALL_CATEGORY;
-                        this._body.collisionFilter.mask = this._part.released ?
-                            constants_1.BALL_MASK : constants_1.UNRELEASED_BALL_MASK;
-                    }
                     // record that we've synced with the part
                     this._partChangeCounter = this._part.changeCounter;
                 }
@@ -2513,7 +2508,7 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                         this.approachTarget(ball, part.column + (sign * EXIT), part.row + 0.5 - RAD);
                     }
                     else {
-                        const offset = RAD + (FENCE / 3);
+                        const offset = RAD + (FENCE / 2);
                         ball.column = Math.min(Math.max(part.column - 0.5 + offset, ball.column), part.column + 0.5 - offset);
                         this.routeFreefall(ball);
                         ball.row = Math.min(ball.row, part.row + 0.5 - offset);

@@ -177,7 +177,7 @@ export class SchematicBallRouter implements IBallRouter {
                                 part.row + 0.5 - RAD);
     }
     else {
-      const offset = RAD + (FENCE / 3);
+      const offset = RAD + (FENCE / 2);
       ball.column = Math.min(Math.max(part.column - 0.5 + offset, ball.column),
         part.column + 0.5 - offset);
       this.routeFreefall(ball);

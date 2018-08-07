@@ -165,9 +165,17 @@ export class PartBody {
 
   // transfer relevant properties to the body
   public updateBodyFromPart():void {
-    // skip the update if the part hasn't changed
-    if ((! this._body) || (! this._part) || 
-        (this._part.changeCounter === this._partChangeCounter)) return;
+    // skip the update if we have no part
+    if ((! this._body) || (! this._part)) return;
+    // update collision masks for balls
+    if (this._part instanceof Ball) {
+      this._body.collisionFilter.category = this._part.released ? 
+        BALL_CATEGORY : UNRELEASED_BALL_CATEGORY;
+      this._body.collisionFilter.mask = this._part.released ? 
+        BALL_MASK : UNRELEASED_BALL_MASK;
+    }
+    // skip the rest of the update if the part hasn't changed
+    if (this._part.changeCounter === this._partChangeCounter) return;
     // rebuild the body if the slope signature changes
     if ((this._part instanceof Slope) && 
         (this._part.signature != this._slopeSignature)) {
@@ -198,13 +206,6 @@ export class PartBody {
         this._biasDamper.pointB);
     }
     Body.setAngle(this._body, this._part.angleForRotation(this._part.rotation));
-    // update collision masks
-    if (this._part instanceof Ball) {
-      this._body.collisionFilter.category = this._part.released ? 
-        BALL_CATEGORY : UNRELEASED_BALL_CATEGORY;
-      this._body.collisionFilter.mask = this._part.released ? 
-        BALL_MASK : UNRELEASED_BALL_MASK;
-    }
     // record that we've synced with the part
     this._partChangeCounter = this._part.changeCounter;
   }

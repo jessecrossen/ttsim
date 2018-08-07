@@ -29,13 +29,7 @@ export class Ball extends Part {
   public lastDistinctColumn:number = NaN;
 
   // whether the ball has been released from a drop
-  public get released():boolean { return(this._released); }
-  public set released(v:boolean) {
-    if (v === this.released) return;
-    this._released = v;
-    this.changeCounter++;
-  }
-  private _released:boolean = false;
+  public released:boolean = false;
 
   // data used by ball routers
   public lastColumn:number;

@@ -989,7 +989,6 @@ export class Board {
         this.partFactory.copy(this.partPrototype);
       this.partPrototype = null;
       if (part instanceof Ball) {
-        this.partPrototype = null;
         this.addBall(part as Ball, 
           this.columnForX(this._actionX), this.rowForY(this._actionY));
       }

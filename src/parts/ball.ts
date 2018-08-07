@@ -15,6 +15,15 @@ export class Ball extends Part {
   // the drop associated with the ball
   public drop:Drop;
 
+  // when the ball goes below its drop, reset the released flag
+  public get row():number { return(super.row); }
+  public set row(r:number) {
+    super.row = r;
+    if ((this.released) && (this.drop) && (r > this.drop.row + 0.5)) {
+      this.released = false;
+    }
+  }
+
   // track the last column the ball was in to determine travel direction
   public get column():number { return(super.column); }
   public set column(c:number) {

@@ -25,12 +25,9 @@ export class Drop extends Part {
     for (const ball of this.balls) {
       // skip balls we've already released
       if (ball.released) continue;
-      // never release a ball that is below the level of the drop,
-      //  because it must have been released or dropped there
-      if (ball.row > this.row + 0.5) {
-        ball.released = true;
-        continue;
-      }
+      // never release a ball that is outside the drop
+      if ((Math.round(ball.row) != this.row) ||
+          (Math.round(ball.column) != this.column)) continue;
       let dc = ball.column - this.column;
       if (this.isFlipped) dc *= -1;
       const d = dc + ball.row;

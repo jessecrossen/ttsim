@@ -417,6 +417,14 @@ System.register("parts/ball", ["parts/part", "ui/config"], function (exports_10,
                 get canMirror() { return (false); }
                 get canFlip() { return (false); }
                 get type() { return (9 /* BALL */); }
+                // when the ball goes below its drop, reset the released flag
+                get row() { return (super.row); }
+                set row(r) {
+                    super.row = r;
+                    if ((this.released) && (this.drop) && (r > this.drop.row + 0.5)) {
+                        this.released = false;
+                    }
+                }
                 // track the last column the ball was in to determine travel direction
                 get column() { return (super.column); }
                 set column(c) {
@@ -588,12 +596,10 @@ System.register("parts/drop", ["parts/part"], function (exports_12, context_12) 
                         // skip balls we've already released
                         if (ball.released)
                             continue;
-                        // never release a ball that is below the level of the drop,
-                        //  because it must have been released or dropped there
-                        if (ball.row > this.row + 0.5) {
-                            ball.released = true;
+                        // never release a ball that is outside the drop
+                        if ((Math.round(ball.row) != this.row) ||
+                            (Math.round(ball.column) != this.column))
                             continue;
-                        }
                         let dc = ball.column - this.column;
                         if (this.isFlipped)
                             dc *= -1;
@@ -730,6 +736,8 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
                     }
                     if ((newPart instanceof ball_2.Ball) && (part instanceof ball_2.Ball)) {
                         newPart.drop = part.drop;
+                        if (newPart.drop)
+                            newPart.drop.balls.add(newPart);
                     }
                     return (newPart);
                 }
@@ -3675,7 +3683,6 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             this.partFactory.copy(this.partPrototype);
                         this.partPrototype = null;
                         if (part instanceof ball_4.Ball) {
-                            this.partPrototype = null;
                             this.addBall(part, this.columnForX(this._actionX), this.rowForY(this._actionY));
                         }
                         else if (this.canPlacePart(part.type, this._actionColumn, this._actionRow)) {

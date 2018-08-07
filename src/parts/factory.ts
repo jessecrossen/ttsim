@@ -75,6 +75,7 @@ export class PartFactory {
     }
     if ((newPart instanceof Ball) && (part instanceof Ball)) {
       newPart.drop = part.drop;
+      if (newPart.drop) newPart.drop.balls.add(newPart);
     }
     return(newPart);
   }

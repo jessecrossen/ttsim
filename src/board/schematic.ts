@@ -7,6 +7,7 @@ import { PartType } from 'parts/factory';
 import { Ball } from 'parts/ball';
 import { PART_SIZE, BALL_RADIUS, SPACING } from './constants';
 import { Slope, Side } from 'parts/fence';
+import { GearBase } from 'parts/gearbit';
 
 type RouteMethod = (part:Part, ball:Ball) => boolean;
 
@@ -19,7 +20,7 @@ const DIAM_2 = DIAM * DIAM;
 const FENCE = 0.125;
 
 // the speed at which a ball should move through schematic parts
-const STEP:number = 8 / PART_SIZE;
+const STEP:number = 1 / PART_SIZE;
 // the offset the schematic router should move toward when routing a ball,
 //  which must be over 0.5 to allow the next part to capture the ball
 const EXIT:number = 0.51 + RAD;
@@ -34,20 +35,54 @@ export class SchematicBallRouter implements IBallRouter {
   public onBoardSizeChanged() { }
 
   public update(speed:number, correction:number):void {
-    for (const ball of this.balls) {
-      if (this.routeBall(ball)) {
-        this.board.layoutPart(ball, ball.column, ball.row);
+    const iterations:number = Math.ceil(speed * 8);
+    for (let i:number = 0; i < iterations; i++) {
+      for (const ball of this.balls) {
+        ball.vx = ball.vy = 0;
+        ball.minX = ball.maxX = ball.maxY = NaN;
+        if (this.routeBall(ball)) {
+          this.board.layoutPart(ball, ball.column, ball.row);
+        }
+        else {
+          this.board.removeBall(ball);
+        }
       }
-      else {
-        this.board.removeBall(ball);
+      this.stackBalls();
+      this.moveBalls();
+      this.confineBalls();
+      GearBase.update();
+    }
+  }
+
+  protected moveBalls():void {
+    for (const ball of this.balls) {
+      const m = Math.sqrt((ball.vx * ball.vx) + (ball.vy * ball.vy));
+      if (m == 0.0) continue;
+      const d = Math.min(m, STEP);
+      ball.column += (ball.vx * d) / m;
+      ball.row += (ball.vy * d) / m;
+    }
+  }
+
+  protected confineBalls():void {
+    for (const ball of this.balls) {
+      if ((! isNaN(ball.maxX)) && (ball.column > ball.maxX)) {
+        ball.column = ball.maxX;
+      }
+      if ((! isNaN(ball.minX)) && (ball.column < ball.minX)) {
+        ball.column = ball.minX;
+      }
+      if ((! isNaN(ball.maxY)) && (ball.row > ball.maxY)) {
+        ball.row = ball.maxY;
       }
     }
-    this.stackBalls();
   }
 
   protected routeBall(ball:Ball):boolean {
     let part:Part;
     let method:RouteMethod;
+    // confine the ball on the sides
+    this.checkSides(ball);
     // get the part containing the ball's center
     part = this.board.getPart(Math.round(ball.column), Math.round(ball.row));
     if ((part) && (method = this.routeMethodForPart(part)) &&
@@ -67,6 +102,22 @@ export class SchematicBallRouter implements IBallRouter {
     this.routeFreefall(ball);
     if (ball.row > this.board.rowCount + 0.5) return(false);
     return(true);
+  }
+
+  protected checkSides(ball:Ball):void {
+    const c = Math.round(ball.column);
+    const r = Math.round(ball.row);
+    const left = this.board.getPart(c - 1, r);
+    const center = this.board.getPart(c, r);
+    const right = this.board.getPart(c + 1, r);
+    if (((left) && (left.type == PartType.SIDE) && (left.isFlipped)) ||
+        ((center) && (center.type == PartType.SIDE) && (! center.isFlipped))) {
+      ball.minX = c - 0.5 + RAD + (FENCE / 2);
+    }
+    if (((right) && (right.type == PartType.SIDE) && (! right.isFlipped)) || 
+        ((center) && (center.type == PartType.SIDE) && (center.isFlipped))) {
+      ball.maxX = c + 0.5 - RAD - (FENCE / 2);
+    }
   }
 
   protected routeMethodForPart(part:Part):RouteMethod {
@@ -132,10 +183,10 @@ export class SchematicBallRouter implements IBallRouter {
   protected routeSide(part:Part, ball:Ball):boolean {
     // if the ball is contacting the side, push it inward
     if (part.isFlipped) { // right side
-      ball.column = Math.min(ball.column, part.column + 0.5 - RAD);
+      ball.maxX = part.column + 0.5 - RAD;
     }
     else { // left side
-      ball.column = Math.max(ball.column, part.column - 0.5 + RAD);
+      ball.minX = part.column - 0.5 + RAD;
     }
     return(this.routeFreefall(ball));
   }
@@ -155,15 +206,10 @@ export class SchematicBallRouter implements IBallRouter {
     // if the ball is well below the slope, allow it to drop
     if (r > level + DIAM) return(this.routeFreefall(ball));
     // the ball is near the fence, so put it on top of the fence
-    ball.row = (part.row - 0.5) + level;
+    ball.maxY = (part.row - 0.5) + level;
     // get the target column to aim for
     const sign = part.isFlipped ? -1 : 1;
     let target = sign * EXIT;
-    // stop if there's a side at the bottom of the slope
-    const next = this.board.getPart(part.column + sign, part.row);
-    if ((next instanceof Side) && (next.isFlipped == part.isFlipped)) {
-      target = sign * (0.5 - RAD - (FENCE / 2));
-    }
     // roll toward the exit
     this.approachTarget(ball, part.column + target, 
       part.row - 0.5 + ((0.5 + (target * sign) + s - FENCE) / m) - RAD);
@@ -178,10 +224,10 @@ export class SchematicBallRouter implements IBallRouter {
     }
     else {
       const offset = RAD + (FENCE / 2);
-      ball.column = Math.min(Math.max(part.column - 0.5 + offset, ball.column),
-        part.column + 0.5 - offset);
+      ball.minX = part.column - 0.5 + offset;
+      ball.maxX = part.column + 0.5 - offset;
+      ball.maxY = part.row + 0.5 - offset;
       this.routeFreefall(ball);
-      ball.row = Math.min(ball.row, part.row + 0.5 - offset);
     }
     return(true);
   }
@@ -196,11 +242,14 @@ export class SchematicBallRouter implements IBallRouter {
     const pocketR = -0.35;
     const pocketC = 0.13;
     if (r < pocketR) {
+      // if another ball is already rotating the turnstile, 
+      //  stop this one until that one goes through
+      if (part.rotation > 0.1) return(true);
       tc = pocketC;
       tr = pocketR;
     }
     else if ((part.rotation < 1.0) && (r < pocketC)) {
-      part.rotation += 0.1;
+      part.rotation += 0.01;
       const v = Vector.rotate({ x: pocketC, y: pocketR }, 
         part.angleForRotation(part.rotation) * sign);
       tc = v.x;
@@ -219,26 +268,21 @@ export class SchematicBallRouter implements IBallRouter {
   }
 
   protected routeFreefall(ball:Ball):boolean {
-    ball.row += STEP;
+    ball.vy += STEP;
     return(true);
   }
 
   // move the ball toward the given location
   protected approachTarget(ball:Ball, c:number, r:number):void {
     let v = Vector.normalise({ x: c - ball.column, y: r - ball.row });
-    ball.column += v.x * STEP;
-    ball.row += v.y * STEP;
-    // don't allow the ball to go past the target
-    if (v.x > 0) ball.column = Math.min(ball.column, c);
-    else ball.column = Math.max(c, ball.column);
-    if (v.y > 0) ball.row = Math.min(ball.row, r);
-    else ball.row = Math.max(r, ball.row);
+    ball.vx += v.x * STEP;
+    ball.vy += v.y * STEP;
   }
 
   // BALL STACKING ************************************************************
 
   protected stackBalls():void {
-    // group balls into columns containing balls that are halfway on either side
+    // group balls into columns containing balls that are on either side
     const columns:Ball[][] = [ ];
     const add = (ball:Ball, c:number) => {
       if ((c < 0) || (c >= this.board.rowCount)) return;
@@ -246,12 +290,10 @@ export class SchematicBallRouter implements IBallRouter {
       columns[c].push(ball);
     };
     for (const ball of this.balls) {
-      const left = Math.floor(ball.column);
       const center = Math.round(ball.column);
-      const right = Math.floor(ball.column);
       add(ball, center);
-      if (left !== center) add(ball, left);
-      if (right !== center) add(ball, right);
+      add(ball, center - 1);
+      add(ball, center + 1);
     }
     // sort the balls in each column from bottom to top
     for (const c in columns) {
@@ -285,13 +327,27 @@ export class SchematicBallRouter implements IBallRouter {
       }
       // if there are no collisions, there's nothing to do
       if (collisions.size == 0) continue;
+      // if the ball is in contact, remove any horizontal motion 
+      //  applied by the router so far
+      ball.vx = 0;
       // move away from each other ball
       for (const b of collisions) {
-        const v = { x: ball.column - b.column, y: ball.row - b.row };
-        const d = Vector.magnitude(v);
-        const m = Math.max(0, DIAM - d);
-        ball.column += (v.x / d) * m;
-        ball.row += (v.y / d) * m;
+        let dx = ball.column - b.column;
+        let dy = ball.row - b.row;
+        const m = Math.sqrt((dx * dx) + (dy * dy));
+        // if two ball are directly on top of eachother, push one of them up
+        if (! (m > 0)) {
+          ball.vy -= (DIAM - STEP);
+        }
+        else {
+          const d = (DIAM - STEP) - m;
+          // add some jitter so balls don't stack up vertically
+          if (dx === 0.0) dx = (Math.random() - 0.5) * STEP * 0.01;
+          if (d > 0) {
+            ball.vx += (dx * d) / m;
+            ball.vy += (dy * d) / m;
+          }
+        }
       }
     }
   }

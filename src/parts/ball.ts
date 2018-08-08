@@ -43,6 +43,11 @@ export class Ball extends Part {
   // data used by ball routers
   public lastColumn:number;
   public lastRow:number;
+  public vx:number = 0;
+  public vy:number = 0;
+  public minX:number = NaN;
+  public maxX:number = NaN;
+  public maxY:number = NaN;
 
   // the hue of the ball in degrees
   public get hue():number { return(this._hue); }

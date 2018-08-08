@@ -68,7 +68,7 @@ export class Board {
     this._schematic = v;
     this._updateLayerVisibility();
   }
-  protected _schematic:boolean = false;
+  protected _schematic:boolean = true;
 
   // the speed to run the simulator at
   public speed:number = 1.0;

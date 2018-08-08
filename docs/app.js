@@ -410,6 +410,11 @@ System.register("parts/ball", ["parts/part", "ui/config"], function (exports_10,
                     this.lastDistinctColumn = NaN;
                     // whether the ball has been released from a drop
                     this.released = false;
+                    this.vx = 0;
+                    this.vy = 0;
+                    this.minX = NaN;
+                    this.maxX = NaN;
+                    this.maxY = NaN;
                     this._hue = 155;
                     this._color = 0x0E63FF;
                 }
@@ -547,7 +552,7 @@ System.register("parts/turnstile", ["parts/part", "parts/ball"], function (expor
                 set rotation(r) {
                     const oldRotation = this.rotation;
                     super.rotation = r;
-                    if ((this.rotation < oldRotation) && (this.drop)) {
+                    if ((this.rotation == 0.0) && (oldRotation > 0.5) && (this.drop)) {
                         this.drop.releaseBall();
                     }
                 }
@@ -2339,10 +2344,10 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
         }
     };
 });
-System.register("board/schematic", ["matter-js", "board/constants", "parts/fence"], function (exports_23, context_23) {
+System.register("board/schematic", ["matter-js", "board/constants", "parts/fence", "parts/gearbit"], function (exports_23, context_23) {
     "use strict";
     var __moduleName = context_23 && context_23.id;
-    var matter_js_3, constants_3, fence_3, RAD, DIAM, DIAM_2, FENCE, STEP, EXIT, SchematicBallRouter;
+    var matter_js_3, constants_3, fence_3, gearbit_3, RAD, DIAM, DIAM_2, FENCE, STEP, EXIT, SchematicBallRouter;
     return {
         setters: [
             function (matter_js_3_1) {
@@ -2353,6 +2358,9 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
             },
             function (fence_3_1) {
                 fence_3 = fence_3_1;
+            },
+            function (gearbit_3_1) {
+                gearbit_3 = gearbit_3_1;
             }
         ],
         execute: function () {
@@ -2364,7 +2372,7 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
             // the thickness of fences in grid units
             FENCE = 0.125;
             // the speed at which a ball should move through schematic parts
-            STEP = 8 / constants_3.PART_SIZE;
+            STEP = 1 / constants_3.PART_SIZE;
             // the offset the schematic router should move toward when routing a ball,
             //  which must be over 0.5 to allow the next part to capture the ball
             EXIT = 0.51 + RAD;
@@ -2376,19 +2384,52 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                 }
                 onBoardSizeChanged() { }
                 update(speed, correction) {
-                    for (const ball of this.balls) {
-                        if (this.routeBall(ball)) {
-                            this.board.layoutPart(ball, ball.column, ball.row);
+                    const iterations = Math.ceil(speed * 8);
+                    for (let i = 0; i < iterations; i++) {
+                        for (const ball of this.balls) {
+                            ball.vx = ball.vy = 0;
+                            ball.minX = ball.maxX = ball.maxY = NaN;
+                            if (this.routeBall(ball)) {
+                                this.board.layoutPart(ball, ball.column, ball.row);
+                            }
+                            else {
+                                this.board.removeBall(ball);
+                            }
                         }
-                        else {
-                            this.board.removeBall(ball);
+                        this.stackBalls();
+                        this.moveBalls();
+                        this.confineBalls();
+                        gearbit_3.GearBase.update();
+                    }
+                }
+                moveBalls() {
+                    for (const ball of this.balls) {
+                        const m = Math.sqrt((ball.vx * ball.vx) + (ball.vy * ball.vy));
+                        if (m == 0.0)
+                            continue;
+                        const d = Math.min(m, STEP);
+                        ball.column += (ball.vx * d) / m;
+                        ball.row += (ball.vy * d) / m;
+                    }
+                }
+                confineBalls() {
+                    for (const ball of this.balls) {
+                        if ((!isNaN(ball.maxX)) && (ball.column > ball.maxX)) {
+                            ball.column = ball.maxX;
+                        }
+                        if ((!isNaN(ball.minX)) && (ball.column < ball.minX)) {
+                            ball.column = ball.minX;
+                        }
+                        if ((!isNaN(ball.maxY)) && (ball.row > ball.maxY)) {
+                            ball.row = ball.maxY;
                         }
                     }
-                    this.stackBalls();
                 }
                 routeBall(ball) {
                     let part;
                     let method;
+                    // confine the ball on the sides
+                    this.checkSides(ball);
                     // get the part containing the ball's center
                     part = this.board.getPart(Math.round(ball.column), Math.round(ball.row));
                     if ((part) && (method = this.routeMethodForPart(part)) &&
@@ -2411,6 +2452,21 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                     if (ball.row > this.board.rowCount + 0.5)
                         return (false);
                     return (true);
+                }
+                checkSides(ball) {
+                    const c = Math.round(ball.column);
+                    const r = Math.round(ball.row);
+                    const left = this.board.getPart(c - 1, r);
+                    const center = this.board.getPart(c, r);
+                    const right = this.board.getPart(c + 1, r);
+                    if (((left) && (left.type == 10 /* SIDE */) && (left.isFlipped)) ||
+                        ((center) && (center.type == 10 /* SIDE */) && (!center.isFlipped))) {
+                        ball.minX = c - 0.5 + RAD + (FENCE / 2);
+                    }
+                    if (((right) && (right.type == 10 /* SIDE */) && (!right.isFlipped)) ||
+                        ((center) && (center.type == 10 /* SIDE */) && (center.isFlipped))) {
+                        ball.maxX = c + 0.5 - RAD - (FENCE / 2);
+                    }
                 }
                 routeMethodForPart(part) {
                     if (!part)
@@ -2471,10 +2527,10 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                 routeSide(part, ball) {
                     // if the ball is contacting the side, push it inward
                     if (part.isFlipped) {
-                        ball.column = Math.min(ball.column, part.column + 0.5 - RAD);
+                        ball.maxX = part.column + 0.5 - RAD;
                     }
                     else {
-                        ball.column = Math.max(ball.column, part.column - 0.5 + RAD);
+                        ball.minX = part.column - 0.5 + RAD;
                     }
                     return (this.routeFreefall(ball));
                 }
@@ -2497,15 +2553,10 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                     if (r > level + DIAM)
                         return (this.routeFreefall(ball));
                     // the ball is near the fence, so put it on top of the fence
-                    ball.row = (part.row - 0.5) + level;
+                    ball.maxY = (part.row - 0.5) + level;
                     // get the target column to aim for
                     const sign = part.isFlipped ? -1 : 1;
                     let target = sign * EXIT;
-                    // stop if there's a side at the bottom of the slope
-                    const next = this.board.getPart(part.column + sign, part.row);
-                    if ((next instanceof fence_3.Side) && (next.isFlipped == part.isFlipped)) {
-                        target = sign * (0.5 - RAD - (FENCE / 2));
-                    }
                     // roll toward the exit
                     this.approachTarget(ball, part.column + target, part.row - 0.5 + ((0.5 + (target * sign) + s - FENCE) / m) - RAD);
                     return (true);
@@ -2517,9 +2568,10 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                     }
                     else {
                         const offset = RAD + (FENCE / 2);
-                        ball.column = Math.min(Math.max(part.column - 0.5 + offset, ball.column), part.column + 0.5 - offset);
+                        ball.minX = part.column - 0.5 + offset;
+                        ball.maxX = part.column + 0.5 - offset;
+                        ball.maxY = part.row + 0.5 - offset;
                         this.routeFreefall(ball);
-                        ball.row = Math.min(ball.row, part.row + 0.5 - offset);
                     }
                     return (true);
                 }
@@ -2533,11 +2585,15 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                     const pocketR = -0.35;
                     const pocketC = 0.13;
                     if (r < pocketR) {
+                        // if another ball is already rotating the turnstile, 
+                        //  stop this one until that one goes through
+                        if (part.rotation > 0.1)
+                            return (true);
                         tc = pocketC;
                         tr = pocketR;
                     }
                     else if ((part.rotation < 1.0) && (r < pocketC)) {
-                        part.rotation += 0.1;
+                        part.rotation += 0.01;
                         const v = matter_js_3.Vector.rotate({ x: pocketC, y: pocketR }, part.angleForRotation(part.rotation) * sign);
                         tc = v.x;
                         tr = v.y;
@@ -2554,27 +2610,18 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                     return (true);
                 }
                 routeFreefall(ball) {
-                    ball.row += STEP;
+                    ball.vy += STEP;
                     return (true);
                 }
                 // move the ball toward the given location
                 approachTarget(ball, c, r) {
                     let v = matter_js_3.Vector.normalise({ x: c - ball.column, y: r - ball.row });
-                    ball.column += v.x * STEP;
-                    ball.row += v.y * STEP;
-                    // don't allow the ball to go past the target
-                    if (v.x > 0)
-                        ball.column = Math.min(ball.column, c);
-                    else
-                        ball.column = Math.max(c, ball.column);
-                    if (v.y > 0)
-                        ball.row = Math.min(ball.row, r);
-                    else
-                        ball.row = Math.max(r, ball.row);
+                    ball.vx += v.x * STEP;
+                    ball.vy += v.y * STEP;
                 }
                 // BALL STACKING ************************************************************
                 stackBalls() {
-                    // group balls into columns containing balls that are halfway on either side
+                    // group balls into columns containing balls that are on either side
                     const columns = [];
                     const add = (ball, c) => {
                         if ((c < 0) || (c >= this.board.rowCount))
@@ -2584,14 +2631,10 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                         columns[c].push(ball);
                     };
                     for (const ball of this.balls) {
-                        const left = Math.floor(ball.column);
                         const center = Math.round(ball.column);
-                        const right = Math.floor(ball.column);
                         add(ball, center);
-                        if (left !== center)
-                            add(ball, left);
-                        if (right !== center)
-                            add(ball, right);
+                        add(ball, center - 1);
+                        add(ball, center + 1);
                     }
                     // sort the balls in each column from bottom to top
                     for (const c in columns) {
@@ -2629,13 +2672,28 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                         // if there are no collisions, there's nothing to do
                         if (collisions.size == 0)
                             continue;
+                        // if the ball is in contact, remove any horizontal motion 
+                        //  applied by the router so far
+                        ball.vx = 0;
                         // move away from each other ball
                         for (const b of collisions) {
-                            const v = { x: ball.column - b.column, y: ball.row - b.row };
-                            const d = matter_js_3.Vector.magnitude(v);
-                            const m = Math.max(0, DIAM - d);
-                            ball.column += (v.x / d) * m;
-                            ball.row += (v.y / d) * m;
+                            let dx = ball.column - b.column;
+                            let dy = ball.row - b.row;
+                            const m = Math.sqrt((dx * dx) + (dy * dy));
+                            // if two ball are directly on top of eachother, push one of them up
+                            if (!(m > 0)) {
+                                ball.vy -= (DIAM - STEP);
+                            }
+                            else {
+                                const d = (DIAM - STEP) - m;
+                                // add some jitter so balls don't stack up vertically
+                                if (dx === 0.0)
+                                    dx = (Math.random() - 0.5) * STEP * 0.01;
+                                if (d > 0) {
+                                    ball.vx += (dx * d) / m;
+                                    ball.vy += (dy * d) / m;
+                                }
+                            }
                         }
                     }
                 }
@@ -2705,7 +2763,7 @@ System.register("board/controls", ["pixi.js", "renderer"], function (exports_24,
 System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball", "board/constants", "board/physics", "board/schematic", "parts/drop", "board/controls", "ui/animator", "parts/turnstile"], function (exports_25, context_25) {
     "use strict";
     var __moduleName = context_25 && context_25.id;
-    var filter, fence_4, gearbit_3, disjoint_1, renderer_4, ball_4, constants_4, physics_1, schematic_1, drop_3, controls_1, animator_3, turnstile_3, SPACING_FACTOR, Board;
+    var filter, fence_4, gearbit_4, disjoint_1, renderer_4, ball_4, constants_4, physics_1, schematic_1, drop_3, controls_1, animator_3, turnstile_3, SPACING_FACTOR, Board;
     return {
         setters: [
             function (filter_1) {
@@ -2714,8 +2772,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             function (fence_4_1) {
                 fence_4 = fence_4_1;
             },
-            function (gearbit_3_1) {
-                gearbit_3 = gearbit_3_1;
+            function (gearbit_4_1) {
+                gearbit_4 = gearbit_4_1;
             },
             function (disjoint_1_1) {
                 disjoint_1 = disjoint_1_1;
@@ -2758,7 +2816,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     // the set of balls currently on the board
                     this.balls = new Set();
                     this._changeCounter = 0;
-                    this._schematic = false;
+                    this._schematic = true;
                     // the speed to run the simulator at
                     this.speed = 1.0;
                     // routers to manage the positions of the balls
@@ -3169,18 +3227,18 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     if (newPart)
                         this.layoutPart(newPart, column, row);
                     // tell gears what kind of location they're on
-                    if (newPart instanceof gearbit_3.Gear) {
+                    if (newPart instanceof gearbit_4.Gear) {
                         newPart.isOnPartLocation = ((column + row) % 2) == 0;
                     }
                     // update gear connections
-                    if ((oldPart instanceof gearbit_3.GearBase) || (newPart instanceof gearbit_3.GearBase)) {
+                    if ((oldPart instanceof gearbit_4.GearBase) || (newPart instanceof gearbit_4.GearBase)) {
                         // disconnect the old part
-                        if (oldPart instanceof gearbit_3.GearBase)
+                        if (oldPart instanceof gearbit_4.GearBase)
                             oldPart.connected = null;
                         // rebuild connections between gears and gearbits
                         this._connectGears();
                         // merge the new part's rotation with the connected set
-                        if ((newPart instanceof gearbit_3.GearBase) && (newPart.connected)) {
+                        if ((newPart instanceof gearbit_4.GearBase) && (newPart.connected)) {
                             let sum = 0.0;
                             for (const part of newPart.connected) {
                                 sum += part.rotation;
@@ -3420,7 +3478,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     let allGears = new Set();
                     for (const row of this._grid) {
                         for (const part of row) {
-                            if (part instanceof gearbit_3.GearBase)
+                            if (part instanceof gearbit_4.GearBase)
                                 allGears.add(part);
                         }
                     }
@@ -3431,10 +3489,10 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         westPart = null;
                         for (const part of row) {
                             northPart = r > 0 ? this.getPart(c, r - 1) : null;
-                            if (part instanceof gearbit_3.GearBase) {
-                                northLabel = (northPart instanceof gearbit_3.GearBase) ?
+                            if (part instanceof gearbit_4.GearBase) {
+                                northLabel = (northPart instanceof gearbit_4.GearBase) ?
                                     northPart._connectionLabel : -1;
-                                westLabel = (westPart instanceof gearbit_3.GearBase) ?
+                                westLabel = (westPart instanceof gearbit_4.GearBase) ?
                                     westPart._connectionLabel : -1;
                                 if ((northLabel >= 0) && (westLabel >= 0)) {
                                     if (northLabel === westLabel) {
@@ -4429,7 +4487,7 @@ System.register("ui/keyboard", [], function (exports_29, context_29) {
 System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "ui/animator", "ui/keyboard", "parts/gearbit"], function (exports_30, context_30) {
     "use strict";
     var __moduleName = context_30 && context_30.id;
-    var PIXI, board_3, factory_2, toolbar_1, actionbar_1, renderer_8, animator_4, keyboard_1, gearbit_4, SimulatorApp;
+    var PIXI, board_3, factory_2, toolbar_1, actionbar_1, renderer_8, animator_4, keyboard_1, gearbit_5, SimulatorApp;
     return {
         setters: [
             function (PIXI_8) {
@@ -4456,8 +4514,8 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
             function (keyboard_1_1) {
                 keyboard_1 = keyboard_1_1;
             },
-            function (gearbit_4_1) {
-                gearbit_4 = gearbit_4_1;
+            function (gearbit_5_1) {
+                gearbit_5 = gearbit_5_1;
             }
         ],
         execute: function () {
@@ -4485,7 +4543,7 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                 update(delta) {
                     animator_4.Animator.current.update(delta);
                     this.board.update(delta);
-                    gearbit_4.GearBase.update();
+                    gearbit_5.GearBase.update();
                     renderer_8.Renderer.render();
                 }
                 get width() { return (this._width); }

@@ -62,13 +62,21 @@ export class Board {
   private _changeCounter:number = 0;
   
   // whether to show parts in schematic form
+  public get schematicView():boolean {
+    return((this._schematic) || (this.spacing <= this.partSize));
+  }
+
+  // whether to route parts using the schematic router
   public get schematic():boolean { return(this._schematic); }
   public set schematic(v:boolean) {
     if (v === this._schematic) return;
     this._schematic = v;
     this._updateLayerVisibility();
+    // return all balls because their positions will be different in the two
+    //  routers and it can cause a lot of jumping and sticking
+    this.returnBalls();
   }
-  protected _schematic:boolean = true;
+  protected _schematic:boolean = false;
 
   // the speed to run the simulator at
   public speed:number = 1.0;
@@ -164,13 +172,13 @@ export class Board {
     const showContainer = (layer:Layer, show:boolean) => {
       if (this._containers.has(layer)) this._containers.get(layer).visible = show;
     };
-    showContainer(Layer.BACK, ! this.schematic);
-    showContainer(Layer.MID, ! this.schematic);
-    showContainer(Layer.FRONT, ! this.schematic);
-    showContainer(Layer.SCHEMATIC_BACK, this.schematic && (this.partSize >= 12));
-    showContainer(Layer.SCHEMATIC, this.schematic);
-    showContainer(Layer.SCHEMATIC_4, this.schematic && (this.partSize == 4));
-    showContainer(Layer.SCHEMATIC_2, this.schematic && (this.partSize == 2));
+    showContainer(Layer.BACK, ! this.schematicView);
+    showContainer(Layer.MID, ! this.schematicView);
+    showContainer(Layer.FRONT, ! this.schematicView);
+    showContainer(Layer.SCHEMATIC_BACK, this.schematicView && (this.partSize >= 12));
+    showContainer(Layer.SCHEMATIC, this.schematicView);
+    showContainer(Layer.SCHEMATIC_4, this.schematicView && (this.partSize == 4));
+    showContainer(Layer.SCHEMATIC_2, this.schematicView && (this.partSize == 2));
     let showControls:boolean = false;
     for (const control of this._controls) {
       if (control.visible) {

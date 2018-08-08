@@ -61,13 +61,13 @@ export class Toolbar extends ButtonBar {
       }
       else if (button === this._eraserButton) {
         button.isToggled = (this.board.tool === ToolType.ERASER);
-        this._eraserButton.schematic = this.board.schematic;
+        this._eraserButton.schematic = this.board.schematicView;
       }
       else if (button instanceof PartButton) {
         button.isToggled = ((this.board.tool === ToolType.PART) && 
                             (this.board.partPrototype) &&
                             (button.part.type === this.board.partPrototype.type));
-        button.schematic = this.board.schematic;
+        button.schematic = this.board.schematicView;
       }
     }
     Renderer.needsUpdate();

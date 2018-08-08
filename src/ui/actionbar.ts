@@ -53,14 +53,22 @@ export class Actionbar extends ButtonBar {
 
   protected onButtonClick(button:Button):void {
     if (button === this._schematicButton) {
-      this.board.schematic = ! this.board.schematic;
-      this._desiredSchematic = this.board.schematic;
+      this.board.schematic = ! this.board.schematicView;
       this.updateToggled();
       if (this.peer) this.peer.updateToggled();
     }
-    else if (button === this._zoomInButton) { this.zoomIn(); }
-    else if (button === this._zoomOutButton) { this.zoomOut(); }
-    else if (button === this._zoomToFitButton) { this.zoomToFit(); }
+    else if (button === this._zoomInButton) {
+      this.zoomIn();
+      if (this.peer) this.peer.updateToggled();
+    }
+    else if (button === this._zoomOutButton) {
+      this.zoomOut();
+      if (this.peer) this.peer.updateToggled();
+    }
+    else if (button === this._zoomToFitButton) {
+      this.zoomToFit();
+      if (this.peer) this.peer.updateToggled();
+    }
     else if (button === this._fasterButton) { this.goFaster(); }
     else if (button === this._slowerButton) { this.goSlower(); }
     else if (button === this._returnButton) { this.board.returnBalls(); }
@@ -73,7 +81,6 @@ export class Actionbar extends ButtonBar {
     // update button toggle states
     for (const button of this._buttons) {
       if (button === this._schematicButton) {
-        button.isEnabled = ! this.forceSchematic;
         button.isToggled = this.board.schematic;
       }
       else if (button == this._zoomInButton) {
@@ -92,7 +99,7 @@ export class Actionbar extends ButtonBar {
         button.isToggled = ((this.board.tool === ToolType.PART) && 
                             (this.board.partPrototype) &&
                             (button.part.type === this.board.partPrototype.type));
-        button.schematic = this.board.schematic;
+        button.schematic = this.board.schematicView;
       }
     }
     Renderer.needsUpdate();
@@ -125,23 +132,6 @@ export class Actionbar extends ButtonBar {
 
   // ZOOMING ******************************************************************
 
-  // the user's desired shematic setting
-  protected _desiredSchematic:boolean = this.board.schematic;
-  // force schematic mode when parts are very small
-  protected get forceSchematic():boolean {
-    return(this.board.spacing <= this.board.partSize);
-  }
-  // when the board gets too small to see parts clearly, 
-  //  switch to schematic mode
-  protected _updateAutoSchematic():void {
-    if (this.forceSchematic) {
-      this.board.schematic = true;
-    }
-    else {
-      this.board.schematic = this._desiredSchematic;
-    }
-  }
-
   public get canZoomIn():boolean {
     return(this.zoomIndex < Zooms.length - 1);
   }
@@ -152,14 +142,12 @@ export class Actionbar extends ButtonBar {
   public zoomIn():void {
     if (! this.canZoomIn) return;
     this.board.partSize = Zooms[this.zoomIndex + 1];
-    this._updateAutoSchematic();
     this.updateToggled();
   }
   
   public zoomOut():void {
     if (! this.canZoomOut) return;
     this.board.partSize = Zooms[this.zoomIndex - 1];
-    this._updateAutoSchematic();
     this.updateToggled();
   }
 
@@ -175,7 +163,6 @@ export class Actionbar extends ButtonBar {
       if ((w <= this.board.width) && (h <= this.board.height)) break;
     }
     this.board.partSize = s;
-    this._updateAutoSchematic();
     this.updateToggled();
   }
 

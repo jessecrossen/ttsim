@@ -2849,7 +2849,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     // the set of balls currently on the board
                     this.balls = new Set();
                     this._changeCounter = 0;
-                    this._schematic = true;
+                    this._schematic = false;
                     // the speed to run the simulator at
                     this.speed = 1.0;
                     // routers to manage the positions of the balls
@@ -2885,12 +2885,19 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._changeCounter++;
                 }
                 // whether to show parts in schematic form
+                get schematicView() {
+                    return ((this._schematic) || (this.spacing <= this.partSize));
+                }
+                // whether to route parts using the schematic router
                 get schematic() { return (this._schematic); }
                 set schematic(v) {
                     if (v === this._schematic)
                         return;
                     this._schematic = v;
                     this._updateLayerVisibility();
+                    // return all balls because their positions will be different in the two
+                    //  routers and it can cause a lot of jumping and sticking
+                    this.returnBalls();
                 }
                 // update the board state
                 update(correction) {
@@ -2976,13 +2983,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         if (this._containers.has(layer))
                             this._containers.get(layer).visible = show;
                     };
-                    showContainer(0 /* BACK */, !this.schematic);
-                    showContainer(1 /* MID */, !this.schematic);
-                    showContainer(2 /* FRONT */, !this.schematic);
-                    showContainer(3 /* SCHEMATIC_BACK */, this.schematic && (this.partSize >= 12));
-                    showContainer(4 /* SCHEMATIC */, this.schematic);
-                    showContainer(6 /* SCHEMATIC_4 */, this.schematic && (this.partSize == 4));
-                    showContainer(5 /* SCHEMATIC_2 */, this.schematic && (this.partSize == 2));
+                    showContainer(0 /* BACK */, !this.schematicView);
+                    showContainer(1 /* MID */, !this.schematicView);
+                    showContainer(2 /* FRONT */, !this.schematicView);
+                    showContainer(3 /* SCHEMATIC_BACK */, this.schematicView && (this.partSize >= 12));
+                    showContainer(4 /* SCHEMATIC */, this.schematicView);
+                    showContainer(6 /* SCHEMATIC_4 */, this.schematicView && (this.partSize == 4));
+                    showContainer(5 /* SCHEMATIC_2 */, this.schematicView && (this.partSize == 2));
                     let showControls = false;
                     for (const control of this._controls) {
                         if (control.visible) {
@@ -4305,13 +4312,13 @@ System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (ex
                         }
                         else if (button === this._eraserButton) {
                             button.isToggled = (this.board.tool === 2 /* ERASER */);
-                            this._eraserButton.schematic = this.board.schematic;
+                            this._eraserButton.schematic = this.board.schematicView;
                         }
                         else if (button instanceof button_1.PartButton) {
                             button.isToggled = ((this.board.tool === 1 /* PART */) &&
                                 (this.board.partPrototype) &&
                                 (button.part.type === this.board.partPrototype.type));
-                            button.schematic = this.board.schematic;
+                            button.schematic = this.board.schematicView;
                         }
                     }
                     renderer_7.Renderer.needsUpdate();
@@ -4348,9 +4355,6 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                 constructor(board) {
                     super();
                     this.board = board;
-                    // ZOOMING ******************************************************************
-                    // the user's desired shematic setting
-                    this._desiredSchematic = this.board.schematic;
                     // add a button to toggle schematic view
                     this._schematicButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['schematic']));
                     this.addButton(this._schematicButton);
@@ -4376,20 +4380,25 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                 }
                 onButtonClick(button) {
                     if (button === this._schematicButton) {
-                        this.board.schematic = !this.board.schematic;
-                        this._desiredSchematic = this.board.schematic;
+                        this.board.schematic = !this.board.schematicView;
                         this.updateToggled();
                         if (this.peer)
                             this.peer.updateToggled();
                     }
                     else if (button === this._zoomInButton) {
                         this.zoomIn();
+                        if (this.peer)
+                            this.peer.updateToggled();
                     }
                     else if (button === this._zoomOutButton) {
                         this.zoomOut();
+                        if (this.peer)
+                            this.peer.updateToggled();
                     }
                     else if (button === this._zoomToFitButton) {
                         this.zoomToFit();
+                        if (this.peer)
+                            this.peer.updateToggled();
                     }
                     else if (button === this._fasterButton) {
                         this.goFaster();
@@ -4408,7 +4417,6 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     // update button toggle states
                     for (const button of this._buttons) {
                         if (button === this._schematicButton) {
-                            button.isEnabled = !this.forceSchematic;
                             button.isToggled = this.board.schematic;
                         }
                         else if (button == this._zoomInButton) {
@@ -4427,7 +4435,7 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                             button.isToggled = ((this.board.tool === 1 /* PART */) &&
                                 (this.board.partPrototype) &&
                                 (button.part.type === this.board.partPrototype.type));
-                            button.schematic = this.board.schematic;
+                            button.schematic = this.board.schematicView;
                         }
                     }
                     renderer_8.Renderer.needsUpdate();
@@ -4453,20 +4461,7 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                         this.board.speed = config_2.Speeds[i];
                     this.updateToggled();
                 }
-                // force schematic mode when parts are very small
-                get forceSchematic() {
-                    return (this.board.spacing <= this.board.partSize);
-                }
-                // when the board gets too small to see parts clearly, 
-                //  switch to schematic mode
-                _updateAutoSchematic() {
-                    if (this.forceSchematic) {
-                        this.board.schematic = true;
-                    }
-                    else {
-                        this.board.schematic = this._desiredSchematic;
-                    }
-                }
+                // ZOOMING ******************************************************************
                 get canZoomIn() {
                     return (this.zoomIndex < config_2.Zooms.length - 1);
                 }
@@ -4477,14 +4472,12 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     if (!this.canZoomIn)
                         return;
                     this.board.partSize = config_2.Zooms[this.zoomIndex + 1];
-                    this._updateAutoSchematic();
                     this.updateToggled();
                 }
                 zoomOut() {
                     if (!this.canZoomOut)
                         return;
                     this.board.partSize = config_2.Zooms[this.zoomIndex - 1];
-                    this._updateAutoSchematic();
                     this.updateToggled();
                 }
                 // zoom to fit the board
@@ -4500,7 +4493,6 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                             break;
                     }
                     this.board.partSize = s;
-                    this._updateAutoSchematic();
                     this.updateToggled();
                 }
                 get zoomIndex() {

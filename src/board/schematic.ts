@@ -125,6 +125,7 @@ export class SchematicBallRouter implements IBallRouter {
     switch(part.type) {
       case PartType.RAMP: return(this.routeRamp);
       case PartType.CROSSOVER: return(this.routeCrossover);
+      case PartType.INTERCEPTOR: return(this.routeInterceptor);
       case PartType.BIT:     // fall-through
       case PartType.GEARBIT: return(this.routeBit);
       case PartType.SIDE: return(this.routeSide);
@@ -157,6 +158,13 @@ export class SchematicBallRouter implements IBallRouter {
       this.approachTarget(ball, part.column - EXIT, part.row + EXIT);
     }
     return(true);
+  }
+
+  protected routeInterceptor(part:Part, ball:Ball):boolean {
+    ball.minX = part.column - 0.5 + RAD;
+    ball.maxX = part.column + 0.5 - RAD;
+    ball.maxY = part.row + 0.5 - RAD;
+    return(this.routeFreefall(ball));
   }
 
   protected routeBit(part:Part, ball:Ball):boolean {

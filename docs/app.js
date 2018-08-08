@@ -2469,6 +2469,7 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                     switch (part.type) {
                         case 3 /* RAMP */: return (this.routeRamp);
                         case 4 /* CROSSOVER */: return (this.routeCrossover);
+                        case 5 /* INTERCEPTOR */: return (this.routeInterceptor);
                         case 6 /* BIT */: // fall-through
                         case 7 /* GEARBIT */: return (this.routeBit);
                         case 10 /* SIDE */: return (this.routeSide);
@@ -2498,6 +2499,12 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                         this.approachTarget(ball, part.column - EXIT, part.row + EXIT);
                     }
                     return (true);
+                }
+                routeInterceptor(part, ball) {
+                    ball.minX = part.column - 0.5 + RAD;
+                    ball.maxX = part.column + 0.5 - RAD;
+                    ball.maxY = part.row + 0.5 - RAD;
+                    return (this.routeFreefall(ball));
                 }
                 routeBit(part, ball) {
                     // if the ball is in the top half of the part, proceed toward the center,

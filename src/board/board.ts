@@ -209,8 +209,8 @@ export class Board {
     }
   }
   protected _showControl(control:PIXI.Sprite):void {
+    if (! control.visible) control.alpha = 0.0;
     control.visible = true;
-    if (control.alpha == 1) control.alpha = 0.0;
     Animator.current.animate(control, 'alpha', 0, 1, 
       Delays.SHOW_CONTROL);
     this._updateLayerVisibility();

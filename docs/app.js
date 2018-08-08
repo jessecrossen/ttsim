@@ -3104,9 +3104,9 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                 }
                 _showControl(control) {
-                    control.visible = true;
-                    if (control.alpha == 1)
+                    if (!control.visible)
                         control.alpha = 0.0;
+                    control.visible = true;
                     animator_3.Animator.current.animate(control, 'alpha', 0, 1, 0.1 /* SHOW_CONTROL */);
                     this._updateLayerVisibility();
                 }

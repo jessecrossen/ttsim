@@ -1,5 +1,7 @@
 import * as PIXI from 'pixi.js';
 import { Renderer } from 'renderer';
+import { Drop } from 'parts/drop';
+import { Colors, htmlColor } from 'ui/config';
 
 export class ColorWheel extends PIXI.Sprite {
 
@@ -71,6 +73,39 @@ export class TurnButton extends SpriteWithSize {
     if (v === this.flipped) return;
     this.scale.x = Math.abs(this.scale.x) * (v ? -1 : 1);
     Renderer.needsUpdate();
+  }
+
+}
+
+export class BallCounter extends PIXI.Sprite {
+
+  constructor() {
+    super();
+    this._text = new PIXI.Text('0',
+      { fontFamily : 'sans-serif', fontWeight: 'bold', align: 'center', 
+        fontSize: 24, fill: htmlColor(Colors.BALL_COUNT),
+        stroke: '#000000', strokeThickness: 4 });
+    this._text.anchor.set(0.5, 0.5);
+    this.addChild(this._text);
+  }
+  private _text:PIXI.Text;
+
+  public drop:Drop;
+
+  public get count():number {
+    if (! this.drop) return(0);
+    let count:number = 0;
+    for (const ball of this.drop.balls) {
+      if ((ball.released) || (ball.row > this.drop.row + 0.5)) continue;
+      count++;
+    }
+    return(count);
+  }
+
+  public update():void {
+    const oldText:string = this._text.text;
+    this._text.text = this.count.toString();
+    if (this._text.text !== oldText) Renderer.needsUpdate();
   }
 
 }

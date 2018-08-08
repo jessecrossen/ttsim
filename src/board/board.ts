@@ -12,7 +12,7 @@ import { BALL_RADIUS, SPACING, PART_SIZE } from './constants';
 import { PhysicalBallRouter } from './physics';
 import { SchematicBallRouter } from './schematic';
 import { Drop } from 'parts/drop';
-import { ColorWheel, DropButton, TurnButton } from './controls';
+import { ColorWheel, DropButton, TurnButton, BallCounter } from './controls';
 import { Animator } from 'ui/animator';
 import { Turnstile } from 'parts/turnstile';
 
@@ -192,6 +192,8 @@ export class Board {
 
   // controls
   protected _makeControls():void {
+    this._ballCounter = new BallCounter();
+    this._controls.push(this._ballCounter);
     this._dropButton = new DropButton(this.partFactory.textures);
     this._controls.push(this._dropButton);
     this._turnButton = new TurnButton(this.partFactory.textures);
@@ -222,6 +224,7 @@ export class Board {
   private _colorWheel:ColorWheel;
   private _dropButton:DropButton;
   private _turnButton:TurnButton;
+  private _ballCounter:BallCounter;
 
   // LAYOUT *******************************************************************
 
@@ -317,7 +320,8 @@ export class Board {
   // get the spacing between part centers
   public get spacing():number { return(Math.floor(this.partSize * SPACING_FACTOR)); }
   // get the size of controls overlayed on the parts
-  public get controlSize():number { return(Math.max(16, Math.ceil(this.partSize * 0.75))); }
+  public get controlSize():number {
+    return(Math.min(Math.max(16, Math.ceil(this.partSize * 0.75)), 32)); }
   
   // get the column for the given X coordinate
   public columnForX(x:number):number {
@@ -525,6 +529,10 @@ export class Board {
     }
     if (newPart instanceof Drop) {
       this.drops.add(newPart);
+      newPart.onRelease = () => {
+        if ((this._ballCounter.visible) &&
+            (this._ballCounter.drop === newPart)) this._ballCounter.update();
+      };
     }
     if ((oldPart instanceof Drop) || (newPart instanceof Drop) ||
         (oldPart instanceof Turnstile) || (newPart instanceof Turnstile)) {
@@ -570,6 +578,8 @@ export class Board {
           ball.hue = drop.hue;
         }
       }
+      // update the ball counter
+      if (this._ballCounter.visible) this._ballCounter.update();
       this.onChange();
     }
   }
@@ -580,6 +590,8 @@ export class Board {
       if (ball.drop) ball.drop.balls.delete(ball);
       this.balls.delete(ball);
       this.removePart(ball);
+      // update the ball counter
+      if (this._ballCounter.visible) this._ballCounter.update();
       Renderer.needsUpdate();
       this.onChange();
     }
@@ -1128,6 +1140,18 @@ export class Board {
       }
       else if (oldActionPart instanceof Turnstile) {
         this._hideControl(this._turnButton);
+      }
+      // show hide the ball counter
+      if ((this._action === ActionType.PLACE_BALL) &&
+          (this._ballCounter.drop = // intentional assignment
+            this.catchmentDrop(this._actionColumn, this._actionRow))) {
+        this._ballCounter.x = this._ballCounter.drop.x;
+        this._ballCounter.y = this._ballCounter.drop.y;
+        this._showControl(this._ballCounter);
+        this._ballCounter.update();
+      }
+      else if (this._ballCounter.visible) {
+        this._hideControl(this._ballCounter);
       }
     }
     this._updatePreview();

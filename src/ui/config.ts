@@ -2,6 +2,7 @@ export const enum Colors {
   BACKGROUND = 0xFFFFFF,  // background of the whole app
   BUTTON_BACK = 0x000000, // background of buttons when not toggled
   HIGHLIGHT = 0xFFAA00,   // general-purpose highlight color
+  BALL_COUNT = 0xFFFFFF,  // ball count text over a drop
   WIREFRAME = 0xFF0000,   // physice engine wireframe (debugging only)
   WIREFRAME_HULL = 0x00FF00,
   WIREFRAME_CONSTRAINT = 0x0000FF,
@@ -34,6 +35,11 @@ export const Zooms:number[] =
   [ 2, 4, 6, 8, 12, 16, 24, 32, 48, 64 ];
 export const Speeds:number[] = 
   [ 0.0, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0 ];
+
+// formats a color as an HTML color code
+export function htmlColor(c:number):string {
+  return('#'+('000000'+c.toString(16)).substr(-6));
+}
 
 // converts an HSL color value to RGB
 //  adapted from http://en.wikipedia.org/wiki/HSL_color_space

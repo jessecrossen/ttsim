@@ -16,6 +16,9 @@ export class Drop extends Part {
   // a set of turnstiles associated with the drop
   public readonly turnstiles:Set<Turnstile> = new Set();
 
+  // a callback that's called whenever a ball is release
+  public onRelease:() => void;
+
   // a flag to set signalling a desire to release a ball, which will be cleared
   //  after a ball is released
   public releaseBall():void {
@@ -37,7 +40,10 @@ export class Drop extends Part {
       }
     }
     // release the ball closest to the exit if we found one
-    if (closest) closest.released = true;
+    if (closest) {
+      closest.released = true;
+      if (this.onRelease) this.onRelease();
+    }
   }
 
   // the hue of balls in this ball drop

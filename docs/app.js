@@ -348,6 +348,11 @@ System.register("parts/blank", ["parts/part"], function (exports_8, context_8) {
 System.register("ui/config", [], function (exports_9, context_9) {
     "use strict";
     var __moduleName = context_9 && context_9.id;
+    // formats a color as an HTML color code
+    function htmlColor(c) {
+        return ('#' + ('000000' + c.toString(16)).substr(-6));
+    }
+    exports_9("htmlColor", htmlColor);
     // converts an HSL color value to RGB
     //  adapted from http://en.wikipedia.org/wiki/HSL_color_space
     //  via https://stackoverflow.com/a/9493060/745831
@@ -615,8 +620,11 @@ System.register("parts/drop", ["parts/part"], function (exports_12, context_12) 
                         }
                     }
                     // release the ball closest to the exit if we found one
-                    if (closest)
+                    if (closest) {
                         closest.released = true;
+                        if (this.onRelease)
+                            this.onRelease();
+                    }
                 }
                 // the hue of balls in this ball drop
                 get hue() { return (this._hue); }
@@ -2704,10 +2712,10 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
         }
     };
 });
-System.register("board/controls", ["pixi.js", "renderer"], function (exports_24, context_24) {
+System.register("board/controls", ["pixi.js", "renderer", "ui/config"], function (exports_24, context_24) {
     "use strict";
     var __moduleName = context_24 && context_24.id;
-    var PIXI, renderer_4, ColorWheel, SpriteWithSize, DropButton, TurnButton;
+    var PIXI, renderer_4, config_2, ColorWheel, SpriteWithSize, DropButton, TurnButton, BallCounter;
     return {
         setters: [
             function (PIXI_4) {
@@ -2715,6 +2723,9 @@ System.register("board/controls", ["pixi.js", "renderer"], function (exports_24,
             },
             function (renderer_4_1) {
                 renderer_4 = renderer_4_1;
+            },
+            function (config_2_1) {
+                config_2 = config_2_1;
             }
         ],
         execute: function () {
@@ -2790,6 +2801,34 @@ System.register("board/controls", ["pixi.js", "renderer"], function (exports_24,
                 }
             };
             exports_24("TurnButton", TurnButton);
+            BallCounter = class BallCounter extends PIXI.Sprite {
+                constructor() {
+                    super();
+                    this._text = new PIXI.Text('0', { fontFamily: 'sans-serif', fontWeight: 'bold', align: 'center',
+                        fontSize: 24, fill: config_2.htmlColor(16777215 /* BALL_COUNT */),
+                        stroke: '#000000', strokeThickness: 4 });
+                    this._text.anchor.set(0.5, 0.5);
+                    this.addChild(this._text);
+                }
+                get count() {
+                    if (!this.drop)
+                        return (0);
+                    let count = 0;
+                    for (const ball of this.drop.balls) {
+                        if ((ball.released) || (ball.row > this.drop.row + 0.5))
+                            continue;
+                        count++;
+                    }
+                    return (count);
+                }
+                update() {
+                    const oldText = this._text.text;
+                    this._text.text = this.count.toString();
+                    if (this._text.text !== oldText)
+                        renderer_4.Renderer.needsUpdate();
+                }
+            };
+            exports_24("BallCounter", BallCounter);
         }
     };
 });
@@ -3002,6 +3041,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 }
                 // controls
                 _makeControls() {
+                    this._ballCounter = new controls_1.BallCounter();
+                    this._controls.push(this._ballCounter);
                     this._dropButton = new controls_1.DropButton(this.partFactory.textures);
                     this._controls.push(this._dropButton);
                     this._turnButton = new controls_1.TurnButton(this.partFactory.textures);
@@ -3114,7 +3155,9 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 // get the spacing between part centers
                 get spacing() { return (Math.floor(this.partSize * SPACING_FACTOR)); }
                 // get the size of controls overlayed on the parts
-                get controlSize() { return (Math.max(16, Math.ceil(this.partSize * 0.75))); }
+                get controlSize() {
+                    return (Math.min(Math.max(16, Math.ceil(this.partSize * 0.75)), 32));
+                }
                 // get the column for the given X coordinate
                 columnForX(x) {
                     return (x / this.spacing);
@@ -3316,6 +3359,11 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                     if (newPart instanceof drop_3.Drop) {
                         this.drops.add(newPart);
+                        newPart.onRelease = () => {
+                            if ((this._ballCounter.visible) &&
+                                (this._ballCounter.drop === newPart))
+                                this._ballCounter.update();
+                        };
                     }
                     if ((oldPart instanceof drop_3.Drop) || (newPart instanceof drop_3.Drop) ||
                         (oldPart instanceof turnstile_3.Turnstile) || (newPart instanceof turnstile_3.Turnstile)) {
@@ -3359,6 +3407,9 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                                 ball.hue = drop.hue;
                             }
                         }
+                        // update the ball counter
+                        if (this._ballCounter.visible)
+                            this._ballCounter.update();
                         this.onChange();
                     }
                 }
@@ -3369,6 +3420,9 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             ball.drop.balls.delete(ball);
                         this.balls.delete(ball);
                         this.removePart(ball);
+                        // update the ball counter
+                        if (this._ballCounter.visible)
+                            this._ballCounter.update();
                         renderer_5.Renderer.needsUpdate();
                         this.onChange();
                     }
@@ -3905,6 +3959,18 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         else if (oldActionPart instanceof turnstile_3.Turnstile) {
                             this._hideControl(this._turnButton);
                         }
+                        // show hide the ball counter
+                        if ((this._action === 2 /* PLACE_BALL */) &&
+                            (this._ballCounter.drop = // intentional assignment
+                                this.catchmentDrop(this._actionColumn, this._actionRow))) {
+                            this._ballCounter.x = this._ballCounter.drop.x;
+                            this._ballCounter.y = this._ballCounter.drop.y;
+                            this._showControl(this._ballCounter);
+                            this._ballCounter.update();
+                        }
+                        else if (this._ballCounter.visible) {
+                            this._hideControl(this._ballCounter);
+                        }
                     }
                     this._updatePreview();
                 }
@@ -4331,7 +4397,7 @@ System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (ex
 System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/config", "renderer"], function (exports_28, context_28) {
     "use strict";
     var __moduleName = context_28 && context_28.id;
-    var PIXI, board_2, button_2, config_2, renderer_8, Actionbar;
+    var PIXI, board_2, button_2, config_3, renderer_8, Actionbar;
     return {
         setters: [
             function (PIXI_7) {
@@ -4343,8 +4409,8 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
             function (button_2_1) {
                 button_2 = button_2_1;
             },
-            function (config_2_1) {
-                config_2 = config_2_1;
+            function (config_3_1) {
+                config_3 = config_3_1;
             },
             function (renderer_8_1) {
                 renderer_8 = renderer_8_1;
@@ -4442,7 +4508,7 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                 }
                 // SPEED CONTROL ************************************************************
                 get canGoFaster() {
-                    return (this.speedIndex < config_2.Speeds.length - 1);
+                    return (this.speedIndex < config_3.Speeds.length - 1);
                 }
                 get canGoSlower() {
                     return (this.speedIndex > 0);
@@ -4454,16 +4520,16 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     this.speedIndex--;
                 }
                 get speedIndex() {
-                    return (config_2.Speeds.indexOf(this.board.speed));
+                    return (config_3.Speeds.indexOf(this.board.speed));
                 }
                 set speedIndex(i) {
-                    if ((i >= 0) && (i < config_2.Speeds.length))
-                        this.board.speed = config_2.Speeds[i];
+                    if ((i >= 0) && (i < config_3.Speeds.length))
+                        this.board.speed = config_3.Speeds[i];
                     this.updateToggled();
                 }
                 // ZOOMING ******************************************************************
                 get canZoomIn() {
-                    return (this.zoomIndex < config_2.Zooms.length - 1);
+                    return (this.zoomIndex < config_3.Zooms.length - 1);
                 }
                 get canZoomOut() {
                     return (this.zoomIndex > 0);
@@ -4471,22 +4537,22 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                 zoomIn() {
                     if (!this.canZoomIn)
                         return;
-                    this.board.partSize = config_2.Zooms[this.zoomIndex + 1];
+                    this.board.partSize = config_3.Zooms[this.zoomIndex + 1];
                     this.updateToggled();
                 }
                 zoomOut() {
                     if (!this.canZoomOut)
                         return;
-                    this.board.partSize = config_2.Zooms[this.zoomIndex - 1];
+                    this.board.partSize = config_3.Zooms[this.zoomIndex - 1];
                     this.updateToggled();
                 }
                 // zoom to fit the board
                 zoomToFit() {
                     this.board.centerColumn = (this.board.columnCount - 1) / 2;
                     this.board.centerRow = (this.board.rowCount - 1) / 2;
-                    let s = config_2.Zooms[0];
-                    for (let i = config_2.Zooms.length - 1; i >= 0; i--) {
-                        s = config_2.Zooms[i];
+                    let s = config_3.Zooms[0];
+                    for (let i = config_3.Zooms.length - 1; i >= 0; i--) {
+                        s = config_3.Zooms[i];
                         const w = this.board.columnCount * Math.floor(s * board_2.SPACING_FACTOR);
                         const h = this.board.rowCount * Math.floor(s * board_2.SPACING_FACTOR);
                         if ((w <= this.board.width) && (h <= this.board.height))
@@ -4496,7 +4562,7 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     this.updateToggled();
                 }
                 get zoomIndex() {
-                    return (config_2.Zooms.indexOf(this.board.partSize));
+                    return (config_3.Zooms.indexOf(this.board.partSize));
                 }
             };
             exports_28("Actionbar", Actionbar);

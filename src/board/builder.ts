@@ -103,8 +103,10 @@ export class BoardBuilder {
     // make turnstiles
     const blueTurnstile = board.partFactory.make(PartType.TURNSTILE);
     blueTurnstile.isFlipped = true;
+    blueTurnstile.isLocked = true;
     board.setPart(blueTurnstile, center - 1, collectLevel + 1);
     const redTurnstile = board.partFactory.make(PartType.TURNSTILE);
+    redTurnstile.isLocked = true;
     board.setPart(redTurnstile, center + 1, collectLevel + 1);
   }
 

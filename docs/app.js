@@ -759,6 +759,9 @@ System.register("renderer", ["pixi.js"], function (exports_14, context_14) {
                 static needsUpdate() {
                     Renderer._needsUpdate = true;
                 }
+                static get interaction() {
+                    return (Renderer.instance.plugins.interaction);
+                }
                 static render() {
                     // render at 30fps, it's good enough
                     if (Renderer._counter++ % 2 == 0)
@@ -2777,6 +2780,14 @@ System.register("board/controls", ["pixi.js", "renderer", "ui/config"], function
                     this.width = this.height = v;
                     renderer_4.Renderer.needsUpdate();
                 }
+                // whether to flip the control horizontally
+                get isFlipped() { return (this.scale.x < 0); }
+                set isFlipped(v) {
+                    if (v === this.isFlipped)
+                        return;
+                    this.scale.x = Math.abs(this.scale.x) * (v ? -1 : 1);
+                    renderer_4.Renderer.needsUpdate();
+                }
             };
             DropButton = class DropButton extends SpriteWithSize {
                 constructor(textures) {
@@ -2791,13 +2802,6 @@ System.register("board/controls", ["pixi.js", "renderer", "ui/config"], function
                     super(textures['TurnButton-f']);
                     this.textures = textures;
                     this.anchor.set(0.5, 0.5);
-                }
-                get flipped() { return (this.scale.x < 0); }
-                set flipped(v) {
-                    if (v === this.flipped)
-                        return;
-                    this.scale.x = Math.abs(this.scale.x) * (v ? -1 : 1);
-                    renderer_4.Renderer.needsUpdate();
                 }
             };
             exports_24("TurnButton", TurnButton);
@@ -2832,10 +2836,49 @@ System.register("board/controls", ["pixi.js", "renderer", "ui/config"], function
         }
     };
 });
-System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball", "board/constants", "board/physics", "board/schematic", "parts/drop", "board/controls", "ui/animator", "parts/turnstile"], function (exports_25, context_25) {
+System.register("ui/keyboard", [], function (exports_25, context_25) {
     "use strict";
     var __moduleName = context_25 && context_25.id;
-    var filter, fence_4, gearbit_4, disjoint_1, renderer_5, ball_4, constants_4, physics_1, schematic_1, drop_3, controls_1, animator_3, turnstile_3, SPACING_FACTOR, Board;
+    function makeKeyHandler(key) {
+        const handler = {
+            key: key,
+            isDown: false,
+            isUp: true,
+            downHandler: (event) => {
+                if (event.key === handler.key) {
+                    if ((handler.isUp) && (handler.press))
+                        handler.press();
+                    handler.isDown = true;
+                    handler.isUp = false;
+                    event.preventDefault();
+                }
+            },
+            upHandler: (event) => {
+                if (event.key === handler.key) {
+                    if ((handler.isDown) && (handler.release))
+                        handler.release();
+                    handler.isDown = false;
+                    handler.isUp = true;
+                    event.preventDefault();
+                }
+            }
+        };
+        //Attach event listeners
+        window.addEventListener('keydown', handler.downHandler.bind(handler), false);
+        window.addEventListener('keyup', handler.upHandler.bind(handler), false);
+        return (handler);
+    }
+    exports_25("makeKeyHandler", makeKeyHandler);
+    return {
+        setters: [],
+        execute: function () {
+        }
+    };
+});
+System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "util/disjoint", "renderer", "parts/ball", "board/constants", "board/physics", "board/schematic", "parts/drop", "board/controls", "ui/animator", "parts/turnstile", "ui/keyboard"], function (exports_26, context_26) {
+    "use strict";
+    var __moduleName = context_26 && context_26.id;
+    var filter, fence_4, gearbit_4, disjoint_1, renderer_5, ball_4, constants_4, physics_1, schematic_1, drop_3, controls_1, animator_3, turnstile_3, keyboard_1, SPACING_FACTOR, Board;
     return {
         setters: [
             function (filter_1) {
@@ -2876,10 +2919,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             },
             function (turnstile_3_1) {
                 turnstile_3 = turnstile_3_1;
+            },
+            function (keyboard_1_1) {
+                keyboard_1 = keyboard_1_1;
             }
         ],
         execute: function () {
-            exports_25("SPACING_FACTOR", SPACING_FACTOR = 1.0625);
+            exports_26("SPACING_FACTOR", SPACING_FACTOR = 1.0625);
             Board = class Board {
                 constructor(partFactory) {
                     this.partFactory = partFactory;
@@ -2908,6 +2954,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._partPrototype = null;
                     // keep a set of all drops on the board
                     this.drops = new Set();
+                    this._controlKeyDown = false;
                     this._isMouseDown = false;
                     this._dragging = false;
                     this._dragFlippedParts = new Set();
@@ -2917,6 +2964,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._initContainers();
                     this._updateDropShadows();
                     this._makeControls();
+                    this._bindKeyEvents();
                 }
                 // a counter that increments whenever the board changes
                 get changeCounter() { return (this._changeCounter); }
@@ -3251,7 +3299,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 // whether the part at the given location can be flipped
                 canFlipPart(column, row) {
                     const part = this.getPart(column, row);
-                    return ((part) && (part.canFlip || part.canRotate));
+                    return ((part) && (part.canFlip || part.canRotate) && (!part.isLocked));
                 }
                 // whether the part at the given location can be dragged
                 canDragPart(column, row) {
@@ -3734,6 +3782,19 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this.view.addListener('mouseup', this._onMouseUp.bind(this));
                     this.view.addListener('click', this._onClick.bind(this));
                 }
+                _bindKeyEvents() {
+                    const ctrl = keyboard_1.makeKeyHandler('Control');
+                    ctrl.press = () => {
+                        this._controlKeyDown = true;
+                        if (!this._dragging)
+                            this._updateAction();
+                    };
+                    ctrl.release = () => {
+                        this._controlKeyDown = false;
+                        if (!this._dragging)
+                            this._updateAction();
+                    };
+                }
                 _onMouseDown(e) {
                     this._updateAction(e);
                     this._isMouseDown = true;
@@ -3782,9 +3843,9 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     if ((this._action === 5 /* DRAG_PART */) && (this._actionPart)) {
                         this.partPrototype = this._actionPart;
                         this._action = 5 /* DRAG_PART */;
-                        this.view.cursor = 'move';
                         this._partDragStartColumn = this._actionColumn;
                         this._partDragStartRow = this._actionRow;
+                        this.view.cursor = 'grabbing';
                     }
                     if ((this._action === 7 /* DROP_BALL */) &&
                         (this._actionPart instanceof drop_3.Drop)) {
@@ -3796,7 +3857,10 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this._colorWheel.size = this.controlSize;
                         animator_3.Animator.current.animate(this._colorWheel, 'size', this.controlSize, 64, 0.1 /* SHOW_CONTROL */);
                         this._action = 6 /* COLOR_WHEEL */;
+                        this.view.cursor = 'grabbing';
                     }
+                    if (this.view.cursor === 'grab')
+                        this.view.cursor = 'grabbing';
                 }
                 _onDrag(startX, startY, lastX, lastY, currentX, currentY) {
                     const deltaColumn = this.columnForX(currentX) - this.columnForX(startX);
@@ -3878,61 +3942,76 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                 }
                 _updateAction(e) {
-                    const p = e.data.getLocalPosition(this._layers);
-                    this._actionX = p.x;
-                    this._actionY = p.y;
-                    const c = this.columnForX(p.x);
-                    const r = this.rowForY(p.y);
-                    const column = this._actionColumn = Math.round(c);
-                    const row = this._actionRow = Math.round(r);
+                    let cursor = 'auto';
+                    let c, r, column, row;
+                    if (e) {
+                        const p = e.data.getLocalPosition(this._layers);
+                        this._actionX = p.x;
+                        this._actionY = p.y;
+                        c = this.columnForX(p.x);
+                        r = this.rowForY(p.y);
+                        column = this._actionColumn = Math.round(c);
+                        row = this._actionRow = Math.round(r);
+                    }
+                    else {
+                        c = this.columnForX(this._actionX);
+                        r = this.rowForY(this._actionY);
+                        column = this._actionColumn;
+                        row = this._actionRow;
+                    }
                     const oldActionPart = this._actionPart;
                     this._actionPart = this.getPart(column, row);
                     let ball;
-                    if ((this.tool == 1 /* PART */) && (this.partPrototype) &&
+                    if (this._controlKeyDown) {
+                        this._action = 0 /* PAN */;
+                        cursor = 'all-scroll';
+                    }
+                    else if ((this.tool == 1 /* PART */) && (this.partPrototype) &&
                         (this.canPlacePart(this.partPrototype.type, column, row))) {
                         this._action = this.partPrototype.type == 9 /* BALL */ ?
                             2 /* PLACE_BALL */ : 1 /* PLACE_PART */;
-                        this.view.cursor = 'pointer';
+                        cursor = 'pointer';
                     }
                     else if (this.tool == 2 /* ERASER */) {
                         this._action = 3 /* CLEAR_PART */;
-                        this.view.cursor = 'pointer';
+                        cursor = 'pointer';
                     }
                     else if ((this.tool == 3 /* HAND */) &&
                         (this._actionPart instanceof drop_3.Drop) &&
                         (Math.abs(this._actionX - this._actionPart.x) <= this.controlSize / 2) &&
                         (Math.abs(this._actionY - this._actionPart.y) <= this.controlSize / 2)) {
                         this._action = 7 /* DROP_BALL */;
-                        this.view.cursor = 'pointer';
+                        cursor = 'pointer';
                     }
                     else if ((this.tool == 3 /* HAND */) &&
                         (this._actionPart instanceof turnstile_3.Turnstile) &&
                         (Math.abs(this._actionX - this._actionPart.x) <= this.controlSize / 2) &&
                         (Math.abs(this._actionY - this._actionPart.y) <= this.controlSize / 2)) {
                         this._action = 8 /* TURN_TURNSTILE */;
-                        this.view.cursor = 'pointer';
+                        cursor = 'pointer';
                     }
                     else if ((this.tool == 3 /* HAND */) &&
                         (ball = this.ballUnder(c, r))) {
                         this._action = 5 /* DRAG_PART */;
                         this._actionPart = ball;
-                        this.view.cursor = 'move';
+                        cursor = 'grab';
                     }
                     else if ((this.tool == 3 /* HAND */) &&
                         (this.canFlipPart(column, row))) {
                         this._action = 4 /* FLIP_PART */;
-                        this.view.cursor = 'pointer';
+                        cursor = 'pointer';
                     }
                     else if ((this.tool == 3 /* HAND */) &&
                         (this.canDragPart(column, row))) {
                         this._action = 5 /* DRAG_PART */;
-                        this.view.cursor = 'move';
+                        cursor = 'grab';
                     }
                     else {
                         this._action = 0 /* PAN */;
                         this._actionPart = null;
-                        this.view.cursor = 'auto';
+                        cursor = 'auto';
                     }
+                    this.view.cursor = cursor;
                     // respond to the part under the cursor changing
                     if (this._actionPart !== oldActionPart) {
                         // show/hide drop controls
@@ -3941,6 +4020,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             this._dropButton.x = this._actionPart.x;
                             this._dropButton.y = this._actionPart.y;
                             this._dropButton.size = this.controlSize;
+                            this._dropButton.isFlipped = this._actionPart.isFlipped;
                             this._showControl(this._dropButton);
                         }
                         else if (oldActionPart instanceof drop_3.Drop) {
@@ -3952,7 +4032,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             (this.tool == 3 /* HAND */)) {
                             this._turnButton.x = this.xForColumn(this._actionPart.column);
                             this._turnButton.y = this.yForRow(this._actionPart.row);
-                            this._turnButton.flipped = this._actionPart.isFlipped;
+                            this._turnButton.isFlipped = this._actionPart.isFlipped;
                             this._turnButton.size = this.controlSize;
                             this._showControl(this._turnButton);
                         }
@@ -4040,13 +4120,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                 }
             };
-            exports_25("Board", Board);
+            exports_26("Board", Board);
         }
     };
 });
-System.register("ui/button", ["pixi.js", "renderer"], function (exports_26, context_26) {
+System.register("ui/button", ["pixi.js", "renderer"], function (exports_27, context_27) {
     "use strict";
-    var __moduleName = context_26 && context_26.id;
+    var __moduleName = context_27 && context_27.id;
     var PIXI, renderer_6, Button, PartButton, SpriteButton, ButtonBar;
     return {
         setters: [
@@ -4155,7 +4235,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_26, cont
                     renderer_6.Renderer.needsUpdate();
                 }
             };
-            exports_26("Button", Button);
+            exports_27("Button", Button);
             PartButton = class PartButton extends Button {
                 constructor(part) {
                     super();
@@ -4200,7 +4280,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_26, cont
                         this.part.size = Math.floor(this.size * 0.75);
                 }
             };
-            exports_26("PartButton", PartButton);
+            exports_27("PartButton", PartButton);
             SpriteButton = class SpriteButton extends Button {
                 constructor(sprite) {
                     super();
@@ -4220,7 +4300,7 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_26, cont
                     }
                 }
             };
-            exports_26("SpriteButton", SpriteButton);
+            exports_27("SpriteButton", SpriteButton);
             ButtonBar = class ButtonBar extends PIXI.Container {
                 constructor() {
                     super();
@@ -4308,13 +4388,13 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_26, cont
                     renderer_6.Renderer.needsUpdate();
                 }
             };
-            exports_26("ButtonBar", ButtonBar);
+            exports_27("ButtonBar", ButtonBar);
         }
     };
 });
-System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (exports_27, context_27) {
+System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (exports_28, context_28) {
     "use strict";
-    var __moduleName = context_27 && context_27.id;
+    var __moduleName = context_28 && context_28.id;
     var PIXI, button_1, renderer_7, Toolbar;
     return {
         setters: [
@@ -4390,13 +4470,13 @@ System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (ex
                     renderer_7.Renderer.needsUpdate();
                 }
             };
-            exports_27("Toolbar", Toolbar);
+            exports_28("Toolbar", Toolbar);
         }
     };
 });
-System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/config", "renderer"], function (exports_28, context_28) {
+System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/config", "renderer"], function (exports_29, context_29) {
     "use strict";
-    var __moduleName = context_28 && context_28.id;
+    var __moduleName = context_29 && context_29.id;
     var PIXI, board_2, button_2, config_3, renderer_8, Actionbar;
     return {
         setters: [
@@ -4443,6 +4523,14 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     this.addButton(this._heartButton);
                     this.bottomCount = 1;
                     this.updateToggled();
+                    // zoom on wheel events
+                    document.addEventListener('wheel', (e) => {
+                        if (e.wheelDelta > 0)
+                            this.zoomIn();
+                        else if (e.wheelDelta < 0)
+                            this.zoomOut();
+                        e.preventDefault();
+                    });
                 }
                 onButtonClick(button) {
                     if (button === this._schematicButton) {
@@ -4565,53 +4653,14 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     return (config_3.Zooms.indexOf(this.board.partSize));
                 }
             };
-            exports_28("Actionbar", Actionbar);
-        }
-    };
-});
-System.register("ui/keyboard", [], function (exports_29, context_29) {
-    "use strict";
-    var __moduleName = context_29 && context_29.id;
-    function makeKeyHandler(key) {
-        const handler = {
-            key: key,
-            isDown: false,
-            isUp: true,
-            downHandler: (event) => {
-                if (event.key === handler.key) {
-                    if ((handler.isUp) && (handler.press))
-                        handler.press();
-                    handler.isDown = true;
-                    handler.isUp = false;
-                    event.preventDefault();
-                }
-            },
-            upHandler: (event) => {
-                if (event.key === handler.key) {
-                    if ((handler.isDown) && (handler.release))
-                        handler.release();
-                    handler.isDown = false;
-                    handler.isUp = true;
-                    event.preventDefault();
-                }
-            }
-        };
-        //Attach event listeners
-        window.addEventListener('keydown', handler.downHandler.bind(handler), false);
-        window.addEventListener('keyup', handler.upHandler.bind(handler), false);
-        return (handler);
-    }
-    exports_29("makeKeyHandler", makeKeyHandler);
-    return {
-        setters: [],
-        execute: function () {
+            exports_29("Actionbar", Actionbar);
         }
     };
 });
 System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "ui/animator", "ui/keyboard", "parts/gearbit"], function (exports_30, context_30) {
     "use strict";
     var __moduleName = context_30 && context_30.id;
-    var PIXI, board_3, factory_2, toolbar_1, actionbar_1, renderer_9, animator_4, keyboard_1, gearbit_5, SimulatorApp;
+    var PIXI, board_3, factory_2, toolbar_1, actionbar_1, renderer_9, animator_4, keyboard_2, gearbit_5, SimulatorApp;
     return {
         setters: [
             function (PIXI_8) {
@@ -4635,8 +4684,8 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
             function (animator_4_1) {
                 animator_4 = animator_4_1;
             },
-            function (keyboard_1_1) {
-                keyboard_1 = keyboard_1_1;
+            function (keyboard_2_1) {
+                keyboard_2 = keyboard_2_1;
             },
             function (gearbit_5_1) {
                 gearbit_5 = gearbit_5_1;
@@ -4694,8 +4743,7 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     renderer_9.Renderer.needsUpdate();
                 }
                 _addKeyHandlers() {
-                    const w = keyboard_1.makeKeyHandler('w');
-                    w.press = () => {
+                    keyboard_2.makeKeyHandler('w').press = () => {
                         this.board.physicalRouter.showWireframe =
                             !this.board.physicalRouter.showWireframe;
                     };
@@ -4820,8 +4868,10 @@ System.register("board/builder", ["parts/fence"], function (exports_31, context_
                     // make turnstiles
                     const blueTurnstile = board.partFactory.make(13 /* TURNSTILE */);
                     blueTurnstile.isFlipped = true;
+                    blueTurnstile.isLocked = true;
                     board.setPart(blueTurnstile, center - 1, collectLevel + 1);
                     const redTurnstile = board.partFactory.make(13 /* TURNSTILE */);
+                    redTurnstile.isLocked = true;
                     board.setPart(redTurnstile, center + 1, collectLevel + 1);
                 }
             };

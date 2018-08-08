@@ -15,6 +15,7 @@ import { Drop } from 'parts/drop';
 import { ColorWheel, DropButton, TurnButton, BallCounter } from './controls';
 import { Animator } from 'ui/animator';
 import { Turnstile } from 'parts/turnstile';
+import { makeKeyHandler, KeyHandler } from 'ui/keyboard';
 
 export const enum ToolType {
   NONE,
@@ -47,6 +48,7 @@ export class Board {
     this._initContainers();
     this._updateDropShadows();
     this._makeControls();
+    this._bindKeyEvents();
   }
   public readonly view:PIXI.Sprite = new PIXI.Sprite();
   public readonly _layers:PIXI.Container = new PIXI.Container();
@@ -421,7 +423,7 @@ export class Board {
   // whether the part at the given location can be flipped
   public canFlipPart(column:number, row:number):boolean {
     const part = this.getPart(column, row);
-    return((part) && (part.canFlip || part.canRotate));
+    return((part) && (part.canFlip || part.canRotate) && (! part.isLocked));
   }
 
   // whether the part at the given location can be dragged
@@ -895,6 +897,18 @@ export class Board {
     this.view.addListener('mouseup', this._onMouseUp.bind(this));
     this.view.addListener('click', this._onClick.bind(this));
   }
+  private _bindKeyEvents():void {
+    const ctrl = makeKeyHandler('Control');
+    ctrl.press = () => {
+      this._controlKeyDown = true;
+      if (! this._dragging) this._updateAction();
+    };
+    ctrl.release = () => {
+      this._controlKeyDown = false;
+      if (! this._dragging) this._updateAction();
+    };
+  }
+  private _controlKeyDown:boolean = false;
 
   private _onMouseDown(e:PIXI.interaction.InteractionEvent):void {
     this._updateAction(e);
@@ -952,9 +966,9 @@ export class Board {
     if ((this._action === ActionType.DRAG_PART) && (this._actionPart)) {
       this.partPrototype = this._actionPart;
       this._action = ActionType.DRAG_PART;
-      this.view.cursor = 'move';
       this._partDragStartColumn = this._actionColumn;
       this._partDragStartRow = this._actionRow;
+      this.view.cursor = 'grabbing';
     }
     if ((this._action === ActionType.DROP_BALL) && 
         (this._actionPart instanceof Drop)) {
@@ -967,7 +981,9 @@ export class Board {
       Animator.current.animate(this._colorWheel, 'size', this.controlSize, 64,
         Delays.SHOW_CONTROL);
       this._action = ActionType.COLOR_WHEEL;
+      this.view.cursor = 'grabbing';
     }
+    if (this.view.cursor === 'grab') this.view.cursor = 'grabbing';
   }
   private _panStartColumn:number;
   private _panStartRow:number;
@@ -1059,62 +1075,77 @@ export class Board {
     }
   }
 
-  private _updateAction(e:PIXI.interaction.InteractionEvent):void {
-    const p = e.data.getLocalPosition(this._layers);
-    this._actionX = p.x;
-    this._actionY = p.y;
-    const c = this.columnForX(p.x);
-    const r = this.rowForY(p.y);
-    const column = this._actionColumn = Math.round(c);
-    const row = this._actionRow = Math.round(r);
+  private _updateAction(e?:PIXI.interaction.InteractionEvent):void {
+    let cursor = 'auto';
+    let c:number, r:number, column:number, row:number;
+    if (e) {
+      const p = e.data.getLocalPosition(this._layers);
+      this._actionX = p.x;
+      this._actionY = p.y;
+      c = this.columnForX(p.x);
+      r = this.rowForY(p.y);
+      column = this._actionColumn = Math.round(c);
+      row = this._actionRow = Math.round(r);
+    }
+    else {
+      c = this.columnForX(this._actionX);
+      r = this.rowForY(this._actionY);
+      column = this._actionColumn;
+      row = this._actionRow;
+    }
     const oldActionPart = this._actionPart;
     this._actionPart = this.getPart(column, row);
     let ball:Ball;
-    if ((this.tool == ToolType.PART) && (this.partPrototype) &&
-        (this.canPlacePart(this.partPrototype.type, column, row))) {
+    if (this._controlKeyDown) {
+      this._action = ActionType.PAN;
+      cursor = 'all-scroll';
+    }
+    else if ((this.tool == ToolType.PART) && (this.partPrototype) &&
+             (this.canPlacePart(this.partPrototype.type, column, row))) {
       this._action = this.partPrototype.type == PartType.BALL ?
         ActionType.PLACE_BALL : ActionType.PLACE_PART;
-      this.view.cursor = 'pointer';
+      cursor = 'pointer';
     }
     else if (this.tool == ToolType.ERASER) {
       this._action = ActionType.CLEAR_PART;
-      this.view.cursor = 'pointer';
+      cursor = 'pointer';
     }
     else if ((this.tool == ToolType.HAND) && 
              (this._actionPart instanceof Drop) &&
              (Math.abs(this._actionX - this._actionPart.x) <= this.controlSize / 2) &&
              (Math.abs(this._actionY - this._actionPart.y) <= this.controlSize / 2)) {
       this._action = ActionType.DROP_BALL;
-      this.view.cursor = 'pointer';
+      cursor = 'pointer';
     }
     else if ((this.tool == ToolType.HAND) && 
              (this._actionPart instanceof Turnstile) &&
              (Math.abs(this._actionX - this._actionPart.x) <= this.controlSize / 2) &&
              (Math.abs(this._actionY - this._actionPart.y) <= this.controlSize / 2)) {
       this._action = ActionType.TURN_TURNSTILE;
-      this.view.cursor = 'pointer';
+      cursor = 'pointer';
     }
     else if ((this.tool == ToolType.HAND) && 
              (ball = this.ballUnder(c, r))) {
       this._action = ActionType.DRAG_PART;
       this._actionPart = ball;
-      this.view.cursor = 'move';
+      cursor = 'grab';
     }
     else if ((this.tool == ToolType.HAND) &&
              (this.canFlipPart(column, row))) {
       this._action = ActionType.FLIP_PART;
-      this.view.cursor = 'pointer';
+      cursor = 'pointer';
     }
     else if ((this.tool == ToolType.HAND) && 
              (this.canDragPart(column, row))) {
       this._action = ActionType.DRAG_PART;
-      this.view.cursor = 'move';
+      cursor = 'grab';
     }
     else {
       this._action = ActionType.PAN;
       this._actionPart = null;
-      this.view.cursor = 'auto';
+      cursor = 'auto';
     }
+    this.view.cursor = cursor;
     // respond to the part under the cursor changing
     if (this._actionPart !== oldActionPart) {
       // show/hide drop controls
@@ -1123,6 +1154,7 @@ export class Board {
         this._dropButton.x = this._actionPart.x;
         this._dropButton.y = this._actionPart.y;
         this._dropButton.size = this.controlSize;
+        this._dropButton.isFlipped = this._actionPart.isFlipped;
         this._showControl(this._dropButton);
       }
       else if (oldActionPart instanceof Drop) {
@@ -1134,7 +1166,7 @@ export class Board {
           (this.tool == ToolType.HAND)) {
         this._turnButton.x = this.xForColumn(this._actionPart.column);
         this._turnButton.y = this.yForRow(this._actionPart.row);
-        this._turnButton.flipped = this._actionPart.isFlipped;
+        this._turnButton.isFlipped = this._actionPart.isFlipped;
         this._turnButton.size = this.controlSize;
         this._showControl(this._turnButton);
       }

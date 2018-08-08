@@ -50,6 +50,13 @@ class SpriteWithSize extends PIXI.Sprite {
     this.width = this.height = v;
     Renderer.needsUpdate();
   }
+  // whether to flip the control horizontally
+  public get isFlipped():boolean { return(this.scale.x < 0); }
+  public set isFlipped(v:boolean) {
+    if (v === this.isFlipped) return;
+    this.scale.x = Math.abs(this.scale.x) * (v ? -1 : 1);
+    Renderer.needsUpdate();
+  }
 }
 
 export class DropButton extends SpriteWithSize {
@@ -66,13 +73,6 @@ export class TurnButton extends SpriteWithSize {
   constructor(public readonly textures:PIXI.loaders.TextureDictionary) {
     super(textures['TurnButton-f']);
     this.anchor.set(0.5, 0.5);
-  }
-
-  public get flipped():boolean { return(this.scale.x < 0); }
-  public set flipped(v:boolean) {
-    if (v === this.flipped) return;
-    this.scale.x = Math.abs(this.scale.x) * (v ? -1 : 1);
-    Renderer.needsUpdate();
   }
 
 }

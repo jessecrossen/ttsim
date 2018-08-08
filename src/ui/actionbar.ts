@@ -41,6 +41,12 @@ export class Actionbar extends ButtonBar {
     this.addButton(this._heartButton);
     this.bottomCount = 1;
     this.updateToggled();
+    // zoom on wheel events
+    document.addEventListener('wheel', (e:WheelEvent) => {
+      if (e.wheelDelta > 0) this.zoomIn();
+      else if (e.wheelDelta < 0) this.zoomOut();
+      e.preventDefault();
+    });
   }
   private _schematicButton:Button;
   private _zoomInButton:Button;

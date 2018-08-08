@@ -14,6 +14,10 @@ export class Renderer {
     backgroundColor: Colors.BACKGROUND
   });
 
+  public static get interaction():PIXI.interaction.InteractionManager {
+    return(Renderer.instance.plugins.interaction);
+  }
+
   public static readonly stage = new PIXI.Container();
 
   public static render():void {

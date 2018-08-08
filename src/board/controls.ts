@@ -16,16 +16,14 @@ export class ColorWheel extends PIXI.Sprite {
   private _wheel:PIXI.Sprite;
   private _pointer:PIXI.Sprite;
 
-  // the size of the control from 0 to 1
-  public get size():number { return(this._size); }
+  // the size of the control
+  public get size():number { return(this._wheel.width); }
   public set size(v:number) {
-    v = Math.min(Math.max(0.0, v), 1.0);
     if (v === this.size) return;
-    this._size = v;
-    this.scale.set(v, v);
+    this._wheel.width = this._wheel.height = v;
+    this._pointer.width = this._pointer.height = v;
     Renderer.needsUpdate();
   }
-  private _size:number = 1.0;
 
   // the hue in degrees
   public get hue():number { return(this._hue); }
@@ -39,5 +37,40 @@ export class ColorWheel extends PIXI.Sprite {
     Renderer.needsUpdate();
   }
   private _hue:number = 0.0;
+
+}
+
+class SpriteWithSize extends PIXI.Sprite {
+  // the size of the control
+  public get size():number { return(this.width); }
+  public set size(v:number) {
+    if (v === this.size) return;
+    this.width = this.height = v;
+    Renderer.needsUpdate();
+  }
+}
+
+export class DropButton extends SpriteWithSize {
+
+  constructor(public readonly textures:PIXI.loaders.TextureDictionary) {
+    super(textures['DropButton-f']);
+    this.anchor.set(0.5, 0.5);
+  }
+
+}
+
+export class TurnButton extends SpriteWithSize {
+
+  constructor(public readonly textures:PIXI.loaders.TextureDictionary) {
+    super(textures['TurnButton-f']);
+    this.anchor.set(0.5, 0.5);
+  }
+
+  public get flipped():boolean { return(this.scale.x < 0); }
+  public set flipped(v:boolean) {
+    if (v === this.flipped) return;
+    this.scale.x = Math.abs(this.scale.x) * (v ? -1 : 1);
+    Renderer.needsUpdate();
+  }
 
 }

@@ -40,21 +40,6 @@ export class Drop extends Part {
     if (closest) closest.released = true;
   }
 
-  // show and hide the controls on the front layer
-  public get controlsAlpha():number { return(this._controlsAlpha); }
-  public set controlsAlpha(v:number) {
-    v = Math.min(Math.max(0.0, v), 1.0);
-    if (v === this._controlsAlpha) return;
-    this._controlsAlpha = v;
-    this._updateSprites();
-  }
-  protected _layerAlpha(layer:Layer):number {
-    const alpha = super._layerAlpha(layer);
-    if (layer == Layer.FRONT) return(alpha * this._controlsAlpha);
-    return(alpha);
-  }
-  private _controlsAlpha:number = 0.0;
-
   // the hue of balls in this ball drop
   public get hue():number { return(this._hue); }
   public set hue(v:number) {

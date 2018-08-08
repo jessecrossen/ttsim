@@ -52,6 +52,7 @@ export class Turnstile extends Part {
   public get hue():number { return(this._centerBall.hue); }
   public set hue(v:number) {
     this._centerBall.hue = v;
+    this._updateSprites();
   }
 
   // don't rotate or flip the ball or the highlight will look strange

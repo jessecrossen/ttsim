@@ -8,12 +8,11 @@ import { Alphas, Delays, Sizes } from 'ui/config';
 import { DisjointSet } from 'util/disjoint';
 import { Renderer } from 'renderer';
 import { Ball } from 'parts/ball';
-import { IBallRouter } from './router';
-import { BALL_RADIUS, SPACING } from './constants';
+import { BALL_RADIUS, SPACING, PART_SIZE } from './constants';
 import { PhysicalBallRouter } from './physics';
 import { SchematicBallRouter } from './schematic';
 import { Drop } from 'parts/drop';
-import { ColorWheel } from './controls';
+import { ColorWheel, DropButton, TurnButton } from './controls';
 import { Animator } from 'ui/animator';
 import { Turnstile } from 'parts/turnstile';
 
@@ -32,7 +31,8 @@ export const enum ActionType {
   FLIP_PART,
   DRAG_PART,
   COLOR_WHEEL,
-  DROP_BALL
+  DROP_BALL,
+  TURN_TURNSTILE
 }
 
 export const SPACING_FACTOR:number = 1.0625;
@@ -184,17 +184,36 @@ export class Board {
 
   // controls
   protected _makeControls():void {
+    this._dropButton = new DropButton(this.partFactory.textures);
+    this._controls.push(this._dropButton);
+    this._turnButton = new TurnButton(this.partFactory.textures);
+    this._controls.push(this._turnButton);
     this._colorWheel = new ColorWheel(this.partFactory.textures);
-    this._colorWheel.visible = false;
-    this._colorWheel.size = Sizes.COLORWHEEL_HIDE_SIZE;
     this._controls.push(this._colorWheel);
     const container = this._containers.get(Layer.CONTROL);
     for (const control of this._controls) {
+      control.visible = false;
       container.addChild(control);
     }
   }
+  protected _showControl(control:PIXI.Sprite):void {
+    control.visible = true;
+    if (control.alpha == 1) control.alpha = 0.0;
+    Animator.current.animate(control, 'alpha', 0, 1, 
+      Delays.SHOW_CONTROL);
+    this._updateLayerVisibility();
+  }
+  protected _hideControl(control:PIXI.Sprite):void {
+    Animator.current.animate(control, 'alpha', 1, 0, 
+      Delays.HIDE_CONTROL, () => {
+        control.visible = false;
+        this._updateLayerVisibility();
+      });
+  }
   private _controls:PIXI.Sprite[] = [ ];
   private _colorWheel:ColorWheel;
+  private _dropButton:DropButton;
+  private _turnButton:TurnButton;
 
   // LAYOUT *******************************************************************
 
@@ -289,6 +308,8 @@ export class Board {
 
   // get the spacing between part centers
   public get spacing():number { return(Math.floor(this.partSize * SPACING_FACTOR)); }
+  // get the size of controls overlayed on the parts
+  public get controlSize():number { return(Math.max(16, Math.ceil(this.partSize * 0.75))); }
   
   // get the column for the given X coordinate
   public columnForX(x:number):number {
@@ -915,6 +936,18 @@ export class Board {
       this._partDragStartColumn = this._actionColumn;
       this._partDragStartRow = this._actionRow;
     }
+    if ((this._action === ActionType.DROP_BALL) && 
+        (this._actionPart instanceof Drop)) {
+      this._colorWheel.x = this._actionPart.x;
+      this._colorWheel.y = this._actionPart.y;
+      this._colorWheel.hue = this._actionPart.hue;
+      this._actionHue = this._actionPart.hue;
+      this._showControl(this._colorWheel);
+      this._colorWheel.size = this.controlSize;
+      Animator.current.animate(this._colorWheel, 'size', this.controlSize, 64,
+        Delays.SHOW_CONTROL);
+      this._action = ActionType.COLOR_WHEEL;
+    }
   }
   private _panStartColumn:number;
   private _panStartRow:number;
@@ -999,6 +1032,11 @@ export class Board {
         this.setPart(part, this._partDragStartColumn, this._partDragStartRow);
       }
     }
+    if (this._action === ActionType.COLOR_WHEEL) {
+      Animator.current.animate(this._colorWheel, 'size', 64, this.controlSize, 
+        Delays.HIDE_CONTROL);
+      this._hideControl(this._colorWheel);
+    }
   }
 
   private _updateAction(e:PIXI.interaction.InteractionEvent):void {
@@ -1024,18 +1062,17 @@ export class Board {
     }
     else if ((this.tool == ToolType.HAND) && 
              (this._actionPart instanceof Drop) &&
-             (this.partSize > 12) &&
-             (Math.abs((row - 0.3) - r) < 0.2)) {
-      if ((this._actionPart.isFlipped) != (c < column)) {
-        this._action = ActionType.COLOR_WHEEL;
-        this._actionHue = this._actionPart.hue;
-        this._colorWheel.hue = this._actionHue;
-        this.view.cursor = 'move';
-      }
-      else {
-        this._action = ActionType.DROP_BALL;
-        this.view.cursor = 'pointer';
-      }
+             (Math.abs(this._actionX - this._actionPart.x) <= this.controlSize / 2) &&
+             (Math.abs(this._actionY - this._actionPart.y) <= this.controlSize / 2)) {
+      this._action = ActionType.DROP_BALL;
+      this.view.cursor = 'pointer';
+    }
+    else if ((this.tool == ToolType.HAND) && 
+             (this._actionPart instanceof Turnstile) &&
+             (Math.abs(this._actionX - this._actionPart.x) <= this.controlSize / 2) &&
+             (Math.abs(this._actionY - this._actionPart.y) <= this.controlSize / 2)) {
+      this._action = ActionType.TURN_TURNSTILE;
+      this.view.cursor = 'pointer';
     }
     else if ((this.tool == ToolType.HAND) && 
              (ball = this.ballUnder(c, r))) {
@@ -1061,14 +1098,28 @@ export class Board {
     // respond to the part under the cursor changing
     if (this._actionPart !== oldActionPart) {
       // show/hide drop controls
-      if (oldActionPart instanceof Drop) {
-        Animator.current.animate(oldActionPart, 'controlsAlpha', 
-          1, 0, Delays.HIDE_CONTROL);
-      }
       if ((this._actionPart instanceof Drop) && 
           (this.tool == ToolType.HAND)) {
-        Animator.current.animate(this._actionPart, 'controlsAlpha', 
-          0, 1, Delays.SHOW_CONTROL);
+        this._dropButton.x = this._actionPart.x;
+        this._dropButton.y = this._actionPart.y;
+        this._dropButton.size = this.controlSize;
+        this._showControl(this._dropButton);
+      }
+      else if (oldActionPart instanceof Drop) {
+        this._hideControl(this._dropButton);
+        this._hideControl(this._colorWheel);
+      }
+      // show/hide turnstile controls
+      if ((this._actionPart instanceof Turnstile) && 
+          (this.tool == ToolType.HAND)) {
+        this._turnButton.x = this.xForColumn(this._actionPart.column);
+        this._turnButton.y = this.yForRow(this._actionPart.row);
+        this._turnButton.flipped = this._actionPart.isFlipped;
+        this._turnButton.size = this.controlSize;
+        this._showControl(this._turnButton);
+      }
+      else if (oldActionPart instanceof Turnstile) {
+        this._hideControl(this._turnButton);
       }
     }
     this._updatePreview();
@@ -1102,32 +1153,7 @@ export class Board {
         this.partPrototype.visible = false;
       }
     }
-    // show/hide the color wheel
-    if ((this._action === ActionType.COLOR_WHEEL) && (this._actionPart)) {
-      const sign = this._actionPart.isFlipped ? 1 : -1;
-      this._colorWheel.x = Math.round(
-          this.xForColumn(this._actionPart.column + (sign * 0.2)));
-      this._colorWheel.y = Math.round(
-          this.yForRow(this._actionPart.row - 0.3));
-      if (! this._showingColorWheel) {
-        this._colorWheel.visible = true;
-        Animator.current.animate(
-          this._colorWheel, 'size', 0.4, 1.0, Delays.SHOW_CONTROL);
-        this._showingColorWheel = true;
-        this._updateLayerVisibility();
-      }
-    }
-    else if (this._showingColorWheel) {
-      Animator.current.animate(
-        this._colorWheel, 'size', 1.0, Sizes.COLORWHEEL_HIDE_SIZE, 
-        Delays.HIDE_CONTROL, () => {
-          this._colorWheel.visible = false;
-          this._updateLayerVisibility();
-        });
-      this._showingColorWheel = false;
-    }
   }
-  private _showingColorWheel:boolean = false;
 
   private _onClick(e:PIXI.interaction.InteractionEvent):void {
     this._updateAction(e);
@@ -1175,6 +1201,13 @@ export class Board {
     else if ((this._action === ActionType.DROP_BALL) &&
              (this._actionPart instanceof Drop)) {
       this._actionPart.releaseBall();
+    }
+    // turn turnstiles
+    else if ((this._action === ActionType.TURN_TURNSTILE) &&
+             (this._actionPart instanceof Turnstile)) {
+      const ts = this._actionPart;
+      Animator.current.animate(ts, 'rotation', 0, 1, 
+        Delays.TURN, () => { ts.rotation = 0.0 });
     }
   }
 

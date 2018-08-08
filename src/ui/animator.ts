@@ -1,3 +1,5 @@
+import { Renderer } from "renderer";
+
 export type Animation = {
   subject: any,
   property: string,
@@ -96,30 +98,36 @@ export class Animator {
 
   // advance all animations by one tick
   public update(correction:number):void {
+    let someAnimations:boolean = false;
     for (const [ subject, properties ] of this._subjects.entries()) {
       for (const [ property, animation ] of properties) {
+        someAnimations = true;
+        let finished = false;
         let current:number = subject[property] as number;
         current += (animation.delta * Math.abs(correction));
         if (animation.delta > 0) {
           if (current >= animation.end) {
             current = animation.end;
-            this.stopAnimating(subject, property);
-            if (animation.callback) animation.callback();
+            finished = true;
           }
         }
         else if (animation.delta < 0) {
           if (current <= animation.end) {
             current = animation.end;
-            this.stopAnimating(subject, property);
-            if (animation.callback) animation.callback();
+            finished = true;
           }
         }
         else {
           current = animation.end;
         }
         subject[property] = current;
+        if (finished) {
+          this.stopAnimating(subject, property);
+          if (animation.callback) animation.callback();
+        }
       }
     }
+    if (someAnimations) Renderer.needsUpdate();
   }
 
 }

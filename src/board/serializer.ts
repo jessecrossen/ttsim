@@ -107,7 +107,13 @@ export class URLBoardSerializer implements IBoardSerializer {
       const file = input.files[0];
       var reader = new FileReader();
       reader.onload = (e) => {
-        this._readBoardState(e.target.result, callback);
+        this._restoring = true;
+        try {
+          this._readBoardState(e.target.result, callback);
+        }
+        finally {
+          this._restoring = false;
+        }
       };
       reader.readAsDataURL(file);
     };
@@ -169,6 +175,13 @@ export class URLBoardSerializer implements IBoardSerializer {
   }
 
   protected _readBoardState(url:string, callback:(restored:boolean) => void):void {
+    const expectedPrefix = 'data:image/png;base64,';
+    const prefix = url.substr(0, expectedPrefix.length);
+    if (prefix !== expectedPrefix) {
+      console.warn('Unexpected data url prefix: '+prefix);
+      callback(false);
+      return;
+    }
     const img = document.createElement('img');
     img.onload = () => {
       const canvas = document.createElement('canvas');
@@ -198,6 +211,8 @@ export class URLBoardSerializer implements IBoardSerializer {
 
   protected partToColor(part:Part, data:Uint8ClampedArray, i:number):void {
     let r = 0xFF, g = 0xFF, b = 0xFF, a = 0xFF;
+    let flip:boolean = (part) && ((part.canFlip && part.isFlipped) ||
+                                  (part.canRotate && part.bitValue));
     // select a color for the part
     switch(part.type) {
       // leave both types of locations white so we don't get a checker pattern 
@@ -213,21 +228,26 @@ export class URLBoardSerializer implements IBoardSerializer {
       case PartType.GEAR:        r = 0xFF; g = 0x00; b = 0x00; break; // red
       case PartType.DROP:        r = 0xFF; g = 0xFF; b = 0x00; break; // yellow
       case PartType.TURNSTILE:   r = 0xFF; g = 0x00; b = 0xFF; break; // magenta
-      case PartType.SIDE:        r = 0xC0; g = 0xC0; b = 0xC0; break; // light gray
-      case PartType.SLOPE:       r = 0x40; g = 0x40; b = 0x40; break; // dark gray
+      case PartType.SIDE:        
+        if (! flip)            { r = 0xC0; g = 0xC0; b = 0xC0; }      // light gray
+        else                   { r = 0xA0; g = 0xA0; b = 0xA0; }
+        flip = false; break;
+      case PartType.SLOPE:
+        if (! flip)            { r = 0x80; g = 0x80; b = 0x80; }      // middle gray
+        else                   { r = 0x60; g = 0x60; b = 0x60; }
+        flip = false; break;
       // leave blank spots and unknown parts a very dark gray
       case PartType.BLANK: // fall-through
       default: r = g = b = 0x20; break;
     }
     // if a part is flipped or rotated, make the color less bright
-    if ((part) && ((part.canFlip && part.isFlipped) ||
-                   (part.canRotate && part.bitValue))) {
+    if (flip) {
       r = (r >> 2) * 3;
       g = (g >> 2) * 3;
       b = (b >> 2) * 3;
     }
-    // if a part is locked, reduce opacity
-    if ((part) && (part.isLocked)) a = (a >> 2) * 3;
+    // if a part is locked, reduce opacity very slightly
+    if ((part) && (part.isLocked)) a = 0xFE;
     // write the color
     data[i++] = r;
     data[i++] = g;
@@ -255,13 +275,13 @@ export class URLBoardSerializer implements IBoardSerializer {
       // gray
       if ((isHigh(r)) && (isHigh(g)) && (isHigh(b))) {
         if (max >= 0xD0) { } // whiteish, clear the location
-        else if (max >= 0x60) { // light gray
+        else if (max >= 0x90) { // light gray
           type = PartType.SIDE;
-          flipped = (max < 0xA0); // distinguish between 0xC0 and 0x80
+          flipped = (max < 0xB0); // distinguish between 0xC0 and 0xA0
         }
-        else if (max >= 0x28) { // dark gray
+        else if (max >= 0x40) { // dark gray
           type = PartType.SLOPE; 
-          flipped = (max < 0x38); // distinguish between 0x40 and 0x30
+          flipped = (max < 0x70); // distinguish between 0x60 and 0x80
         }
         else { // very dark gray, consider blank
           type = PartType.BLANK; 

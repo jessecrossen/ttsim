@@ -2816,7 +2816,13 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                         const file = input.files[0];
                         var reader = new FileReader();
                         reader.onload = (e) => {
-                            this._readBoardState(e.target.result, callback);
+                            this._restoring = true;
+                            try {
+                                this._readBoardState(e.target.result, callback);
+                            }
+                            finally {
+                                this._restoring = false;
+                            }
                         };
                         reader.readAsDataURL(file);
                     };
@@ -2881,6 +2887,13 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                     return (canvas.toDataURL());
                 }
                 _readBoardState(url, callback) {
+                    const expectedPrefix = 'data:image/png;base64,';
+                    const prefix = url.substr(0, expectedPrefix.length);
+                    if (prefix !== expectedPrefix) {
+                        console.warn('Unexpected data url prefix: ' + prefix);
+                        callback(false);
+                        return;
+                    }
                     const img = document.createElement('img');
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
@@ -2911,6 +2924,8 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                 }
                 partToColor(part, data, i) {
                     let r = 0xFF, g = 0xFF, b = 0xFF, a = 0xFF;
+                    let flip = (part) && ((part.canFlip && part.isFlipped) ||
+                        (part.canRotate && part.bitValue));
                     // select a color for the part
                     switch (part.type) {
                         // leave both types of locations white so we don't get a checker pattern 
@@ -2959,15 +2974,31 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                             b = 0xFF;
                             break; // magenta
                         case 10 /* SIDE */:
-                            r = 0xC0;
-                            g = 0xC0;
-                            b = 0xC0;
-                            break; // light gray
+                            if (!flip) {
+                                r = 0xC0;
+                                g = 0xC0;
+                                b = 0xC0;
+                            } // light gray
+                            else {
+                                r = 0xA0;
+                                g = 0xA0;
+                                b = 0xA0;
+                            }
+                            flip = false;
+                            break;
                         case 11 /* SLOPE */:
-                            r = 0x40;
-                            g = 0x40;
-                            b = 0x40;
-                            break; // dark gray
+                            if (!flip) {
+                                r = 0x80;
+                                g = 0x80;
+                                b = 0x80;
+                            } // middle gray
+                            else {
+                                r = 0x60;
+                                g = 0x60;
+                                b = 0x60;
+                            }
+                            flip = false;
+                            break;
                         // leave blank spots and unknown parts a very dark gray
                         case 0 /* BLANK */: // fall-through
                         default:
@@ -2975,15 +3006,14 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                             break;
                     }
                     // if a part is flipped or rotated, make the color less bright
-                    if ((part) && ((part.canFlip && part.isFlipped) ||
-                        (part.canRotate && part.bitValue))) {
+                    if (flip) {
                         r = (r >> 2) * 3;
                         g = (g >> 2) * 3;
                         b = (b >> 2) * 3;
                     }
-                    // if a part is locked, reduce opacity
+                    // if a part is locked, reduce opacity very slightly
                     if ((part) && (part.isLocked))
-                        a = (a >> 2) * 3;
+                        a = 0xFE;
                     // write the color
                     data[i++] = r;
                     data[i++] = g;
@@ -3014,13 +3044,13 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                         // gray
                         if ((isHigh(r)) && (isHigh(g)) && (isHigh(b))) {
                             if (max >= 0xD0) { } // whiteish, clear the location
-                            else if (max >= 0x60) {
+                            else if (max >= 0x90) {
                                 type = 10 /* SIDE */;
-                                flipped = (max < 0xA0); // distinguish between 0xC0 and 0x80
+                                flipped = (max < 0xB0); // distinguish between 0xC0 and 0xA0
                             }
-                            else if (max >= 0x28) {
+                            else if (max >= 0x40) {
                                 type = 11 /* SLOPE */;
-                                flipped = (max < 0x38); // distinguish between 0x40 and 0x30
+                                flipped = (max < 0x70); // distinguish between 0x60 and 0x80
                             }
                             else {
                                 type = 0 /* BLANK */;

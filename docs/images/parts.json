@@ -2448,6 +2448,30 @@
       }, 
       "trimmed": false
     }, 
+    "download": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 628, 
+        "y": 4
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
     "faster": {
       "frame": {
         "h": 96, 
@@ -2574,6 +2598,30 @@
         "w": 96, 
         "x": 4, 
         "y": 212
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "upload": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 732, 
+        "y": 4
       }, 
       "pivot": {
         "x": 0.5, 

@@ -24,7 +24,8 @@ export const enum Delays {
   FLIP = 0.25,
   TURN = 0.25,
   SHOW_CONTROL = 0.1,
-  HIDE_CONTROL = 0.25
+  HIDE_CONTROL = 0.25,
+  UPDATE_URL = 0.5
 }
 
 export const enum Sizes {

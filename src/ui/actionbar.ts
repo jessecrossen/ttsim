@@ -4,6 +4,7 @@ import { Board, ToolType, SPACING_FACTOR } from 'board/board';
 import { Button, PartButton, SpriteButton, ButtonBar } from './button';
 import { Zooms, Speeds } from './config';
 import { Renderer } from 'renderer';
+import { URLBoardSerializer } from 'board/serializer';
 
 export class Actionbar extends ButtonBar {
 
@@ -32,6 +33,9 @@ export class Actionbar extends ButtonBar {
     this._returnButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['return']));
     this.addButton(this._returnButton);
+    this._downloadButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['download']));
+    this.addButton(this._downloadButton);
 
     // add more top buttons here...
     
@@ -56,6 +60,7 @@ export class Actionbar extends ButtonBar {
   private _slowerButton:Button;
   private _returnButton:Button;
   private _heartButton:Button;
+  private _downloadButton:Button;
 
   protected onButtonClick(button:Button):void {
     if (button === this._schematicButton) {
@@ -78,6 +83,16 @@ export class Actionbar extends ButtonBar {
     else if (button === this._fasterButton) { this.goFaster(); }
     else if (button === this._slowerButton) { this.goSlower(); }
     else if (button === this._returnButton) { this.board.returnBalls(); }
+    else if (button === this._downloadButton) {
+      if (this.board.serializer instanceof URLBoardSerializer) {
+        const url = this.board.serializer.dataUrl;
+        if (! (url.length > 0)) return;
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.setAttribute('download', 'ttsim.png');
+        a.click();
+      }
+    }
     else if (button === this._heartButton) {
       window.open('https://www.turingtumble.com/', '_blank');
     }

@@ -4,24 +4,25 @@ import { Part, Layer } from 'parts/part';
 import { Slope, Side } from 'parts/fence';
 import { PartFactory, PartType } from 'parts/factory';
 import { GearBase, Gear } from 'parts/gearbit';
-import { Alphas, Delays, Sizes } from 'ui/config';
+import { Alphas, Delays, Sizes, Zooms, Speeds } from 'ui/config';
 import { DisjointSet } from 'util/disjoint';
 import { Renderer } from 'renderer';
 import { Ball } from 'parts/ball';
-import { BALL_RADIUS, SPACING, PART_SIZE } from './constants';
+import { BALL_RADIUS, SPACING } from './constants';
 import { PhysicalBallRouter } from './physics';
 import { SchematicBallRouter } from './schematic';
+import { IBoardSerializer } from './serializer';
 import { Drop } from 'parts/drop';
 import { ColorWheel, DropButton, TurnButton, BallCounter } from './controls';
 import { Animator } from 'ui/animator';
 import { Turnstile } from 'parts/turnstile';
-import { makeKeyHandler, KeyHandler } from 'ui/keyboard';
+import { makeKeyHandler } from 'ui/keyboard';
 
 export const enum ToolType {
-  NONE,
+  NONE, MIN = NONE,
   PART,
   ERASER,
-  HAND
+  HAND, MAX = HAND
 }
 
 export const enum ActionType {
@@ -53,6 +54,9 @@ export class Board {
   public readonly view:PIXI.Sprite = new PIXI.Sprite();
   public readonly _layers:PIXI.Container = new PIXI.Container();
 
+  // a serializer for the board state
+  public serializer:IBoardSerializer = null;
+
   // the set of balls currently on the board
   public readonly balls:Set<Ball> = new Set();
 
@@ -60,8 +64,14 @@ export class Board {
   public get changeCounter():number { return(this._changeCounter); }
   public onChange():void {
     this._changeCounter++;
+    if (this.serializer) this.serializer.onBoardStateChanged();
   }
   private _changeCounter:number = 0;
+
+  // register changes to UI state
+  public onUIChange():void {
+    if (this.serializer) this.serializer.onUIStateChanged();
+  }
   
   // whether to show parts in schematic form
   public get schematicView():boolean {
@@ -77,11 +87,20 @@ export class Board {
     // return all balls because their positions will be different in the two
     //  routers and it can cause a lot of jumping and sticking
     this.returnBalls();
+    this.onUIChange();
   }
   protected _schematic:boolean = false;
 
   // the speed to run the simulator at
-  public speed:number = 1.0;
+  public get speed():number { return(this._speed); }
+  public set speed(v:number) {
+    if ((isNaN(v)) || (v == null)) return;
+    v = Math.min(Math.max(Speeds[0], v), Speeds[Speeds.length - 1]);
+    if (v === this.speed) return;
+    this._speed = v;
+    this.onUIChange();
+  }
+  private _speed:number = 1.0;
 
   // routers to manage the positions of the balls
   public readonly physicalRouter:PhysicalBallRouter = new PhysicalBallRouter(this);
@@ -233,6 +252,8 @@ export class Board {
   // change the size to draw parts at
   public get partSize():number { return(this._partSize); }
   public set partSize(v:number) {
+    if ((isNaN(v)) || (v == null)) return;
+    v = Math.min(Math.max(Zooms[0], v), Zooms[Zooms.length - 1]);
     if (v === this._partSize) return;
     this._partSize = v;
     this.layoutParts();
@@ -241,6 +262,7 @@ export class Board {
     this._updatePan();
     this.physicalRouter.onBoardSizeChanged();
     this.schematicRouter.onBoardSizeChanged();
+    this.onUIChange();
   }
   private _partSize:number = 64;
 
@@ -269,18 +291,22 @@ export class Board {
   // the fractional column and row to keep in the center
   public get centerColumn():number { return(this._centerColumn); }
   public set centerColumn(v:number) {
+    if ((isNaN(v)) || (v == null)) return;
     v = Math.min(Math.max(0, v), this.columnCount - 1);
     if (v === this.centerColumn) return;
     this._centerColumn = v;
     this._updatePan();
+    this.onUIChange();
   }
   private _centerColumn:number = 0.0;
   public get centerRow():number { return(this._centerRow); }
   public set centerRow(v:number) {
+    if ((isNaN(v)) || (v == null)) return;
     v = Math.min(Math.max(0, v), this.rowCount - 1);
     if (v === this.centerRow) return;
     this._centerRow = v;
     this._updatePan();
+    this.onUIChange();
   }
   private _centerRow:number = 0.0;
 
@@ -354,6 +380,7 @@ export class Board {
   // update the part grid
   public setSize(columnCount:number, rowCount:number):void {
     let r:number, c:number, p:Part;
+    if ((! (columnCount > 0)) || (! (rowCount > 0))) return;
     // contract rows
     if (rowCount < this._rowCount) {
       for (r = rowCount; r < this._rowCount; r++) {
@@ -401,6 +428,7 @@ export class Board {
     this._rowCount = rowCount;
     this.physicalRouter.onBoardSizeChanged();
     this.schematicRouter.onBoardSizeChanged();
+    this.onChange();
   }
   private _grid:Part[][] = [ ];
 
@@ -453,8 +481,11 @@ export class Board {
   // set the tool to use when the user clicks
   public get tool():ToolType { return(this._tool); }
   public set tool(v:ToolType) {
+    if (! (v >= 0)) return;
+    v = Math.min(Math.max(ToolType.MIN, v), ToolType.MAX);
     if (v === this._tool) return;
     this._tool = v;
+    this.onUIChange();
   }
   private _tool:ToolType = ToolType.HAND;
 
@@ -478,6 +509,7 @@ export class Board {
       this._partPrototype.visible = false;
       this.addPart(this._partPrototype);
     }
+    this.onUIChange();
   }
   private _partPrototype:Part = null;
 
@@ -550,6 +582,7 @@ export class Board {
       this._flipFence(column, row);
     }
     else if (part) part.flip(Delays.FLIP);
+    this.onChange();
   }
 
   // clear parts from the given coordinates

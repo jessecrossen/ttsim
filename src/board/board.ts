@@ -111,7 +111,17 @@ export class Board {
   public update(correction:number):void {
     if (this.schematic) this.schematicRouter.update(this.speed, correction);
     else this.physicalRouter.update(this.speed, correction);
+    if (++this._counter % 30 == 0) {
+      this._areBallsAtRest = this._checkBallMovement();
+      if (this.areBallsAtRest) this._checkBitRotations();
+      this._counter = 0;
+    }
   }
+  private _counter:number = 0;
+
+  // whether all balls on the board have been basically motionless for a bit
+  public get areBallsAtRest():boolean { return(this._areBallsAtRest); }
+  private _areBallsAtRest:boolean = true;
 
   // LAYERS *******************************************************************
 
@@ -920,6 +930,48 @@ export class Board {
     // update sequence numbers for slopes
     this._updateSlopes();
   }
+
+  // return whether all balls appear to be at rest since the last check
+  protected _checkBallMovement():boolean {
+    let atRest:boolean = true;
+    let p;
+    for (const ball of this.balls) {
+      if (! this._ballPositions.has(ball)) {
+        atRest = false;
+        this._ballPositions.set(ball, { c: ball.column, r: ball.row });
+      }
+      else {
+        p = this._ballPositions.get(ball);
+        if ((atRest) &&
+            (Math.max(Math.abs(p.c - ball.column), 
+                      Math.abs(p.r - ball.row)) > 0.05)) {
+          atRest = false;
+        }
+        p.c = ball.column;
+        p.r = ball.row;
+      }
+    }
+    return(atRest);
+  }
+  private _ballPositions:WeakMap<Part,{c:number,r:number}> = new WeakMap();
+
+  // see if any bits or gearbits have changed their rotation states from 
+  //  interaction with balls, and notify if so
+  protected _checkBitRotations():void {
+    let changed:boolean = false;
+    for (const row of this._grid) {
+      for (const part of row) {
+        if ((part.type !== PartType.BIT) && 
+            (part.type !== PartType.GEARBIT)) continue;
+        if (this._bitState.get(part) !== part.bitValue) {
+          changed = true;
+          this._bitState.set(part, part.bitValue);
+        }
+      }
+    }
+    if (changed) this.onChange();
+  }
+  private _bitState:WeakMap<Part,boolean> = new WeakMap();
 
   // INTERACTION **************************************************************
 

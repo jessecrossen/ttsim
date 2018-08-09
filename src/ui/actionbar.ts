@@ -36,6 +36,9 @@ export class Actionbar extends ButtonBar {
     this._downloadButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['download']));
     this.addButton(this._downloadButton);
+    this._uploadButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['upload']));
+    this.addButton(this._uploadButton);
 
     // add more top buttons here...
     
@@ -61,6 +64,7 @@ export class Actionbar extends ButtonBar {
   private _returnButton:Button;
   private _heartButton:Button;
   private _downloadButton:Button;
+  private _uploadButton:Button;
 
   protected onButtonClick(button:Button):void {
     if (button === this._schematicButton) {
@@ -85,12 +89,14 @@ export class Actionbar extends ButtonBar {
     else if (button === this._returnButton) { this.board.returnBalls(); }
     else if (button === this._downloadButton) {
       if (this.board.serializer instanceof URLBoardSerializer) {
-        const url = this.board.serializer.dataUrl;
-        if (! (url.length > 0)) return;
-        const a = document.createElement('a');
-        a.setAttribute('href', url);
-        a.setAttribute('download', 'ttsim.png');
-        a.click();
+        this.board.serializer.download();
+      }
+    }
+    else if (button === this._uploadButton) {
+      if (this.board.serializer instanceof URLBoardSerializer) {
+        this.board.serializer.upload((restored:boolean) => {
+          if (restored) this.zoomToFit();
+        });
       }
     }
     else if (button === this._heartButton) {

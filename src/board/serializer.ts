@@ -88,6 +88,33 @@ export class URLBoardSerializer implements IBoardSerializer {
   }
   private _restoring:boolean = false;
 
+  public download():boolean {
+    const url = this.dataUrl;
+    if (! (url.length > 0)) return(false);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', 'ttsim.png');
+    a.click();
+    return(true);
+  }
+
+  public upload(callback:(restored:boolean) => void):boolean {
+    const input = document.createElement('input');
+    input.setAttribute('type', 'file');
+    input.setAttribute('accept', 'image/png');
+    input.onchange = () => {
+      if (! (input.files.length > 0)) return;
+      const file = input.files[0];
+      var reader = new FileReader();
+      reader.onload = (e) => {
+        this._readBoardState(e.target.result, callback);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+    return(false);
+  }
+
   protected _writeUIState():string {
     let s:string = '';
     s += 's='+this.board.columnCount+','+this.board.rowCount;
@@ -214,7 +241,8 @@ export class URLBoardSerializer implements IBoardSerializer {
     let b = data[i++];
     const a = data[i++];
     const max = Math.max(r, g, b);
-    // define fudge factors for color recognition
+    // define fudge factors for color recognition so the image can be edited,
+    //  and slightly different colors will still be recognized 
     const isLow = (n:number) => n <= 0.25;
     const isMid = (n:number) => (n > 0.25) && (n < 0.75);
     const isHigh = (n:number) => n >= 0.75;

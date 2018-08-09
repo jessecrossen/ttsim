@@ -2796,6 +2796,33 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                         this._restoring = false;
                     }
                 }
+                download() {
+                    const url = this.dataUrl;
+                    if (!(url.length > 0))
+                        return (false);
+                    const a = document.createElement('a');
+                    a.setAttribute('href', url);
+                    a.setAttribute('download', 'ttsim.png');
+                    a.click();
+                    return (true);
+                }
+                upload(callback) {
+                    const input = document.createElement('input');
+                    input.setAttribute('type', 'file');
+                    input.setAttribute('accept', 'image/png');
+                    input.onchange = () => {
+                        if (!(input.files.length > 0))
+                            return;
+                        const file = input.files[0];
+                        var reader = new FileReader();
+                        reader.onload = (e) => {
+                            this._readBoardState(e.target.result, callback);
+                        };
+                        reader.readAsDataURL(file);
+                    };
+                    input.click();
+                    return (false);
+                }
                 _writeUIState() {
                     let s = '';
                     s += 's=' + this.board.columnCount + ',' + this.board.rowCount;
@@ -2970,7 +2997,8 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                     let b = data[i++];
                     const a = data[i++];
                     const max = Math.max(r, g, b);
-                    // define fudge factors for color recognition
+                    // define fudge factors for color recognition so the image can be edited,
+                    //  and slightly different colors will still be recognized 
                     const isLow = (n) => n <= 0.25;
                     const isMid = (n) => (n > 0.25) && (n < 0.75);
                     const isHigh = (n) => n >= 0.75;
@@ -3265,6 +3293,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     // routers to manage the positions of the balls
                     this.physicalRouter = new physics_1.PhysicalBallRouter(this);
                     this.schematicRouter = new schematic_1.SchematicBallRouter(this);
+                    this._counter = 0;
+                    this._areBallsAtRest = true;
                     this._containers = new Map();
                     this._controls = [];
                     this._partSize = 64;
@@ -3279,6 +3309,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._partPrototype = null;
                     // keep a set of all drops on the board
                     this.drops = new Set();
+                    this._ballPositions = new WeakMap();
+                    this._bitState = new WeakMap();
                     this._controlKeyDown = false;
                     this._isMouseDown = false;
                     this._dragging = false;
@@ -3336,7 +3368,15 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this.schematicRouter.update(this.speed, correction);
                     else
                         this.physicalRouter.update(this.speed, correction);
+                    if (++this._counter % 30 == 0) {
+                        this._areBallsAtRest = this._checkBallMovement();
+                        if (this.areBallsAtRest)
+                            this._checkBitRotations();
+                        this._counter = 0;
+                    }
                 }
+                // whether all balls on the board have been basically motionless for a bit
+                get areBallsAtRest() { return (this._areBallsAtRest); }
                 // LAYERS *******************************************************************
                 _initContainers() {
                     this._setContainer(0 /* BACK */, false);
@@ -4137,6 +4177,45 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     // update sequence numbers for slopes
                     this._updateSlopes();
                 }
+                // return whether all balls appear to be at rest since the last check
+                _checkBallMovement() {
+                    let atRest = true;
+                    let p;
+                    for (const ball of this.balls) {
+                        if (!this._ballPositions.has(ball)) {
+                            atRest = false;
+                            this._ballPositions.set(ball, { c: ball.column, r: ball.row });
+                        }
+                        else {
+                            p = this._ballPositions.get(ball);
+                            if ((atRest) &&
+                                (Math.max(Math.abs(p.c - ball.column), Math.abs(p.r - ball.row)) > 0.05)) {
+                                atRest = false;
+                            }
+                            p.c = ball.column;
+                            p.r = ball.row;
+                        }
+                    }
+                    return (atRest);
+                }
+                // see if any bits or gearbits have changed their rotation states from 
+                //  interaction with balls, and notify if so
+                _checkBitRotations() {
+                    let changed = false;
+                    for (const row of this._grid) {
+                        for (const part of row) {
+                            if ((part.type !== 6 /* BIT */) &&
+                                (part.type !== 7 /* GEARBIT */))
+                                continue;
+                            if (this._bitState.get(part) !== part.bitValue) {
+                                changed = true;
+                                this._bitState.set(part, part.bitValue);
+                            }
+                        }
+                    }
+                    if (changed)
+                        this.onChange();
+                }
                 // INTERACTION **************************************************************
                 _bindMouseEvents() {
                     this.view.interactive = true;
@@ -4885,6 +4964,8 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     this.addButton(this._returnButton);
                     this._downloadButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['download']));
                     this.addButton(this._downloadButton);
+                    this._uploadButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['upload']));
+                    this.addButton(this._uploadButton);
                     // add more top buttons here...
                     // add a link to the Turing Tumble website
                     this._heartButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['heart']));
@@ -4933,13 +5014,15 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     }
                     else if (button === this._downloadButton) {
                         if (this.board.serializer instanceof serializer_1.URLBoardSerializer) {
-                            const url = this.board.serializer.dataUrl;
-                            if (!(url.length > 0))
-                                return;
-                            const a = document.createElement('a');
-                            a.setAttribute('href', url);
-                            a.setAttribute('download', 'ttsim.png');
-                            a.click();
+                            this.board.serializer.download();
+                        }
+                    }
+                    else if (button === this._uploadButton) {
+                        if (this.board.serializer instanceof serializer_1.URLBoardSerializer) {
+                            this.board.serializer.upload((restored) => {
+                                if (restored)
+                                    this.zoomToFit();
+                            });
                         }
                     }
                     else if (button === this._heartButton) {

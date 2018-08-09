@@ -125,6 +125,12 @@ export class Board {
 
   // LAYERS *******************************************************************
 
+  protected _updateCulling():void {
+
+    
+
+  }
+
   protected _initContainers():void {
     this._setContainer(Layer.BACK, false);
     this._setContainer(Layer.MID, false);
@@ -387,60 +393,176 @@ export class Board {
   public get rowCount():number { return(this._rowCount); }
   private _rowCount:number = 0;
 
-  // update the part grid
-  public setSize(columnCount:number, rowCount:number):void {
-    let r:number, c:number, p:Part;
-    if ((! (columnCount > 0)) || (! (rowCount > 0))) return;
-    // contract rows
-    if (rowCount < this._rowCount) {
-      for (r = rowCount; r < this._rowCount; r++) {
-        for (p of this._grid[r]) this.removePart(p);
+  // storage for the part grid
+  private _grid:Part[][] = [ ];
+
+  // suspend expensive operations when updating parts in bulk
+  public get bulkUpdate():boolean { return(this._bulkUpdate); }
+  public set bulkUpdate(v:boolean) {
+    if (v === this._bulkUpdate) return;
+    this._bulkUpdate = v;
+    // when finishing a bulk update, execute deferred tasks
+    if (! v) {
+      this._connectSlopes();
+      this._connectTurnstiles();
+      this._connectGears();
+      // average gear rotations in connected sets
+      for (const row of this._grid) {
+        for (const part of row) {
+          if (part instanceof GearBase) {
+            part.rotation = part.rotation >= 0.5 ? 1.0 : 0.0;
+          }
+        }
       }
-      this._grid.splice(rowCount, this._rowCount - rowCount);
-      this._rowCount = rowCount;
     }
-    // expand columns
-    if ((columnCount > this._columnCount) && (this._rowCount > 0)) {
+  }
+  private _bulkUpdate:boolean = false;
+
+  public sizeRight(delta:number, addBackground:boolean=true):void {
+    delta = Math.max(- this.columnCount, delta);
+    if (delta == 0) return;
+    const newColumnCount:number = this.columnCount + delta;
+    let c:number, r:number, part:Part;
+    if (delta < 0) {
+      for (const row of this._grid) {
+        for (c = newColumnCount; c < this.columnCount; c++) {
+          this.removePart(row[c]);
+        }
+        row.splice(newColumnCount, - delta);
+      }
+    }
+    else {
       r = 0;
       for (const row of this._grid) {
-        for (c = this._columnCount; c < columnCount; c++) {
-          p = this.makeBackgroundPart(c, r);
-          row.push(p);
-          this.addPart(p);
-          this.layoutPart(p, c, r);
+        for (c = this.columnCount; c < newColumnCount; c++) {
+          if (addBackground) {
+            part = this.makeBackgroundPart(c, r);
+            this.addPart(part);
+            row.push(part);
+          }
+          else row.push(null);
         }
         r++;
       }
     }
-    // contract columns
-    else if ((columnCount < this._columnCount) && (this._rowCount > 0)) {
-      for (const row of this._grid) {
-        for (c = columnCount; c < this._columnCount; c++) {
-          this.removePart(row[c]);
-        }
-        row.splice(columnCount, this._columnCount - columnCount);
-      }
-    }
-    this._columnCount = columnCount;
-    // expand rows
-    if (rowCount > this._rowCount) {
-      for (r = this._rowCount; r < rowCount; r++) {
-        const row:Part[] = [ ];
-        for (c = 0; c < columnCount; c++) {
-          p = this.makeBackgroundPart(c, r);
-          row.push(p);
-          this.addPart(p);
-          this.layoutPart(p, c, r);
-        }
-        this._grid.push(row);
-      }
-    }
-    this._rowCount = rowCount;
+    this._columnCount = newColumnCount;
     this.physicalRouter.onBoardSizeChanged();
     this.schematicRouter.onBoardSizeChanged();
     this.onChange();
   }
-  private _grid:Part[][] = [ ];
+
+  public sizeBottom(delta:number, addBackground:boolean=true):void {
+    delta = Math.max(- this.rowCount, delta);
+    if (delta == 0) return;
+    const newRowCount:number = this.rowCount + delta;
+    let c:number, r:number, part:Part;
+    if (delta < 0) {
+      for (r = newRowCount; r < this.rowCount; r++) {
+        for (const part of this._grid[r]) {
+          this.removePart(part);
+        }
+      }
+      this._grid.splice(newRowCount, - delta);
+    }
+    else {
+      for (r = this.rowCount; r < newRowCount; r++) {
+        const row:Part[] = [ ];
+        for (c = 0; c < this.columnCount; c++) {
+          if (addBackground) {
+            part = this.makeBackgroundPart(c, r);
+            this.addPart(part);
+            row.push(part);
+          }
+          else row.push(null);
+        }
+        this._grid.push(row);
+      }
+    }
+    this._rowCount = newRowCount;
+    this.physicalRouter.onBoardSizeChanged();
+    this.schematicRouter.onBoardSizeChanged();
+    this.onChange();
+  }
+
+  public sizeLeft(delta:number, addBackground:boolean=true):void {
+    // we must increase/decrease by even numbers to keep part/gear locations
+    //  on the same diagonals
+    if (delta % 2 !== 0) delta += 1;
+    delta = Math.max(- this.columnCount, delta);
+    if (delta == 0) return;
+    const newColumnCount:number = this.columnCount + delta;
+    let c:number, r:number, part:Part;
+    if (delta < 0) {
+      delta = Math.abs(delta);
+      for (const row of this._grid) {
+        for (c = 0; c < delta; c++) {
+          this.removePart(row[c]);
+        }
+        row.splice(0, delta);
+      }
+    }
+    else {
+      r = 0;
+      for (const row of this._grid) {
+        for (c = delta - 1; c >= 0; c--) {
+          if (addBackground) {
+            part = this.makeBackgroundPart(c, r);
+            this.addPart(part);
+            row.unshift(part);
+          }
+          else row.unshift(null);
+        }
+        r++;
+      }
+    }
+    this._columnCount = newColumnCount;
+    this.physicalRouter.onBoardSizeChanged();
+    this.schematicRouter.onBoardSizeChanged();
+    this.onChange();
+  }
+
+  public sizeTop(delta:number, addBackground:boolean=true):void {
+    // we must increase/decrease by even numbers to keep part/gear locations
+    //  on the same diagonals
+    if (delta % 2 !== 0) delta += 1;
+    delta = Math.max(- this.rowCount, delta);
+    if (delta == 0) return;
+    const newRowCount:number = this.rowCount + delta;
+    let c:number, r:number, part:Part;
+    if (delta < 0) {
+      delta = Math.abs(delta);
+      for (r = 0; r < delta; r++) {
+        for (const part of this._grid[r]) {
+          this.removePart(part);
+        }
+      }
+      this._grid.splice(0, delta);
+    }
+    else {
+      for (r = delta - 1; r >= 0; r--) {
+        const row:Part[] = [ ];
+        for (c = 0; c < this.columnCount; c++) {
+          if (addBackground) {
+            part = this.makeBackgroundPart(c, r);
+            this.addPart(part);
+            row.push(part);
+          }
+          else row.push(null);
+        }
+        this._grid.unshift(row);
+      }
+    }
+    this._rowCount = newRowCount;
+    this.physicalRouter.onBoardSizeChanged();
+    this.schematicRouter.onBoardSizeChanged();
+    this.onChange();
+  }
+
+  // update the part grid
+  public setSize(columnCount:number, rowCount:number, addBackground:boolean=true):void {
+    this.sizeRight(columnCount - this.columnCount, addBackground);
+    this.sizeBottom(rowCount - this.rowCount, addBackground);
+  }
 
   // whether a part can be placed at the given row and column
   public canPlacePart(type:PartType, column:number, row:number):boolean {
@@ -550,7 +672,7 @@ export class Board {
       // disconnect the old part
       if (oldPart instanceof GearBase) oldPart.connected = null;
       // rebuild connections between gears and gearbits
-      this._connectGears();
+      if (! this.bulkUpdate) this._connectGears();
       // merge the new part's rotation with the connected set
       if ((newPart instanceof GearBase) && (newPart.connected)) {
         let sum:number = 0.0;
@@ -562,7 +684,7 @@ export class Board {
     }
     // update fences
     if ((oldPart instanceof Slope) || (newPart instanceof Slope)) {
-      this._updateSlopes();
+      if (! this.bulkUpdate) this._connectSlopes();
     }
     // maintain our set of drops
     if ((oldPart instanceof Drop) && (oldPart !== this.partPrototype)) {
@@ -580,7 +702,7 @@ export class Board {
     }
     if ((oldPart instanceof Drop) || (newPart instanceof Drop) ||
         (oldPart instanceof Turnstile) || (newPart instanceof Turnstile)) {
-      this._connectTurnstiles();
+      if (! this.bulkUpdate) this._connectTurnstiles();
     }
     this.onChange();
   }
@@ -725,6 +847,7 @@ export class Board {
 
   // remove a part from the board's layers
   public removePart(part:Part):void {
+    if (! part) return;
     for (let layer of this._containers.keys()) {
       const sprite = part.getSpriteForLayer(layer);
       if (! sprite) continue;
@@ -862,7 +985,7 @@ export class Board {
   }
 
   // configure slope angles by grouping adjacent ones
-  protected _updateSlopes():void {
+  protected _connectSlopes():void {
     let slopes:Slope[] = [ ];
     for (const row of this._grid) {
       for (const part of row) {
@@ -928,7 +1051,7 @@ export class Board {
       }
     }
     // update sequence numbers for slopes
-    this._updateSlopes();
+    this._connectSlopes();
   }
 
   // return whether all balls appear to be at rest since the last check

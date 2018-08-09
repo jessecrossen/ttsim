@@ -146,7 +146,7 @@ export class URLBoardSerializer implements IBoardSerializer {
       else if (key == 'z') this.board.partSize = parseInt(value);
       else if (key == 's') {
         const [ c, r ] = value.split(',');
-        this.board.setSize(parseInt(c), parseInt(r));
+        this.board.setSize(parseInt(c), parseInt(r), false);
       }
       else if (key == 'cc') this.board.centerColumn = parseFloat(value);
       else if (key == 'cr') this.board.centerRow = parseFloat(value);
@@ -193,7 +193,8 @@ export class URLBoardSerializer implements IBoardSerializer {
       ctx.drawImage(img, 0, 0, w, h);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       // read parts from the board's pixels
-      this.board.setSize(w, h);
+      this.board.bulkUpdate = true;
+      this.board.setSize(w, h, false);
       for (let c:number = 0; c < this.board.columnCount; c++) {
         for (let r:number = 0; r < this.board.rowCount; r++) {
           const part = this.colorToPart(imageData.data, (r * w * 4) + (c * 4));
@@ -201,6 +202,7 @@ export class URLBoardSerializer implements IBoardSerializer {
           else this.board.clearPart(c, r);
         }
       }
+      this.board.bulkUpdate = false;
       callback(true);
     };
     img.onerror = () => {

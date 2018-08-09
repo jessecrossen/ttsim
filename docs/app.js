@@ -2856,7 +2856,7 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                             this.board.partSize = parseInt(value);
                         else if (key == 's') {
                             const [c, r] = value.split(',');
-                            this.board.setSize(parseInt(c), parseInt(r));
+                            this.board.setSize(parseInt(c), parseInt(r), false);
                         }
                         else if (key == 'cc')
                             this.board.centerColumn = parseFloat(value);
@@ -2905,7 +2905,8 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                         ctx.drawImage(img, 0, 0, w, h);
                         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                         // read parts from the board's pixels
-                        this.board.setSize(w, h);
+                        this.board.bulkUpdate = true;
+                        this.board.setSize(w, h, false);
                         for (let c = 0; c < this.board.columnCount; c++) {
                             for (let r = 0; r < this.board.rowCount; r++) {
                                 const part = this.colorToPart(imageData.data, (r * w * 4) + (c * 4));
@@ -2915,6 +2916,7 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                                     this.board.clearPart(c, r);
                             }
                         }
+                        this.board.bulkUpdate = false;
                         callback(true);
                     };
                     img.onerror = () => {
@@ -3334,7 +3336,9 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._centerRow = 0.0;
                     this._columnCount = 0;
                     this._rowCount = 0;
+                    // storage for the part grid
                     this._grid = [];
+                    this._bulkUpdate = false;
                     this._tool = 3 /* HAND */;
                     this._partPrototype = null;
                     // keep a set of all drops on the board
@@ -3408,6 +3412,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 // whether all balls on the board have been basically motionless for a bit
                 get areBallsAtRest() { return (this._areBallsAtRest); }
                 // LAYERS *******************************************************************
+                _updateCulling() {
+                }
                 _initContainers() {
                     this._setContainer(0 /* BACK */, false);
                     this._setContainer(1 /* MID */, false);
@@ -3650,59 +3656,177 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 // get the size of the part grid
                 get columnCount() { return (this._columnCount); }
                 get rowCount() { return (this._rowCount); }
-                // update the part grid
-                setSize(columnCount, rowCount) {
-                    let r, c, p;
-                    if ((!(columnCount > 0)) || (!(rowCount > 0)))
+                // suspend expensive operations when updating parts in bulk
+                get bulkUpdate() { return (this._bulkUpdate); }
+                set bulkUpdate(v) {
+                    if (v === this._bulkUpdate)
                         return;
-                    // contract rows
-                    if (rowCount < this._rowCount) {
-                        for (r = rowCount; r < this._rowCount; r++) {
-                            for (p of this._grid[r])
-                                this.removePart(p);
+                    this._bulkUpdate = v;
+                    // when finishing a bulk update, execute deferred tasks
+                    if (!v) {
+                        this._connectSlopes();
+                        this._connectTurnstiles();
+                        this._connectGears();
+                        // average gear rotations in connected sets
+                        for (const row of this._grid) {
+                            for (const part of row) {
+                                if (part instanceof gearbit_4.GearBase) {
+                                    part.rotation = part.rotation >= 0.5 ? 1.0 : 0.0;
+                                }
+                            }
                         }
-                        this._grid.splice(rowCount, this._rowCount - rowCount);
-                        this._rowCount = rowCount;
                     }
-                    // expand columns
-                    if ((columnCount > this._columnCount) && (this._rowCount > 0)) {
+                }
+                sizeRight(delta, addBackground = true) {
+                    delta = Math.max(-this.columnCount, delta);
+                    if (delta == 0)
+                        return;
+                    const newColumnCount = this.columnCount + delta;
+                    let c, r, part;
+                    if (delta < 0) {
+                        for (const row of this._grid) {
+                            for (c = newColumnCount; c < this.columnCount; c++) {
+                                this.removePart(row[c]);
+                            }
+                            row.splice(newColumnCount, -delta);
+                        }
+                    }
+                    else {
                         r = 0;
                         for (const row of this._grid) {
-                            for (c = this._columnCount; c < columnCount; c++) {
-                                p = this.makeBackgroundPart(c, r);
-                                row.push(p);
-                                this.addPart(p);
-                                this.layoutPart(p, c, r);
+                            for (c = this.columnCount; c < newColumnCount; c++) {
+                                if (addBackground) {
+                                    part = this.makeBackgroundPart(c, r);
+                                    this.addPart(part);
+                                    row.push(part);
+                                }
+                                else
+                                    row.push(null);
                             }
                             r++;
                         }
                     }
-                    else if ((columnCount < this._columnCount) && (this._rowCount > 0)) {
-                        for (const row of this._grid) {
-                            for (c = columnCount; c < this._columnCount; c++) {
-                                this.removePart(row[c]);
+                    this._columnCount = newColumnCount;
+                    this.physicalRouter.onBoardSizeChanged();
+                    this.schematicRouter.onBoardSizeChanged();
+                    this.onChange();
+                }
+                sizeBottom(delta, addBackground = true) {
+                    delta = Math.max(-this.rowCount, delta);
+                    if (delta == 0)
+                        return;
+                    const newRowCount = this.rowCount + delta;
+                    let c, r, part;
+                    if (delta < 0) {
+                        for (r = newRowCount; r < this.rowCount; r++) {
+                            for (const part of this._grid[r]) {
+                                this.removePart(part);
                             }
-                            row.splice(columnCount, this._columnCount - columnCount);
                         }
+                        this._grid.splice(newRowCount, -delta);
                     }
-                    this._columnCount = columnCount;
-                    // expand rows
-                    if (rowCount > this._rowCount) {
-                        for (r = this._rowCount; r < rowCount; r++) {
+                    else {
+                        for (r = this.rowCount; r < newRowCount; r++) {
                             const row = [];
-                            for (c = 0; c < columnCount; c++) {
-                                p = this.makeBackgroundPart(c, r);
-                                row.push(p);
-                                this.addPart(p);
-                                this.layoutPart(p, c, r);
+                            for (c = 0; c < this.columnCount; c++) {
+                                if (addBackground) {
+                                    part = this.makeBackgroundPart(c, r);
+                                    this.addPart(part);
+                                    row.push(part);
+                                }
+                                else
+                                    row.push(null);
                             }
                             this._grid.push(row);
                         }
                     }
-                    this._rowCount = rowCount;
+                    this._rowCount = newRowCount;
                     this.physicalRouter.onBoardSizeChanged();
                     this.schematicRouter.onBoardSizeChanged();
                     this.onChange();
+                }
+                sizeLeft(delta, addBackground = true) {
+                    // we must increase/decrease by even numbers to keep part/gear locations
+                    //  on the same diagonals
+                    if (delta % 2 !== 0)
+                        delta += 1;
+                    delta = Math.max(-this.columnCount, delta);
+                    if (delta == 0)
+                        return;
+                    const newColumnCount = this.columnCount + delta;
+                    let c, r, part;
+                    if (delta < 0) {
+                        delta = Math.abs(delta);
+                        for (const row of this._grid) {
+                            for (c = 0; c < delta; c++) {
+                                this.removePart(row[c]);
+                            }
+                            row.splice(0, delta);
+                        }
+                    }
+                    else {
+                        r = 0;
+                        for (const row of this._grid) {
+                            for (c = delta - 1; c >= 0; c--) {
+                                if (addBackground) {
+                                    part = this.makeBackgroundPart(c, r);
+                                    this.addPart(part);
+                                    row.unshift(part);
+                                }
+                                else
+                                    row.unshift(null);
+                            }
+                            r++;
+                        }
+                    }
+                    this._columnCount = newColumnCount;
+                    this.physicalRouter.onBoardSizeChanged();
+                    this.schematicRouter.onBoardSizeChanged();
+                    this.onChange();
+                }
+                sizeTop(delta, addBackground = true) {
+                    // we must increase/decrease by even numbers to keep part/gear locations
+                    //  on the same diagonals
+                    if (delta % 2 !== 0)
+                        delta += 1;
+                    delta = Math.max(-this.rowCount, delta);
+                    if (delta == 0)
+                        return;
+                    const newRowCount = this.rowCount + delta;
+                    let c, r, part;
+                    if (delta < 0) {
+                        delta = Math.abs(delta);
+                        for (r = 0; r < delta; r++) {
+                            for (const part of this._grid[r]) {
+                                this.removePart(part);
+                            }
+                        }
+                        this._grid.splice(0, delta);
+                    }
+                    else {
+                        for (r = delta - 1; r >= 0; r--) {
+                            const row = [];
+                            for (c = 0; c < this.columnCount; c++) {
+                                if (addBackground) {
+                                    part = this.makeBackgroundPart(c, r);
+                                    this.addPart(part);
+                                    row.push(part);
+                                }
+                                else
+                                    row.push(null);
+                            }
+                            this._grid.unshift(row);
+                        }
+                    }
+                    this._rowCount = newRowCount;
+                    this.physicalRouter.onBoardSizeChanged();
+                    this.schematicRouter.onBoardSizeChanged();
+                    this.onChange();
+                }
+                // update the part grid
+                setSize(columnCount, rowCount, addBackground = true) {
+                    this.sizeRight(columnCount - this.columnCount, addBackground);
+                    this.sizeBottom(rowCount - this.rowCount, addBackground);
                 }
                 // whether a part can be placed at the given row and column
                 canPlacePart(type, column, row) {
@@ -3816,7 +3940,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         if (oldPart instanceof gearbit_4.GearBase)
                             oldPart.connected = null;
                         // rebuild connections between gears and gearbits
-                        this._connectGears();
+                        if (!this.bulkUpdate)
+                            this._connectGears();
                         // merge the new part's rotation with the connected set
                         if ((newPart instanceof gearbit_4.GearBase) && (newPart.connected)) {
                             let sum = 0.0;
@@ -3828,7 +3953,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                     // update fences
                     if ((oldPart instanceof fence_4.Slope) || (newPart instanceof fence_4.Slope)) {
-                        this._updateSlopes();
+                        if (!this.bulkUpdate)
+                            this._connectSlopes();
                     }
                     // maintain our set of drops
                     if ((oldPart instanceof drop_3.Drop) && (oldPart !== this.partPrototype)) {
@@ -3847,7 +3973,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                     if ((oldPart instanceof drop_3.Drop) || (newPart instanceof drop_3.Drop) ||
                         (oldPart instanceof turnstile_3.Turnstile) || (newPart instanceof turnstile_3.Turnstile)) {
-                        this._connectTurnstiles();
+                        if (!this.bulkUpdate)
+                            this._connectTurnstiles();
                     }
                     this.onChange();
                 }
@@ -3991,6 +4118,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 }
                 // remove a part from the board's layers
                 removePart(part) {
+                    if (!part)
+                        return;
                     for (let layer of this._containers.keys()) {
                         const sprite = part.getSpriteForLayer(layer);
                         if (!sprite)
@@ -4133,7 +4262,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                 }
                 // configure slope angles by grouping adjacent ones
-                _updateSlopes() {
+                _connectSlopes() {
                     let slopes = [];
                     for (const row of this._grid) {
                         for (const part of row) {
@@ -4205,7 +4334,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                     }
                     // update sequence numbers for slopes
-                    this._updateSlopes();
+                    this._connectSlopes();
                 }
                 // return whether all balls appear to be at rest since the last check
                 _checkBallMovement() {
@@ -5268,7 +5397,7 @@ System.register("board/builder", ["parts/fence"], function (exports_32, context_
                     const steps = Math.ceil(center / fence_5.Slope.maxModulus);
                     const maxModulus = Math.ceil(center / steps);
                     const height = collectLevel + steps + 3;
-                    board.setSize(width, height);
+                    board.setSize(width, height, true);
                     // block out unreachable locations at the top
                     const blank = board.partFactory.make(0 /* BLANK */);
                     blank.isLocked = true;

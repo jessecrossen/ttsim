@@ -17,7 +17,7 @@ export class BoardBuilder {
     const steps:number = Math.ceil(center / Slope.maxModulus);
     const maxModulus:number = Math.ceil(center / steps);
     const height:number = collectLevel + steps + 3;
-    board.setSize(width, height);
+    board.setSize(width, height, true);
     // block out unreachable locations at the top
     const blank = board.partFactory.make(PartType.BLANK);
     blank.isLocked = true;

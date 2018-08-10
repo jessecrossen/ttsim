@@ -3914,6 +3914,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     delta = Math.max(-this.columnCount, delta);
                     if (delta == 0)
                         return;
+                    const oldBulkUpdate = this.bulkUpdate;
                     this.bulkUpdate = true;
                     const newColumnCount = this.columnCount + delta;
                     let c, r;
@@ -3941,7 +3942,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                     }
                     this._columnCount = newColumnCount;
-                    this.bulkUpdate = false;
+                    this.bulkUpdate = oldBulkUpdate;
                     this.layoutParts();
                     this.physicalRouter.onBoardSizeChanged();
                     this.schematicRouter.onBoardSizeChanged();
@@ -3951,6 +3952,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     delta = Math.max(-this.rowCount, delta);
                     if (delta == 0)
                         return;
+                    const oldBulkUpdate = this.bulkUpdate;
                     this.bulkUpdate = true;
                     const newRowCount = this.rowCount + delta;
                     let c, r;
@@ -3976,7 +3978,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                     }
                     this._rowCount = newRowCount;
-                    this.bulkUpdate = false;
+                    this.bulkUpdate = oldBulkUpdate;
                     this.layoutParts();
                     this.physicalRouter.onBoardSizeChanged();
                     this.schematicRouter.onBoardSizeChanged();
@@ -3990,6 +3992,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     delta = Math.max(-this.columnCount, delta);
                     if (delta == 0)
                         return;
+                    const oldBulkUpdate = this.bulkUpdate;
                     this.bulkUpdate = true;
                     const newColumnCount = this.columnCount + delta;
                     let c, r;
@@ -4018,7 +4021,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                     this._columnCount = newColumnCount;
                     this.centerColumn += delta;
-                    this.bulkUpdate = false;
+                    this.bulkUpdate = oldBulkUpdate;
                     this.layoutParts();
                     this.physicalRouter.onBoardSizeChanged();
                     this.schematicRouter.onBoardSizeChanged();
@@ -4032,6 +4035,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     delta = Math.max(-this.rowCount, delta);
                     if (delta == 0)
                         return;
+                    const oldBulkUpdate = this.bulkUpdate;
                     this.bulkUpdate = true;
                     const newRowCount = this.rowCount + delta;
                     let c, r, part;
@@ -4060,7 +4064,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                     this._rowCount = newRowCount;
                     this.centerRow += delta;
-                    this.bulkUpdate = false;
+                    this.bulkUpdate = oldBulkUpdate;
                     this.layoutParts();
                     this.physicalRouter.onBoardSizeChanged();
                     this.schematicRouter.onBoardSizeChanged();
@@ -4070,6 +4074,24 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 setSize(columnCount, rowCount, addBackground = true) {
                     this.sizeRight(columnCount - this.columnCount, addBackground);
                     this.sizeBottom(rowCount - this.rowCount, addBackground);
+                }
+                // remove everything from the board
+                clear(addBackground = true) {
+                    const oldBulkUpdate = this.bulkUpdate;
+                    this.bulkUpdate = true;
+                    // remove parts
+                    for (let r = 0; r < this.rowCount; r++) {
+                        for (let c = 0; c < this.columnCount; c++) {
+                            if (addBackground)
+                                this.clearPart(c, r);
+                            else
+                                this.setPart(null, c, r);
+                        }
+                    }
+                    // remove balls
+                    for (const ball of this.balls)
+                        this.removeBall(ball);
+                    this.bulkUpdate = oldBulkUpdate;
                 }
                 // whether a part can be placed at the given row and column
                 canPlacePart(type, column, row) {
@@ -5663,7 +5685,9 @@ System.register("board/builder", ["parts/fence"], function (exports_32, context_
                     const collectLevel = dropLevel + verticalDrop;
                     const steps = Math.ceil(center / fence_5.Slope.maxModulus);
                     const maxModulus = Math.ceil(center / steps);
-                    const height = collectLevel + steps + 3;
+                    const height = collectLevel + steps + 4;
+                    board.bulkUpdate = true;
+                    board.clear(false);
                     board.setSize(width, height, true);
                     // block out unreachable locations at the top
                     const blank = board.partFactory.make(0 /* BLANK */);
@@ -5732,18 +5756,17 @@ System.register("board/builder", ["parts/fence"], function (exports_32, context_
                         }
                     }
                     // make a fence to collect balls
-                    r = height - 1;
-                    const rightSide = Math.min(center + fence_5.Slope.maxModulus, height - 1);
+                    const rightSide = center + fence_5.Slope.maxModulus;
                     for (c = center; c < rightSide; c++) {
-                        board.setPart(board.partFactory.copy(slope), c, r);
+                        board.setPart(board.partFactory.copy(slope), c, height - 1);
+                        board.setPart(board.partFactory.copy(flippedSlope), c, height - 3);
                     }
-                    board.setPart(board.partFactory.copy(side), rightSide, r);
-                    board.setPart(board.partFactory.copy(side), rightSide, r - 1);
-                    r--;
-                    for (c = center - 3; c < center; c++) {
-                        board.setPart(board.partFactory.copy(slope), c, r);
+                    for (r = height - 3; r <= height - 1; r++) {
+                        board.setPart(board.partFactory.copy(side), rightSide, r);
                     }
-                    // make a ball drops
+                    board.setPart(board.partFactory.copy(slope), center - 1, height - 2);
+                    board.setPart(board.partFactory.copy(slope), center - 2, height - 3);
+                    // make ball drops
                     const blueDrop = board.partFactory.make(12 /* DROP */);
                     board.setPart(blueDrop, blueColumn - 1, dropLevel);
                     blueDrop.hue = 220;
@@ -5754,18 +5777,19 @@ System.register("board/builder", ["parts/fence"], function (exports_32, context_
                     redDrop.hue = 0;
                     redDrop.isLocked = true;
                     // add balls
-                    for (let i = 0; i < 9; i++) {
+                    for (let i = 0; i < 8; i++) {
                         board.addBallToDrop(blueDrop);
                         board.addBallToDrop(redDrop);
                     }
                     // make turnstiles
                     const blueTurnstile = board.partFactory.make(13 /* TURNSTILE */);
-                    blueTurnstile.isFlipped = true;
                     blueTurnstile.isLocked = true;
                     board.setPart(blueTurnstile, center - 1, collectLevel + 1);
                     const redTurnstile = board.partFactory.make(13 /* TURNSTILE */);
                     redTurnstile.isLocked = true;
+                    redTurnstile.isFlipped = true;
                     board.setPart(redTurnstile, center + 1, collectLevel + 1);
+                    board.bulkUpdate = false;
                 }
             };
             exports_32("BoardBuilder", BoardBuilder);

@@ -535,6 +535,7 @@ export class Board {
   public sizeRight(delta:number, addBackground:boolean=true):void {
     delta = Math.max(- this.columnCount, delta);
     if (delta == 0) return;
+    const oldBulkUpdate = this.bulkUpdate;
     this.bulkUpdate = true;
     const newColumnCount:number = this.columnCount + delta;
     let c:number, r:number;
@@ -561,7 +562,7 @@ export class Board {
       }
     }
     this._columnCount = newColumnCount;
-    this.bulkUpdate = false;
+    this.bulkUpdate = oldBulkUpdate;
     this.layoutParts();
     this.physicalRouter.onBoardSizeChanged();
     this.schematicRouter.onBoardSizeChanged();
@@ -571,6 +572,7 @@ export class Board {
   public sizeBottom(delta:number, addBackground:boolean=true):void {
     delta = Math.max(- this.rowCount, delta);
     if (delta == 0) return;
+    const oldBulkUpdate = this.bulkUpdate;
     this.bulkUpdate = true;
     const newRowCount:number = this.rowCount + delta;
     let c:number, r:number;
@@ -595,7 +597,7 @@ export class Board {
       }
     }
     this._rowCount = newRowCount;
-    this.bulkUpdate = false;
+    this.bulkUpdate = oldBulkUpdate;
     this.layoutParts();
     this.physicalRouter.onBoardSizeChanged();
     this.schematicRouter.onBoardSizeChanged();
@@ -608,6 +610,7 @@ export class Board {
     if (delta % 2 !== 0) delta += 1;
     delta = Math.max(- this.columnCount, delta);
     if (delta == 0) return;
+    const oldBulkUpdate = this.bulkUpdate;
     this.bulkUpdate = true;
     const newColumnCount:number = this.columnCount + delta;
     let c:number, r:number;
@@ -635,7 +638,7 @@ export class Board {
     }
     this._columnCount = newColumnCount;
     this.centerColumn += delta;
-    this.bulkUpdate = false;
+    this.bulkUpdate = oldBulkUpdate;
     this.layoutParts();
     this.physicalRouter.onBoardSizeChanged();
     this.schematicRouter.onBoardSizeChanged();
@@ -648,6 +651,7 @@ export class Board {
     if (delta % 2 !== 0) delta += 1;
     delta = Math.max(- this.rowCount, delta);
     if (delta == 0) return;
+    const oldBulkUpdate = this.bulkUpdate;
     this.bulkUpdate = true;
     const newRowCount:number = this.rowCount + delta;
     let c:number, r:number, part:Part;
@@ -675,7 +679,7 @@ export class Board {
     }
     this._rowCount = newRowCount;
     this.centerRow += delta;
-    this.bulkUpdate = false;
+    this.bulkUpdate = oldBulkUpdate;
     this.layoutParts();
     this.physicalRouter.onBoardSizeChanged();
     this.schematicRouter.onBoardSizeChanged();
@@ -686,6 +690,22 @@ export class Board {
   public setSize(columnCount:number, rowCount:number, addBackground:boolean=true):void {
     this.sizeRight(columnCount - this.columnCount, addBackground);
     this.sizeBottom(rowCount - this.rowCount, addBackground);
+  }
+
+  // remove everything from the board
+  public clear(addBackground:boolean=true):void {
+    const oldBulkUpdate = this.bulkUpdate;
+    this.bulkUpdate = true;
+    // remove parts
+    for (let r:number = 0; r < this.rowCount; r++) {
+      for (let c:number = 0; c < this.columnCount; c++) {
+        if (addBackground) this.clearPart(c, r);
+        else this.setPart(null, c, r);
+      }
+    }
+    // remove balls
+    for (const ball of this.balls) this.removeBall(ball);
+    this.bulkUpdate = oldBulkUpdate;
   }
 
   // whether a part can be placed at the given row and column

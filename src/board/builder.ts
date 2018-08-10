@@ -16,7 +16,9 @@ export class BoardBuilder {
     const collectLevel:number = dropLevel + verticalDrop;
     const steps:number = Math.ceil(center / Slope.maxModulus);
     const maxModulus:number = Math.ceil(center / steps);
-    const height:number = collectLevel + steps + 3;
+    const height:number = collectLevel + steps + 4;
+    board.bulkUpdate = true;
+    board.clear(false);
     board.setSize(width, height, true);
     // block out unreachable locations at the top
     const blank = board.partFactory.make(PartType.BLANK);
@@ -79,18 +81,17 @@ export class BoardBuilder {
       }
     }
     // make a fence to collect balls
-    r = height - 1;
-    const rightSide:number = Math.min(center + Slope.maxModulus, height - 1);
+    const rightSide:number = center + Slope.maxModulus;
     for (c = center; c < rightSide; c++) {
-      board.setPart(board.partFactory.copy(slope), c, r);
+      board.setPart(board.partFactory.copy(slope), c, height - 1);
+      board.setPart(board.partFactory.copy(flippedSlope), c, height - 3);
     }
-    board.setPart(board.partFactory.copy(side), rightSide, r);
-    board.setPart(board.partFactory.copy(side), rightSide, r - 1);
-    r--;
-    for (c = center - 3; c < center; c++) {
-      board.setPart(board.partFactory.copy(slope), c, r);
+    for (r = height - 3; r <= height - 1; r++) {
+      board.setPart(board.partFactory.copy(side), rightSide, r);
     }
-    // make a ball drops
+    board.setPart(board.partFactory.copy(slope), center - 1, height - 2);
+    board.setPart(board.partFactory.copy(slope), center - 2, height - 3);
+    // make ball drops
     const blueDrop:Drop = board.partFactory.make(PartType.DROP) as Drop;
     board.setPart(blueDrop, blueColumn - 1, dropLevel);
     blueDrop.hue = 220;
@@ -101,18 +102,19 @@ export class BoardBuilder {
     redDrop.hue = 0;
     redDrop.isLocked = true;
     // add balls
-    for (let i:number = 0; i < 9; i++) {
+    for (let i:number = 0; i < 8; i++) {
       board.addBallToDrop(blueDrop);
       board.addBallToDrop(redDrop);
     }
     // make turnstiles
     const blueTurnstile = board.partFactory.make(PartType.TURNSTILE);
-    blueTurnstile.isFlipped = true;
     blueTurnstile.isLocked = true;
     board.setPart(blueTurnstile, center - 1, collectLevel + 1);
     const redTurnstile = board.partFactory.make(PartType.TURNSTILE);
     redTurnstile.isLocked = true;
+    redTurnstile.isFlipped = true;
     board.setPart(redTurnstile, center + 1, collectLevel + 1);
+    board.bulkUpdate = false;
   }
 
 }

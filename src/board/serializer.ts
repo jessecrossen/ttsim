@@ -2,6 +2,7 @@ import { Board } from './board';
 import { Delays } from 'ui/config';
 import { Part } from 'parts/part';
 import { PartType } from 'parts/factory';
+import { Drop } from 'parts/drop';
 
 export interface IBoardSerializer {
   onBoardStateChanged():void;
@@ -155,11 +156,61 @@ export class URLBoardSerializer implements IBoardSerializer {
     }
   }
 
+  protected _writeMetadata():string {
+    let items:string[] = [ ];
+    // add metadata about drops
+    for (const drop of this._getSortedDrops()) {
+      items.push('d '+drop.hue+' '+drop.balls.size);
+    }
+    return(items.join(' '));
+  }
+  protected _readMetadata(s:string) {
+    const drops = this._getSortedDrops();
+    // tokenize the string
+    const tokens:string[]= s.split(' ');
+    let token:string, type:string, params:number[];
+    while (tokens.length > 0) {
+      token = tokens.shift();
+      if (parseFloat(token).toString() != token) {
+        type = token;
+        params = [ ];
+      }
+      else {
+        params.push(parseFloat(token));
+      }
+      // read drop metadata
+      if ((type == 'd') && (params.length == 2)) {
+        const drop = drops.shift();
+        if (drop) {
+          drop.hue = Math.round(params[0]);
+          for (let i:number = 0; i < params[1]; i++) {
+            this.board.addBallToDrop(drop);
+          }
+        }
+      }
+    }
+  }
+  protected _getSortedDrops():Drop[] {
+    const drops:Drop[] = [ ];
+    let part:Part;
+    for (let c:number = 0; c < this.board.columnCount; c++) {
+      for (let r:number = 0; r < this.board.rowCount; r++) {
+        part = this.board.getPart(c, r);
+        if (part instanceof Drop) drops.push(part);
+      }
+    }
+    return(drops);
+  }
+
   protected _writeBoardState():string {
+    // compose metadata to include with the image
+    let metadata = this._writeMetadata();
+    const metadataBytesPerRow = (this.board.columnCount - 1) * 3;
+    const metadataRows:number = Math.ceil(metadata.length / metadataBytesPerRow);
     // make a canvas where grid location on the board is a pixel
     const canvas = document.createElement('canvas');
     canvas.width = this.board.columnCount;
-    canvas.height = this.board.rowCount;
+    canvas.height = this.board.rowCount + metadataRows;
     const ctx = canvas.getContext('2d');
     const imageData = ctx.createImageData(canvas.width, canvas.height);
     const rw = canvas.width * 4;
@@ -169,6 +220,12 @@ export class URLBoardSerializer implements IBoardSerializer {
         const part = this.board.getPart(c, r);
         this.partToColor(part, imageData.data, (r * rw) + (c * 4));
       }
+    }
+    // write metadata
+    for (let r:number = this.board.rowCount; r < canvas.height; r++) {
+      if (! (metadata.length > 0)) break;
+      metadata = this.writeMetadataRow(imageData.data, 
+        (r * rw), canvas.width, metadata);
     }
     ctx.putImageData(imageData, 0, 0);
     return(canvas.toDataURL());
@@ -192,16 +249,28 @@ export class URLBoardSerializer implements IBoardSerializer {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      // read parts from the board's pixels
+      let s:string, metadata:string = '';
+      // read parts and metadata from the image's pixels
       this.board.bulkUpdate = true;
-      this.board.setSize(w, h, false);
-      for (let c:number = 0; c < this.board.columnCount; c++) {
-        for (let r:number = 0; r < this.board.rowCount; r++) {
-          const part = this.colorToPart(imageData.data, (r * w * 4) + (c * 4));
+      this.board.setSize(w, 0, false);
+      let r = 0;
+      for (let y:number = 0; y < h; y++) {
+        // read metadata row
+        s = this.readMetadataRow(imageData.data, (y * w * 4), w);
+        if (s !== null) {
+          metadata += s;
+          continue;
+        }
+        // read part row
+        this.board.sizeBottom(1, false);
+        for (let c:number = 0; c < this.board.columnCount; c++) {
+          const part = this.colorToPart(imageData.data, (y * w * 4) + (c * 4));
           if (part) this.board.setPart(part, c, r);
           else this.board.clearPart(c, r);
         }
+        r++;
       }
+      this._readMetadata(metadata);
       this.board.bulkUpdate = false;
       callback(true);
     };
@@ -311,6 +380,42 @@ export class URLBoardSerializer implements IBoardSerializer {
       return(part);
     }
     return(null);
+  }
+
+  protected writeMetadataRow(data:Uint8ClampedArray, i:number, w:number, s:string):string {
+    const end = i + (w * 4);
+    // write a blue pixel to indicate a metadata row
+    data[i++] = 0x00; data[i++] = 0x00; data[i++] = 0xFF;
+    let c:number = 0;
+    for (; i < end; i++) {
+      if (i % 4 == 3) { // skip alpha
+        data[i] = 0xFF;
+      }
+      else if (c >= s.length) { // null termination
+        data[i] = 0;
+      }
+      else {
+        data[i] = s.charCodeAt(c++);
+      }
+    }
+    // return the unwritten string
+    return(s.substr(c));
+  }
+  protected readMetadataRow(data:Uint8ClampedArray, i:number, w:number):string {
+    const end = i + (w * 4);
+    // a blue pixel at the start represents a metadata row, skip if there isn't one
+    if ((data[i++] != 0x00) || (data[i++] != 0x00) || (data[i++] != 0xFF)) 
+      return(null);
+    // build a string from the data in the row
+    let s:string = '';
+    let c:number;
+    for (; i < end; i++) {
+      if (i % 4 == 3) continue; // skip alpha
+      c = data[i];
+      if (c == 0) return(s); // null termination
+      s += String.fromCharCode(c);
+    }
+    return(s);
   }
 
 }

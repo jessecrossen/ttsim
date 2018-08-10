@@ -93,13 +93,18 @@ export class BoardBuilder {
     // make a ball drops
     const blueDrop:Drop = board.partFactory.make(PartType.DROP) as Drop;
     board.setPart(blueDrop, blueColumn - 1, dropLevel);
-    blueDrop.hue = 155;
+    blueDrop.hue = 220;
     blueDrop.isLocked = true;
     const redDrop:Drop = board.partFactory.make(PartType.DROP) as Drop;
     redDrop.isFlipped = true;
     board.setPart(redDrop, redColumn + 1, dropLevel);
     redDrop.hue = 0;
     redDrop.isLocked = true;
+    // add balls
+    for (let i:number = 0; i < 9; i++) {
+      board.addBallToDrop(blueDrop);
+      board.addBallToDrop(redDrop);
+    }
     // make turnstiles
     const blueTurnstile = board.partFactory.make(PartType.TURNSTILE);
     blueTurnstile.isFlipped = true;

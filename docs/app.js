@@ -420,8 +420,8 @@ System.register("parts/ball", ["parts/part", "ui/config"], function (exports_10,
                     this.minX = NaN;
                     this.maxX = NaN;
                     this.maxY = NaN;
-                    this._hue = 155;
-                    this._color = 0x0E63FF;
+                    this._hue = 220;
+                    this._color = this._colorForHue(this._hue);
                 }
                 get canRotate() { return (false); }
                 get canMirror() { return (false); }
@@ -459,11 +459,14 @@ System.register("parts/ball", ["parts/part", "ui/config"], function (exports_10,
                     if (v === this._hue)
                         return;
                     this._hue = v;
-                    this._color = config_1.colorFromHSL(this._hue / 360, 1, 0.53);
+                    this._color = this._colorForHue(this._hue);
                     this._updateSprites();
                 }
                 // the color of the ball
                 get color() { return (this._color); }
+                _colorForHue(hue) {
+                    return (config_1.colorFromHSL(hue / 360, 1, 0.53));
+                }
                 // update the given sprite to track the part's state
                 _updateSprite(layer) {
                     super._updateSprite(layer);
@@ -2715,12 +2718,16 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
         }
     };
 });
-System.register("board/serializer", [], function (exports_24, context_24) {
+System.register("board/serializer", ["parts/drop"], function (exports_24, context_24) {
     "use strict";
     var __moduleName = context_24 && context_24.id;
-    var URLBoardSerializer;
+    var drop_3, URLBoardSerializer;
     return {
-        setters: [],
+        setters: [
+            function (drop_3_1) {
+                drop_3 = drop_3_1;
+            }
+        ],
         execute: function () {
             URLBoardSerializer = class URLBoardSerializer {
                 constructor(board) {
@@ -2868,11 +2875,61 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                             this.board.schematic = (parseInt(value) === 1);
                     }
                 }
+                _writeMetadata() {
+                    let items = [];
+                    // add metadata about drops
+                    for (const drop of this._getSortedDrops()) {
+                        items.push('d ' + drop.hue + ' ' + drop.balls.size);
+                    }
+                    return (items.join(' '));
+                }
+                _readMetadata(s) {
+                    const drops = this._getSortedDrops();
+                    // tokenize the string
+                    const tokens = s.split(' ');
+                    let token, type, params;
+                    while (tokens.length > 0) {
+                        token = tokens.shift();
+                        if (parseFloat(token).toString() != token) {
+                            type = token;
+                            params = [];
+                        }
+                        else {
+                            params.push(parseFloat(token));
+                        }
+                        // read drop metadata
+                        if ((type == 'd') && (params.length == 2)) {
+                            const drop = drops.shift();
+                            if (drop) {
+                                drop.hue = Math.round(params[0]);
+                                for (let i = 0; i < params[1]; i++) {
+                                    this.board.addBallToDrop(drop);
+                                }
+                            }
+                        }
+                    }
+                }
+                _getSortedDrops() {
+                    const drops = [];
+                    let part;
+                    for (let c = 0; c < this.board.columnCount; c++) {
+                        for (let r = 0; r < this.board.rowCount; r++) {
+                            part = this.board.getPart(c, r);
+                            if (part instanceof drop_3.Drop)
+                                drops.push(part);
+                        }
+                    }
+                    return (drops);
+                }
                 _writeBoardState() {
+                    // compose metadata to include with the image
+                    let metadata = this._writeMetadata();
+                    const metadataBytesPerRow = (this.board.columnCount - 1) * 3;
+                    const metadataRows = Math.ceil(metadata.length / metadataBytesPerRow);
                     // make a canvas where grid location on the board is a pixel
                     const canvas = document.createElement('canvas');
                     canvas.width = this.board.columnCount;
-                    canvas.height = this.board.rowCount;
+                    canvas.height = this.board.rowCount + metadataRows;
                     const ctx = canvas.getContext('2d');
                     const imageData = ctx.createImageData(canvas.width, canvas.height);
                     const rw = canvas.width * 4;
@@ -2882,6 +2939,12 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                             const part = this.board.getPart(c, r);
                             this.partToColor(part, imageData.data, (r * rw) + (c * 4));
                         }
+                    }
+                    // write metadata
+                    for (let r = this.board.rowCount; r < canvas.height; r++) {
+                        if (!(metadata.length > 0))
+                            break;
+                        metadata = this.writeMetadataRow(imageData.data, (r * rw), canvas.width, metadata);
                     }
                     ctx.putImageData(imageData, 0, 0);
                     return (canvas.toDataURL());
@@ -2904,18 +2967,30 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, w, h);
                         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                        // read parts from the board's pixels
+                        let s, metadata = '';
+                        // read parts and metadata from the image's pixels
                         this.board.bulkUpdate = true;
-                        this.board.setSize(w, h, false);
-                        for (let c = 0; c < this.board.columnCount; c++) {
-                            for (let r = 0; r < this.board.rowCount; r++) {
-                                const part = this.colorToPart(imageData.data, (r * w * 4) + (c * 4));
+                        this.board.setSize(w, 0, false);
+                        let r = 0;
+                        for (let y = 0; y < h; y++) {
+                            // read metadata row
+                            s = this.readMetadataRow(imageData.data, (y * w * 4), w);
+                            if (s !== null) {
+                                metadata += s;
+                                continue;
+                            }
+                            // read part row
+                            this.board.sizeBottom(1, false);
+                            for (let c = 0; c < this.board.columnCount; c++) {
+                                const part = this.colorToPart(imageData.data, (y * w * 4) + (c * 4));
                                 if (part)
                                     this.board.setPart(part, c, r);
                                 else
                                     this.board.clearPart(c, r);
                             }
+                            r++;
                         }
+                        this._readMetadata(metadata);
                         this.board.bulkUpdate = false;
                         callback(true);
                     };
@@ -3091,6 +3166,45 @@ System.register("board/serializer", [], function (exports_24, context_24) {
                     }
                     return (null);
                 }
+                writeMetadataRow(data, i, w, s) {
+                    const end = i + (w * 4);
+                    // write a blue pixel to indicate a metadata row
+                    data[i++] = 0x00;
+                    data[i++] = 0x00;
+                    data[i++] = 0xFF;
+                    let c = 0;
+                    for (; i < end; i++) {
+                        if (i % 4 == 3) {
+                            data[i] = 0xFF;
+                        }
+                        else if (c >= s.length) {
+                            data[i] = 0;
+                        }
+                        else {
+                            data[i] = s.charCodeAt(c++);
+                        }
+                    }
+                    // return the unwritten string
+                    return (s.substr(c));
+                }
+                readMetadataRow(data, i, w) {
+                    const end = i + (w * 4);
+                    // a blue pixel at the start represents a metadata row, skip if there isn't one
+                    if ((data[i++] != 0x00) || (data[i++] != 0x00) || (data[i++] != 0xFF))
+                        return (null);
+                    // build a string from the data in the row
+                    let s = '';
+                    let c;
+                    for (; i < end; i++) {
+                        if (i % 4 == 3)
+                            continue; // skip alpha
+                        c = data[i];
+                        if (c == 0)
+                            return (s); // null termination
+                        s += String.fromCharCode(c);
+                    }
+                    return (s);
+                }
             };
             exports_24("URLBoardSerializer", URLBoardSerializer);
         }
@@ -3259,7 +3373,7 @@ System.register("ui/keyboard", [], function (exports_26, context_26) {
 System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", "ui/config", "util/disjoint", "renderer", "parts/ball", "board/constants", "board/physics", "board/schematic", "parts/drop", "board/controls", "ui/animator", "parts/turnstile", "ui/keyboard"], function (exports_27, context_27) {
     "use strict";
     var __moduleName = context_27 && context_27.id;
-    var filter, fence_4, gearbit_4, config_3, disjoint_1, renderer_5, ball_4, constants_4, physics_1, schematic_1, drop_3, controls_1, animator_3, turnstile_3, keyboard_1, SPACING_FACTOR, Board;
+    var filter, fence_4, gearbit_4, config_3, disjoint_1, renderer_5, ball_4, constants_4, physics_1, schematic_1, drop_4, controls_1, animator_3, turnstile_3, keyboard_1, SPACING_FACTOR, Board;
     return {
         setters: [
             function (filter_1) {
@@ -3292,8 +3406,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
             function (schematic_1_1) {
                 schematic_1 = schematic_1_1;
             },
-            function (drop_3_1) {
-                drop_3 = drop_3_1;
+            function (drop_4_1) {
+                drop_4 = drop_4_1;
             },
             function (controls_1_1) {
                 controls_1 = controls_1_1;
@@ -4081,13 +4195,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             this._connectSlopes();
                     }
                     // maintain our set of drops
-                    if ((oldPart instanceof drop_3.Drop) && (oldPart !== this.partPrototype)) {
+                    if ((oldPart instanceof drop_4.Drop) && (oldPart !== this.partPrototype)) {
                         this.drops.delete(oldPart);
                         for (const ball of oldPart.balls) {
                             this.removeBall(ball);
                         }
                     }
-                    if (newPart instanceof drop_3.Drop) {
+                    if (newPart instanceof drop_4.Drop) {
                         this.drops.add(newPart);
                         newPart.onRelease = () => {
                             if ((this._ballCounter.visible) &&
@@ -4095,7 +4209,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                                 this._ballCounter.update();
                         };
                     }
-                    if ((oldPart instanceof drop_3.Drop) || (newPart instanceof drop_3.Drop) ||
+                    if ((oldPart instanceof drop_4.Drop) || (newPart instanceof drop_4.Drop) ||
                         (oldPart instanceof turnstile_3.Turnstile) || (newPart instanceof turnstile_3.Turnstile)) {
                         if (!this.bulkUpdate)
                             this._connectTurnstiles();
@@ -4233,7 +4347,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         if (!p)
                             break;
                         // if we hit a drop we're done
-                        if (p instanceof drop_3.Drop)
+                        if (p instanceof drop_4.Drop)
                             return (p);
                         else if (p.type == 11 /* SLOPE */) {
                             c += p.isFlipped ? -1 : 1;
@@ -4539,7 +4653,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this.view.cursor = 'grabbing';
                     }
                     if ((this._action === 7 /* DROP_BALL */) &&
-                        (this._actionPart instanceof drop_3.Drop)) {
+                        (this._actionPart instanceof drop_4.Drop)) {
                         this._colorWheel.x = this._actionPart.x;
                         this._colorWheel.y = this._actionPart.y;
                         this._colorWheel.hue = this._actionPart.hue;
@@ -4605,7 +4719,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         const radians = Math.atan2(currentY - startY, currentX - startX);
                         this._colorWheel.hue = this._actionHue +
                             (f * (((radians * 180) / Math.PI) - 90));
-                        if (this._actionPart instanceof drop_3.Drop) {
+                        if (this._actionPart instanceof drop_4.Drop) {
                             this._actionPart.hue = this._colorWheel.hue;
                         }
                     }
@@ -4639,7 +4753,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._dragFlippedParts.clear();
                     if ((this._action === 5 /* DRAG_PART */) && (this.partPrototype)) {
                         // don't copy drops since we want to keep their associations
-                        const part = this.partPrototype instanceof drop_3.Drop ? this.partPrototype :
+                        const part = this.partPrototype instanceof drop_4.Drop ? this.partPrototype :
                             this.partFactory.copy(this.partPrototype);
                         this.partPrototype = null;
                         if (part instanceof ball_4.Ball) {
@@ -4704,7 +4818,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         cursor = 'pointer';
                     }
                     else if ((this.tool == 3 /* HAND */) &&
-                        (this._actionPart instanceof drop_3.Drop) &&
+                        (this._actionPart instanceof drop_4.Drop) &&
                         (Math.abs(this._actionX - this._actionPart.x) <= this.controlSize / 2) &&
                         (Math.abs(this._actionY - this._actionPart.y) <= this.controlSize / 2)) {
                         this._action = 7 /* DROP_BALL */;
@@ -4762,7 +4876,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     // respond to the part under the cursor changing
                     if (this._actionPart !== oldActionPart) {
                         // show/hide drop controls
-                        if ((this._actionPart instanceof drop_3.Drop) &&
+                        if ((this._actionPart instanceof drop_4.Drop) &&
                             (this.tool == 3 /* HAND */)) {
                             this._dropButton.x = this._actionPart.x;
                             this._dropButton.y = this._actionPart.y;
@@ -4770,7 +4884,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             this._dropButton.isFlipped = this._actionPart.isFlipped;
                             this._showControl(this._dropButton);
                         }
-                        else if (oldActionPart instanceof drop_3.Drop) {
+                        else if (oldActionPart instanceof drop_4.Drop) {
                             this._hideControl(this._dropButton);
                             this._hideControl(this._colorWheel);
                         }
@@ -4864,7 +4978,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this.flipPart(this._actionColumn, this._actionRow);
                     }
                     else if ((this._action === 7 /* DROP_BALL */) &&
-                        (this._actionPart instanceof drop_3.Drop)) {
+                        (this._actionPart instanceof drop_4.Drop)) {
                         this._actionPart.releaseBall();
                     }
                     else if ((this._action === 8 /* TURN_TURNSTILE */) &&
@@ -5632,13 +5746,18 @@ System.register("board/builder", ["parts/fence"], function (exports_32, context_
                     // make a ball drops
                     const blueDrop = board.partFactory.make(12 /* DROP */);
                     board.setPart(blueDrop, blueColumn - 1, dropLevel);
-                    blueDrop.hue = 155;
+                    blueDrop.hue = 220;
                     blueDrop.isLocked = true;
                     const redDrop = board.partFactory.make(12 /* DROP */);
                     redDrop.isFlipped = true;
                     board.setPart(redDrop, redColumn + 1, dropLevel);
                     redDrop.hue = 0;
                     redDrop.isLocked = true;
+                    // add balls
+                    for (let i = 0; i < 9; i++) {
+                        board.addBallToDrop(blueDrop);
+                        board.addBallToDrop(redDrop);
+                    }
                     // make turnstiles
                     const blueTurnstile = board.partFactory.make(13 /* TURNSTILE */);
                     blueTurnstile.isFlipped = true;

@@ -1,5 +1,3 @@
-import { Body, Bodies } from 'matter-js';
-
 import { Part, Layer } from './part';
 import { PartType } from './factory';
 import { colorFromHSL } from 'ui/config';
@@ -57,14 +55,18 @@ export class Ball extends Part {
     if (v >= 360) v %= 360;
     if (v === this._hue) return;
     this._hue = v;
-    this._color = colorFromHSL(this._hue / 360, 1, 0.53);
+    this._color = this._colorForHue(this._hue);
     this._updateSprites();
   }
-  private _hue:number = 155;
+  private _hue:number = 220;
 
   // the color of the ball
   public get color():number { return(this._color); }
-  private _color:number = 0x0E63FF;
+  private _color:number = this._colorForHue(this._hue);
+
+  protected _colorForHue(hue:number):number {
+    return(colorFromHSL(hue / 360, 1, 0.53));
+  }
 
   // update the given sprite to track the part's state
   protected _updateSprite(layer:Layer):void {

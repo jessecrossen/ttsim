@@ -1131,7 +1131,7 @@ System.register("parts/part", ["pixi.js", "renderer", "ui/animator"], function (
                 // update the given sprite to track the part's state
                 _updateSprite(layer) {
                     const sprite = this._sprites.get(layer);
-                    if (!sprite)
+                    if ((!sprite) || (!sprite.transform))
                         return;
                     // apply size
                     const size = (this.size > 2) ? (this.size * 1.5) : this.size;

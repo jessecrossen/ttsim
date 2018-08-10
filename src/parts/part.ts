@@ -222,7 +222,7 @@ export abstract class Part {
   // update the given sprite to track the part's state
   protected _updateSprite(layer:Layer):void {
     const sprite = this._sprites.get(layer);
-    if (! sprite) return;
+    if ((! sprite) || (! sprite.transform)) return;
     // apply size
     const size:number = (this.size > 2) ? (this.size * 1.5) : this.size;
     sprite.width = size;

@@ -23,7 +23,7 @@ type LayerToSpriteMap = Map<Layer,PIXI.Sprite>;
 export abstract class Part {
 
   public constructor(public readonly textures:PIXI.loaders.TextureDictionary) {
-
+    
   }
 
   // whether the part can rotate

@@ -64,9 +64,11 @@ export class Board {
   public get changeCounter():number { return(this._changeCounter); }
   public onChange():void {
     this._changeCounter++;
+    this._spriteChangeCounter++;
     if (this.serializer) this.serializer.onBoardStateChanged();
   }
   private _changeCounter:number = 0;
+  private _spriteChangeCounter:number = 0;
 
   // register changes to UI state
   public onUIChange():void {
@@ -116,8 +118,14 @@ export class Board {
       if (this.areBallsAtRest) this._checkBitRotations();
       this._counter = 0;
     }
+    // update sprite visibility if the board changes
+    if (this._spriteChangeCounter !== this._lastSpriteChangeCounter) {
+      this._updateSpriteVisibility();
+      this._lastSpriteChangeCounter = this._spriteChangeCounter;
+  }
   }
   private _counter:number = 0;
+  private _lastSpriteChangeCounter:number;
 
   // whether all balls on the board have been basically motionless for a bit
   public get areBallsAtRest():boolean { return(this._areBallsAtRest); }
@@ -125,10 +133,90 @@ export class Board {
 
   // LAYERS *******************************************************************
 
-  protected _updateCulling():void {
+  protected _updateSpriteVisibility():void {
+    // get the row/column limits on sprite visibility
+    const cx = this.xForColumn(this.centerColumn);
+    const cy = this.yForRow(this.centerRow);
+    const cMin = Math.floor(this.columnForX(cx - (this.width / 2)));
+    const cMax = Math.ceil(this.columnForX(cx + (this.width / 2)));
+    const rMin = Math.floor(this.rowForY(cy - (this.height / 2)));
+    const rMax = Math.ceil(this.rowForY(cy + (this.height / 2)));
+    // clamp to the limits of the actual grid
+    const cMinGrid = Math.min(Math.max(0, cMin), this.columnCount);
+    const cMaxGrid = Math.min(Math.max(0, cMax), this.columnCount);
+    const rMinGrid = Math.min(Math.max(0, rMin), this.rowCount);
+    const rMaxGrid = Math.min(Math.max(0, rMax), this.rowCount);
+    // make a list of parts we should be showing at this time
+    const visible:Set<Part> = new Set();
+    // add parts from the grid
+    let c:number, r:number, row:Part[];
+    for (r = rMinGrid; r < rMaxGrid; r++) {
+      row = this._grid[r];
+      for (c = cMinGrid; c < cMaxGrid; c++) {
+        visible.add(row[c]);
+      }
+    }
+    // add balls
+    for (const ball of this.balls) {
+      if ((ball.column < cMin) || (ball.column > cMax) ||
+          (ball.row < rMin) || (ball.row > rMax)) continue;
+      visible.add(ball);
+    }
+    // add the prototype part if there is one
+    if (this.partPrototype) visible.add(this.partPrototype);
+    // remove sprites for parts that are no longer visible
+    const invisible:Set<Part> = new Set();
+    for (const part of this._visibleParts) {
+      if (! visible.has(part)) invisible.add(part);
+    }
+    // remove sprites for parts that have become invisible
+    for (const part of invisible) {
+      this._removeSpritesForPart(part);
+      this._visibleParts.delete(part);
+    }
+    // add sprites for parts that have just become visible
+    for (const part of visible) {
+      if (! this._visibleParts.has(part)) {
+        this._addSpritesForPart(part);
+        this._visibleParts.add(part);
+      }
+    }
+  }
+  private _visibleParts:Set<Part> = new Set();
 
-    
+  // add a part to the board's layers
+  protected _addSpritesForPart(part:Part):void {
+    for (let layer of this._containers.keys()) {
+      const sprite = part.getSpriteForLayer(layer);
+      if (! sprite) continue;
+      // in non-schematic mode, add balls behind other parts to prevent ball 
+      //  highlights from displaying on top of gears, etc.
+      if ((part instanceof Ball) && (layer < Layer.SCHEMATIC)) {
+        this._containers.get(layer).addChildAt(sprite, 0);
+      }
+      else {
+        // in schematic mode, place other parts behind balls
+        if ((layer >= Layer.SCHEMATIC) && (! (part instanceof Ball))) {
+          this._containers.get(layer).addChildAt(sprite, 0);
+        }
+        else {
+          this._containers.get(layer).addChild(sprite);
+        }
+      }
+    }
+    Renderer.needsUpdate();
+  }
 
+  // remove a part from the board's layers
+  protected _removeSpritesForPart(part:Part):void {
+    if (! part) return;
+    for (let layer of this._containers.keys()) {
+      const sprite = part.getSpriteForLayer(layer);
+      if (! sprite) continue;
+      const container = this._containers.get(layer);
+      if (sprite.parent === container) container.removeChild(sprite);
+    }
+    Renderer.needsUpdate();
   }
 
   protected _initContainers():void {
@@ -158,14 +246,14 @@ export class Board {
   }
 
   protected _makeContainer(highPerformance:boolean=false):PIXI.Container {
-    if (highPerformance) return(new PIXI.particles.ParticleContainer(1500, 
+    if (highPerformance) return(new PIXI.particles.ParticleContainer(16384, 
       {
         vertices: true,
         position: true, 
         rotation: true,
         tint: true,
         alpha: true
-      }, 100, true));
+      }, 16384, true));
     else return(new PIXI.Container());
   }
 
@@ -312,6 +400,7 @@ export class Board {
     if (v === this.centerColumn) return;
     this._centerColumn = v;
     this._updatePan();
+    this._spriteChangeCounter++;
     this.onUIChange();
   }
   private _centerColumn:number = 0.0;
@@ -322,6 +411,7 @@ export class Board {
     if (v === this.centerRow) return;
     this._centerRow = v;
     this._updatePan();
+    this._spriteChangeCounter++;
     this.onUIChange();
   }
   private _centerRow:number = 0.0;
@@ -332,6 +422,7 @@ export class Board {
     this._layers.y = 
       Math.round((this.height / 2) - this.yForRow(this.centerRow));
     this._updateFilterAreas();
+    this._spriteChangeCounter++;
     Renderer.needsUpdate();
   }
 
@@ -343,6 +434,7 @@ export class Board {
     part.row = row;
     part.x = this.xForColumn(column);
     part.y = this.yForRow(row);
+    this._spriteChangeCounter++;
   }
 
   // do layout for all parts on the grid
@@ -424,11 +516,13 @@ export class Board {
     const newColumnCount:number = this.columnCount + delta;
     let c:number, r:number, part:Part;
     if (delta < 0) {
+      r = 0;
       for (const row of this._grid) {
         for (c = newColumnCount; c < this.columnCount; c++) {
-          this.removePart(row[c]);
+          this.setPart(null, c, r);
         }
         row.splice(newColumnCount, - delta);
+        r++;
       }
     }
     else {
@@ -437,7 +531,7 @@ export class Board {
         for (c = this.columnCount; c < newColumnCount; c++) {
           if (addBackground) {
             part = this.makeBackgroundPart(c, r);
-            this.addPart(part);
+            this.layoutPart(part, c, r);
             row.push(part);
           }
           else row.push(null);
@@ -458,8 +552,8 @@ export class Board {
     let c:number, r:number, part:Part;
     if (delta < 0) {
       for (r = newRowCount; r < this.rowCount; r++) {
-        for (const part of this._grid[r]) {
-          this.removePart(part);
+        for (c = 0; c < this.columnCount; c++) {
+          this.setPart(null, c, r);
         }
       }
       this._grid.splice(newRowCount, - delta);
@@ -470,7 +564,7 @@ export class Board {
         for (c = 0; c < this.columnCount; c++) {
           if (addBackground) {
             part = this.makeBackgroundPart(c, r);
-            this.addPart(part);
+            this.layoutPart(part, c, r);
             row.push(part);
           }
           else row.push(null);
@@ -494,11 +588,13 @@ export class Board {
     let c:number, r:number, part:Part;
     if (delta < 0) {
       delta = Math.abs(delta);
+      r = 0;
       for (const row of this._grid) {
         for (c = 0; c < delta; c++) {
-          this.removePart(row[c]);
+          this.setPart(null, c, r);
         }
         row.splice(0, delta);
+        r++;
       }
     }
     else {
@@ -507,7 +603,7 @@ export class Board {
         for (c = delta - 1; c >= 0; c--) {
           if (addBackground) {
             part = this.makeBackgroundPart(c, r);
-            this.addPart(part);
+            this.layoutPart(part, c, r);
             row.unshift(part);
           }
           else row.unshift(null);
@@ -532,8 +628,8 @@ export class Board {
     if (delta < 0) {
       delta = Math.abs(delta);
       for (r = 0; r < delta; r++) {
-        for (const part of this._grid[r]) {
-          this.removePart(part);
+        for (c = 0; c < this.columnCount; c++) {
+          this.setPart(null, c, r);
         }
       }
       this._grid.splice(0, delta);
@@ -544,7 +640,7 @@ export class Board {
         for (c = 0; c < this.columnCount; c++) {
           if (addBackground) {
             part = this.makeBackgroundPart(c, r);
-            this.addPart(part);
+            this.layoutPart(part, c, r);
             row.push(part);
           }
           else row.push(null);
@@ -626,7 +722,6 @@ export class Board {
   public set partPrototype(p:Part) {
     if (p === this._partPrototype) return;
     if (this._partPrototype) {
-      this.removePart(this._partPrototype);
       this._partPrototype.alpha = 1.0;
       this._partPrototype.visible = true;
     }
@@ -639,8 +734,8 @@ export class Board {
       }
       this._partPrototype.alpha = Alphas.PREVIEW_ALPHA;
       this._partPrototype.visible = false;
-      this.addPart(this._partPrototype);
     }
+    this._spriteChangeCounter++;
     this.onUIChange();
   }
   private _partPrototype:Part = null;
@@ -659,8 +754,6 @@ export class Board {
         (row < 0) || (row >= this._rowCount)) return;
     const oldPart = this.getPart(column, row);
     if (oldPart === newPart) return;
-    if (oldPart) this.removePart(oldPart);
-    if (newPart) this.addPart(newPart);
     this._grid[row][column] = newPart;
     if (newPart) this.layoutPart(newPart, column, row);
     // tell gears what kind of location they're on
@@ -704,6 +797,11 @@ export class Board {
         (oldPart instanceof Turnstile) || (newPart instanceof Turnstile)) {
       if (! this.bulkUpdate) this._connectTurnstiles();
     }
+    // remove and destroy sprites for the old part to avoid memory leaks
+    if (oldPart) {
+      this._removeSpritesForPart(oldPart);
+      oldPart.destroySprites();
+    }
     this.onChange();
   }
   
@@ -727,7 +825,6 @@ export class Board {
     if (! this.balls.has(ball)) {
       this.balls.add(ball);
       this.layoutPart(ball, c, r);
-      this.addPart(ball);
       // assign the ball to a drop if it doesn't have one
       if (! ball.drop) {
         let drop = this.catchmentDrop(c, r);
@@ -749,6 +846,7 @@ export class Board {
       if (this._ballCounter.visible) this._ballCounter.update();
       this.onChange();
     }
+    this._spriteChangeCounter++;
   }
 
   // remove a ball from the board
@@ -756,7 +854,6 @@ export class Board {
     if (this.balls.has(ball)) {
       if (ball.drop) ball.drop.balls.delete(ball);
       this.balls.delete(ball);
-      this.removePart(ball);
       // update the ball counter
       if (this._ballCounter.visible) this._ballCounter.update();
       Renderer.needsUpdate();
@@ -820,42 +917,6 @@ export class Board {
       }
     }
     return(closest);
-  }
-
-  // add a part to the board's layers
-  public addPart(part:Part):void {
-    for (let layer of this._containers.keys()) {
-      const sprite = part.getSpriteForLayer(layer);
-      if (! sprite) continue;
-      // in non-schematic mode, add balls behind other parts to prevent ball 
-      //  highlights from displaying on top of gears, etc.
-      if ((part instanceof Ball) && (layer < Layer.SCHEMATIC)) {
-        this._containers.get(layer).addChildAt(sprite, 0);
-      }
-      else {
-        // in schematic mode, place other parts behind balls
-        if ((layer >= Layer.SCHEMATIC) && (! (part instanceof Ball))) {
-          this._containers.get(layer).addChildAt(sprite, 0);
-        }
-        else {
-          this._containers.get(layer).addChild(sprite);
-        }
-      }
-    }
-    Renderer.needsUpdate();
-  }
-
-  // remove a part from the board's layers
-  public removePart(part:Part):void {
-    if (! part) return;
-    for (let layer of this._containers.keys()) {
-      const sprite = part.getSpriteForLayer(layer);
-      if (! sprite) continue;
-      const container = this._containers.get(layer);
-      if (sprite.parent === container) container.removeChild(sprite);
-    }
-    part.destroySprites();
-    Renderer.needsUpdate();
   }
 
   // keep a set of all drops on the board

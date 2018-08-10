@@ -3320,6 +3320,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     // the set of balls currently on the board
                     this.balls = new Set();
                     this._changeCounter = 0;
+                    this._spriteChangeCounter = 0;
                     this._schematic = false;
                     this._speed = 1.0;
                     // routers to manage the positions of the balls
@@ -3327,6 +3328,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this.schematicRouter = new schematic_1.SchematicBallRouter(this);
                     this._counter = 0;
                     this._areBallsAtRest = true;
+                    this._visibleParts = new Set();
                     this._containers = new Map();
                     this._controls = [];
                     this._partSize = 64;
@@ -3361,6 +3363,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 get changeCounter() { return (this._changeCounter); }
                 onChange() {
                     this._changeCounter++;
+                    this._spriteChangeCounter++;
                     if (this.serializer)
                         this.serializer.onBoardStateChanged();
                 }
@@ -3408,11 +3411,103 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             this._checkBitRotations();
                         this._counter = 0;
                     }
+                    // update sprite visibility if the board changes
+                    if (this._spriteChangeCounter !== this._lastSpriteChangeCounter) {
+                        this._updateSpriteVisibility();
+                        this._lastSpriteChangeCounter = this._spriteChangeCounter;
+                    }
                 }
                 // whether all balls on the board have been basically motionless for a bit
                 get areBallsAtRest() { return (this._areBallsAtRest); }
                 // LAYERS *******************************************************************
-                _updateCulling() {
+                _updateSpriteVisibility() {
+                    // get the row/column limits on sprite visibility
+                    const cx = this.xForColumn(this.centerColumn);
+                    const cy = this.yForRow(this.centerRow);
+                    const cMin = Math.floor(this.columnForX(cx - (this.width / 2)));
+                    const cMax = Math.ceil(this.columnForX(cx + (this.width / 2)));
+                    const rMin = Math.floor(this.rowForY(cy - (this.height / 2)));
+                    const rMax = Math.ceil(this.rowForY(cy + (this.height / 2)));
+                    // clamp to the limits of the actual grid
+                    const cMinGrid = Math.min(Math.max(0, cMin), this.columnCount);
+                    const cMaxGrid = Math.min(Math.max(0, cMax), this.columnCount);
+                    const rMinGrid = Math.min(Math.max(0, rMin), this.rowCount);
+                    const rMaxGrid = Math.min(Math.max(0, rMax), this.rowCount);
+                    // make a list of parts we should be showing at this time
+                    const visible = new Set();
+                    // add parts from the grid
+                    let c, r, row;
+                    for (r = rMinGrid; r < rMaxGrid; r++) {
+                        row = this._grid[r];
+                        for (c = cMinGrid; c < cMaxGrid; c++) {
+                            visible.add(row[c]);
+                        }
+                    }
+                    // add balls
+                    for (const ball of this.balls) {
+                        if ((ball.column < cMin) || (ball.column > cMax) ||
+                            (ball.row < rMin) || (ball.row > rMax))
+                            continue;
+                        visible.add(ball);
+                    }
+                    // add the prototype part if there is one
+                    if (this.partPrototype)
+                        visible.add(this.partPrototype);
+                    // remove sprites for parts that are no longer visible
+                    const invisible = new Set();
+                    for (const part of this._visibleParts) {
+                        if (!visible.has(part))
+                            invisible.add(part);
+                    }
+                    // remove sprites for parts that have become invisible
+                    for (const part of invisible) {
+                        this._removeSpritesForPart(part);
+                        this._visibleParts.delete(part);
+                    }
+                    // add sprites for parts that have just become visible
+                    for (const part of visible) {
+                        if (!this._visibleParts.has(part)) {
+                            this._addSpritesForPart(part);
+                            this._visibleParts.add(part);
+                        }
+                    }
+                }
+                // add a part to the board's layers
+                _addSpritesForPart(part) {
+                    for (let layer of this._containers.keys()) {
+                        const sprite = part.getSpriteForLayer(layer);
+                        if (!sprite)
+                            continue;
+                        // in non-schematic mode, add balls behind other parts to prevent ball 
+                        //  highlights from displaying on top of gears, etc.
+                        if ((part instanceof ball_4.Ball) && (layer < 4 /* SCHEMATIC */)) {
+                            this._containers.get(layer).addChildAt(sprite, 0);
+                        }
+                        else {
+                            // in schematic mode, place other parts behind balls
+                            if ((layer >= 4 /* SCHEMATIC */) && (!(part instanceof ball_4.Ball))) {
+                                this._containers.get(layer).addChildAt(sprite, 0);
+                            }
+                            else {
+                                this._containers.get(layer).addChild(sprite);
+                            }
+                        }
+                    }
+                    renderer_5.Renderer.needsUpdate();
+                }
+                // remove a part from the board's layers
+                _removeSpritesForPart(part) {
+                    if (!part)
+                        return;
+                    for (let layer of this._containers.keys()) {
+                        const sprite = part.getSpriteForLayer(layer);
+                        if (!sprite)
+                            continue;
+                        const container = this._containers.get(layer);
+                        if (sprite.parent === container)
+                            container.removeChild(sprite);
+                    }
+                    renderer_5.Renderer.needsUpdate();
                 }
                 _initContainers() {
                     this._setContainer(0 /* BACK */, false);
@@ -3439,13 +3534,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 }
                 _makeContainer(highPerformance = false) {
                     if (highPerformance)
-                        return (new PIXI.particles.ParticleContainer(1500, {
+                        return (new PIXI.particles.ParticleContainer(16384, {
                             vertices: true,
                             position: true,
                             rotation: true,
                             tint: true,
                             alpha: true
-                        }, 100, true));
+                        }, 16384, true));
                     else
                         return (new PIXI.Container());
                 }
@@ -3584,6 +3679,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         return;
                     this._centerColumn = v;
                     this._updatePan();
+                    this._spriteChangeCounter++;
                     this.onUIChange();
                 }
                 get centerRow() { return (this._centerRow); }
@@ -3595,6 +3691,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         return;
                     this._centerRow = v;
                     this._updatePan();
+                    this._spriteChangeCounter++;
                     this.onUIChange();
                 }
                 _updatePan() {
@@ -3603,6 +3700,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._layers.y =
                         Math.round((this.height / 2) - this.yForRow(this.centerRow));
                     this._updateFilterAreas();
+                    this._spriteChangeCounter++;
                     renderer_5.Renderer.needsUpdate();
                 }
                 // do layout for one part at the given location
@@ -3614,6 +3712,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     part.row = row;
                     part.x = this.xForColumn(column);
                     part.y = this.yForRow(row);
+                    this._spriteChangeCounter++;
                 }
                 // do layout for all parts on the grid
                 layoutParts() {
@@ -3684,11 +3783,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     const newColumnCount = this.columnCount + delta;
                     let c, r, part;
                     if (delta < 0) {
+                        r = 0;
                         for (const row of this._grid) {
                             for (c = newColumnCount; c < this.columnCount; c++) {
-                                this.removePart(row[c]);
+                                this.setPart(null, c, r);
                             }
                             row.splice(newColumnCount, -delta);
+                            r++;
                         }
                     }
                     else {
@@ -3697,7 +3798,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             for (c = this.columnCount; c < newColumnCount; c++) {
                                 if (addBackground) {
                                     part = this.makeBackgroundPart(c, r);
-                                    this.addPart(part);
+                                    this.layoutPart(part, c, r);
                                     row.push(part);
                                 }
                                 else
@@ -3719,8 +3820,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     let c, r, part;
                     if (delta < 0) {
                         for (r = newRowCount; r < this.rowCount; r++) {
-                            for (const part of this._grid[r]) {
-                                this.removePart(part);
+                            for (c = 0; c < this.columnCount; c++) {
+                                this.setPart(null, c, r);
                             }
                         }
                         this._grid.splice(newRowCount, -delta);
@@ -3731,7 +3832,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             for (c = 0; c < this.columnCount; c++) {
                                 if (addBackground) {
                                     part = this.makeBackgroundPart(c, r);
-                                    this.addPart(part);
+                                    this.layoutPart(part, c, r);
                                     row.push(part);
                                 }
                                 else
@@ -3757,11 +3858,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     let c, r, part;
                     if (delta < 0) {
                         delta = Math.abs(delta);
+                        r = 0;
                         for (const row of this._grid) {
                             for (c = 0; c < delta; c++) {
-                                this.removePart(row[c]);
+                                this.setPart(null, c, r);
                             }
                             row.splice(0, delta);
+                            r++;
                         }
                     }
                     else {
@@ -3770,7 +3873,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             for (c = delta - 1; c >= 0; c--) {
                                 if (addBackground) {
                                     part = this.makeBackgroundPart(c, r);
-                                    this.addPart(part);
+                                    this.layoutPart(part, c, r);
                                     row.unshift(part);
                                 }
                                 else
@@ -3797,8 +3900,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     if (delta < 0) {
                         delta = Math.abs(delta);
                         for (r = 0; r < delta; r++) {
-                            for (const part of this._grid[r]) {
-                                this.removePart(part);
+                            for (c = 0; c < this.columnCount; c++) {
+                                this.setPart(null, c, r);
                             }
                         }
                         this._grid.splice(0, delta);
@@ -3809,7 +3912,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             for (c = 0; c < this.columnCount; c++) {
                                 if (addBackground) {
                                     part = this.makeBackgroundPart(c, r);
-                                    this.addPart(part);
+                                    this.layoutPart(part, c, r);
                                     row.push(part);
                                 }
                                 else
@@ -3889,7 +3992,6 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     if (p === this._partPrototype)
                         return;
                     if (this._partPrototype) {
-                        this.removePart(this._partPrototype);
                         this._partPrototype.alpha = 1.0;
                         this._partPrototype.visible = true;
                     }
@@ -3903,8 +4005,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                         this._partPrototype.alpha = 0.5 /* PREVIEW_ALPHA */;
                         this._partPrototype.visible = false;
-                        this.addPart(this._partPrototype);
                     }
+                    this._spriteChangeCounter++;
                     this.onUIChange();
                 }
                 // get the part at the given coordinates
@@ -3923,10 +4025,6 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     const oldPart = this.getPart(column, row);
                     if (oldPart === newPart)
                         return;
-                    if (oldPart)
-                        this.removePart(oldPart);
-                    if (newPart)
-                        this.addPart(newPart);
                     this._grid[row][column] = newPart;
                     if (newPart)
                         this.layoutPart(newPart, column, row);
@@ -3976,6 +4074,11 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         if (!this.bulkUpdate)
                             this._connectTurnstiles();
                     }
+                    // remove and destroy sprites for the old part to avoid memory leaks
+                    if (oldPart) {
+                        this._removeSpritesForPart(oldPart);
+                        oldPart.destroySprites();
+                    }
                     this.onChange();
                 }
                 // flip the part at the given coordinates
@@ -3997,7 +4100,6 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     if (!this.balls.has(ball)) {
                         this.balls.add(ball);
                         this.layoutPart(ball, c, r);
-                        this.addPart(ball);
                         // assign the ball to a drop if it doesn't have one
                         if (!ball.drop) {
                             let drop = this.catchmentDrop(c, r);
@@ -4020,6 +4122,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             this._ballCounter.update();
                         this.onChange();
                     }
+                    this._spriteChangeCounter++;
                 }
                 // remove a ball from the board
                 removeBall(ball) {
@@ -4027,7 +4130,6 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         if (ball.drop)
                             ball.drop.balls.delete(ball);
                         this.balls.delete(ball);
-                        this.removePart(ball);
                         // update the ball counter
                         if (this._ballCounter.visible)
                             this._ballCounter.update();
@@ -4092,44 +4194,6 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                     }
                     return (closest);
-                }
-                // add a part to the board's layers
-                addPart(part) {
-                    for (let layer of this._containers.keys()) {
-                        const sprite = part.getSpriteForLayer(layer);
-                        if (!sprite)
-                            continue;
-                        // in non-schematic mode, add balls behind other parts to prevent ball 
-                        //  highlights from displaying on top of gears, etc.
-                        if ((part instanceof ball_4.Ball) && (layer < 4 /* SCHEMATIC */)) {
-                            this._containers.get(layer).addChildAt(sprite, 0);
-                        }
-                        else {
-                            // in schematic mode, place other parts behind balls
-                            if ((layer >= 4 /* SCHEMATIC */) && (!(part instanceof ball_4.Ball))) {
-                                this._containers.get(layer).addChildAt(sprite, 0);
-                            }
-                            else {
-                                this._containers.get(layer).addChild(sprite);
-                            }
-                        }
-                    }
-                    renderer_5.Renderer.needsUpdate();
-                }
-                // remove a part from the board's layers
-                removePart(part) {
-                    if (!part)
-                        return;
-                    for (let layer of this._containers.keys()) {
-                        const sprite = part.getSpriteForLayer(layer);
-                        if (!sprite)
-                            continue;
-                        const container = this._containers.get(layer);
-                        if (sprite.parent === container)
-                            container.removeChild(sprite);
-                    }
-                    part.destroySprites();
-                    renderer_5.Renderer.needsUpdate();
                 }
                 // return the drop that would definitely collect a ball dropped at the given
                 //  location, or null if it won't definitely reach one

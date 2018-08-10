@@ -3,6 +3,7 @@ export const enum Colors {
   BUTTON_BACK = 0x000000, // background of buttons when not toggled
   HIGHLIGHT = 0xFFAA00,   // general-purpose highlight color
   BALL_COUNT = 0xFFFFFF,  // ball count text over a drop
+  RESIZE_HINT = 0x808080, // border around board when ready to resize
   WIREFRAME = 0xFF0000,   // physice engine wireframe (debugging only)
   WIREFRAME_HULL = 0x00FF00,
   WIREFRAME_CONSTRAINT = 0x0000FF,
@@ -29,7 +30,8 @@ export const enum Delays {
 }
 
 export const enum Sizes {
-  DRAG_THRESHOLD = 5
+  DRAG_THRESHOLD = 5,
+  RESIZE_THRESHOLD = 16
 }
 
 export const Zooms:number[] = 

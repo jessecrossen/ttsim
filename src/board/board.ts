@@ -4,7 +4,7 @@ import { Part, Layer } from 'parts/part';
 import { Slope, Side } from 'parts/fence';
 import { PartFactory, PartType } from 'parts/factory';
 import { GearBase, Gear } from 'parts/gearbit';
-import { Alphas, Delays, Sizes, Zooms, Speeds } from 'ui/config';
+import { Alphas, Delays, Sizes, Zooms, Speeds, Colors } from 'ui/config';
 import { DisjointSet } from 'util/disjoint';
 import { Renderer } from 'renderer';
 import { Ball } from 'parts/ball';
@@ -34,8 +34,10 @@ export const enum ActionType {
   DRAG_PART,
   COLOR_WHEEL,
   DROP_BALL,
-  TURN_TURNSTILE
+  TURN_TURNSTILE,
+  RESIZE_BOARD
 }
+export const enum ActionSide { LEFT, TOP, RIGHT, BOTTOM }
 
 export const SPACING_FACTOR:number = 1.0625;
 
@@ -232,7 +234,7 @@ export class Board {
   }
   private _containers:LayerToContainerMap = new Map();
 
-  protected _setContainer(layer:Layer, highPerformance:boolean = false):void {
+  protected _setContainer(layer:Layer, highPerformance:boolean=false):void {
     const newContainer = this._makeContainer(highPerformance);
     if (this._containers.has(layer)) {
       const oldContainer = this._containers.get(layer);
@@ -325,6 +327,10 @@ export class Board {
     this._controls.push(this._turnButton);
     this._colorWheel = new ColorWheel(this.partFactory.textures);
     this._controls.push(this._colorWheel);
+    this._resizeOverlay = new PIXI.Sprite();
+    this._resizeOverlayGraphics = new PIXI.Graphics();
+    this._resizeOverlay.addChild(this._resizeOverlayGraphics);
+    this._controls.push(this._resizeOverlay);
     const container = this._containers.get(Layer.CONTROL);
     for (const control of this._controls) {
       control.visible = false;
@@ -350,6 +356,22 @@ export class Board {
   private _dropButton:DropButton;
   private _turnButton:TurnButton;
   private _ballCounter:BallCounter;
+  private _resizeOverlay:PIXI.Sprite;
+  private _resizeOverlayGraphics:PIXI.Graphics;
+
+  protected _updateResizeOverlay(active:boolean, side:ActionSide, delta:number):void {
+    const x0 = this.xForColumn(-1 - (side == ActionSide.LEFT ? delta : 0));
+    const y0 = this.yForRow(-1 - (side == ActionSide.TOP ? delta : 0));
+    const x1 = this.xForColumn(this.columnCount + (side == ActionSide.RIGHT ? delta : 0));
+    const y1 = this.yForRow(this.rowCount + (side == ActionSide.BOTTOM ? delta : 0));
+    const g = this._resizeOverlayGraphics;
+    g.clear();
+    g.lineStyle(2, active ? Colors.HIGHLIGHT : Colors.RESIZE_HINT, 0.75);
+    if (active) g.beginFill(Colors.HIGHLIGHT, 0.25);
+    g.drawRect(x0, y0, x1 - x0, y1 - y0);
+    if (active) g.endFill();
+    Renderer.needsUpdate();
+  }
 
   // LAYOUT *******************************************************************
 
@@ -513,8 +535,9 @@ export class Board {
   public sizeRight(delta:number, addBackground:boolean=true):void {
     delta = Math.max(- this.columnCount, delta);
     if (delta == 0) return;
+    this.bulkUpdate = true;
     const newColumnCount:number = this.columnCount + delta;
-    let c:number, r:number, part:Part;
+    let c:number, r:number;
     if (delta < 0) {
       r = 0;
       for (const row of this._grid) {
@@ -530,9 +553,7 @@ export class Board {
       for (const row of this._grid) {
         for (c = this.columnCount; c < newColumnCount; c++) {
           if (addBackground) {
-            part = this.makeBackgroundPart(c, r);
-            this.layoutPart(part, c, r);
-            row.push(part);
+            row.push(this.makeBackgroundPart(c, r));
           }
           else row.push(null);
         }
@@ -540,6 +561,8 @@ export class Board {
       }
     }
     this._columnCount = newColumnCount;
+    this.bulkUpdate = false;
+    this.layoutParts();
     this.physicalRouter.onBoardSizeChanged();
     this.schematicRouter.onBoardSizeChanged();
     this.onChange();
@@ -548,8 +571,9 @@ export class Board {
   public sizeBottom(delta:number, addBackground:boolean=true):void {
     delta = Math.max(- this.rowCount, delta);
     if (delta == 0) return;
+    this.bulkUpdate = true;
     const newRowCount:number = this.rowCount + delta;
-    let c:number, r:number, part:Part;
+    let c:number, r:number;
     if (delta < 0) {
       for (r = newRowCount; r < this.rowCount; r++) {
         for (c = 0; c < this.columnCount; c++) {
@@ -563,9 +587,7 @@ export class Board {
         const row:Part[] = [ ];
         for (c = 0; c < this.columnCount; c++) {
           if (addBackground) {
-            part = this.makeBackgroundPart(c, r);
-            this.layoutPart(part, c, r);
-            row.push(part);
+            row.push(this.makeBackgroundPart(c, r));
           }
           else row.push(null);
         }
@@ -573,6 +595,8 @@ export class Board {
       }
     }
     this._rowCount = newRowCount;
+    this.bulkUpdate = false;
+    this.layoutParts();
     this.physicalRouter.onBoardSizeChanged();
     this.schematicRouter.onBoardSizeChanged();
     this.onChange();
@@ -584,16 +608,16 @@ export class Board {
     if (delta % 2 !== 0) delta += 1;
     delta = Math.max(- this.columnCount, delta);
     if (delta == 0) return;
+    this.bulkUpdate = true;
     const newColumnCount:number = this.columnCount + delta;
-    let c:number, r:number, part:Part;
+    let c:number, r:number;
     if (delta < 0) {
-      delta = Math.abs(delta);
       r = 0;
       for (const row of this._grid) {
-        for (c = 0; c < delta; c++) {
+        for (c = 0; c < Math.abs(delta); c++) {
           this.setPart(null, c, r);
         }
-        row.splice(0, delta);
+        row.splice(0, Math.abs(delta));
         r++;
       }
     }
@@ -602,9 +626,7 @@ export class Board {
       for (const row of this._grid) {
         for (c = delta - 1; c >= 0; c--) {
           if (addBackground) {
-            part = this.makeBackgroundPart(c, r);
-            this.layoutPart(part, c, r);
-            row.unshift(part);
+            row.unshift(this.makeBackgroundPart(c, r));
           }
           else row.unshift(null);
         }
@@ -612,6 +634,9 @@ export class Board {
       }
     }
     this._columnCount = newColumnCount;
+    this.centerColumn += delta;
+    this.bulkUpdate = false;
+    this.layoutParts();
     this.physicalRouter.onBoardSizeChanged();
     this.schematicRouter.onBoardSizeChanged();
     this.onChange();
@@ -623,16 +648,16 @@ export class Board {
     if (delta % 2 !== 0) delta += 1;
     delta = Math.max(- this.rowCount, delta);
     if (delta == 0) return;
+    this.bulkUpdate = true;
     const newRowCount:number = this.rowCount + delta;
     let c:number, r:number, part:Part;
     if (delta < 0) {
-      delta = Math.abs(delta);
-      for (r = 0; r < delta; r++) {
+      for (r = 0; r < Math.abs(delta); r++) {
         for (c = 0; c < this.columnCount; c++) {
           this.setPart(null, c, r);
         }
       }
-      this._grid.splice(0, delta);
+      this._grid.splice(0, Math.abs(delta));
     }
     else {
       for (r = delta - 1; r >= 0; r--) {
@@ -649,6 +674,9 @@ export class Board {
       }
     }
     this._rowCount = newRowCount;
+    this.centerRow += delta;
+    this.bulkUpdate = false;
+    this.layoutParts();
     this.physicalRouter.onBoardSizeChanged();
     this.schematicRouter.onBoardSizeChanged();
     this.onChange();
@@ -1316,6 +1344,29 @@ export class Board {
         this._actionPart.hue = this._colorWheel.hue;
       }
     }
+    else if (this._action === ActionType.RESIZE_BOARD) {
+      let delta = 0;
+      if (this._actionSide == ActionSide.LEFT) {
+        delta = Math.round(this.columnForX(startX - currentX));
+        if (delta % 2 != 0) delta += 1;
+        delta = Math.max(delta, (- this.columnCount) + 2);
+      }
+      else if (this._actionSide == ActionSide.TOP) {
+        delta = Math.round(this.rowForY(startY - currentY));
+        if (delta % 2 != 0) delta += 1;
+        delta = Math.max(delta, (- this.rowCount + 2));
+      }
+      else if (this._actionSide == ActionSide.RIGHT) {
+        delta = Math.round(this.columnForX(currentX - startX));
+        delta = Math.max(delta, (- this.columnCount) + 2);
+      }
+      else if (this._actionSide == ActionSide.BOTTOM) {
+        delta = Math.round(this.rowForY(currentY - startY));
+        delta = Math.max(delta, (- this.rowCount) + 2);
+      }
+      this._actionResizeDelta = delta;
+      this._updateResizeOverlay(true, this._actionSide, delta);
+    }
   }
   private _dragFlippedParts:Set<Part> = new Set();
 
@@ -1341,6 +1392,17 @@ export class Board {
       Animator.current.animate(this._colorWheel, 'size', 64, this.controlSize, 
         Delays.HIDE_CONTROL);
       this._hideControl(this._colorWheel);
+    }
+    if (this._action === ActionType.RESIZE_BOARD) {
+      if (this._actionSide == ActionSide.LEFT)
+        this.sizeLeft(this._actionResizeDelta, true);
+      if (this._actionSide == ActionSide.TOP)
+        this.sizeTop(this._actionResizeDelta, true);
+      if (this._actionSide == ActionSide.RIGHT)
+        this.sizeRight(this._actionResizeDelta, true);
+      if (this._actionSide == ActionSide.BOTTOM)
+        this.sizeBottom(this._actionResizeDelta, true);
+      this._updateResizeOverlay(false, this._actionSide, 0);
     }
   }
 
@@ -1409,6 +1471,29 @@ export class Board {
       this._action = ActionType.DRAG_PART;
       cursor = 'grab';
     }
+    // if the cursor is close to the edge of the board, enable resize
+    else if ((this.tool == ToolType.HAND) && 
+             (this._actionRow >= 0) && (this._actionRow < this.rowCount) && 
+        ((Math.abs(this._actionX - this.xForColumn(-1)) < Sizes.RESIZE_THRESHOLD) ||
+         (Math.abs(this._actionX - this.xForColumn(this.columnCount)) < Sizes.RESIZE_THRESHOLD))) {
+      this._action = ActionType.RESIZE_BOARD;
+      this._actionSide = this._actionColumn < (this.columnCount / 2) ? 
+        ActionSide.LEFT : ActionSide.RIGHT;
+      this._actionResizeDelta = 0;
+      cursor = 'ew-resize';
+      
+    }
+    else if ((this.tool == ToolType.HAND) && 
+             (this._actionColumn >= 0) && (this._actionColumn < this.columnCount) && 
+        ((Math.abs(this._actionY - this.yForRow(-1)) < Sizes.RESIZE_THRESHOLD) ||
+         (Math.abs(this._actionY - this.yForRow(this.rowCount)) < Sizes.RESIZE_THRESHOLD))) {
+      this._action = ActionType.RESIZE_BOARD;
+      this._actionSide = this._actionRow < (this.rowCount / 2) ? 
+        ActionSide.TOP : ActionSide.BOTTOM;
+      this._actionResizeDelta = 0;
+      cursor = 'ns-resize';
+    }
+    // drag the board if no other action matches
     else {
       this._action = ActionType.PAN;
       this._actionPart = null;
@@ -1464,6 +1549,8 @@ export class Board {
   private _actionY:number;
   private _actionPart:Part;
   private _actionHue:number;
+  private _actionSide:number;
+  private _actionResizeDelta:number = 0;
 
   private _updatePreview():void {
     if (this.partPrototype) {
@@ -1485,6 +1572,13 @@ export class Board {
       else {
         this.partPrototype.visible = false;
       }
+    }
+    if (this._action == ActionType.RESIZE_BOARD) {
+      this._showControl(this._resizeOverlay);
+      this._updateResizeOverlay(false, this._actionSide, 0);
+    }
+    else if (this._resizeOverlay.visible) {
+      this._hideControl(this._resizeOverlay);
     }
   }
 

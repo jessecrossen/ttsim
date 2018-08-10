@@ -3352,6 +3352,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._dragging = false;
                     this._dragFlippedParts = new Set();
                     this._action = 0 /* PAN */;
+                    this._actionResizeDelta = 0;
                     this._bindMouseEvents();
                     this.view.addChild(this._layers);
                     this._initContainers();
@@ -3612,6 +3613,10 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     this._controls.push(this._turnButton);
                     this._colorWheel = new controls_1.ColorWheel(this.partFactory.textures);
                     this._controls.push(this._colorWheel);
+                    this._resizeOverlay = new PIXI.Sprite();
+                    this._resizeOverlayGraphics = new PIXI.Graphics();
+                    this._resizeOverlay.addChild(this._resizeOverlayGraphics);
+                    this._controls.push(this._resizeOverlay);
                     const container = this._containers.get(8 /* CONTROL */);
                     for (const control of this._controls) {
                         control.visible = false;
@@ -3630,6 +3635,21 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         control.visible = false;
                         this._updateLayerVisibility();
                     });
+                }
+                _updateResizeOverlay(active, side, delta) {
+                    const x0 = this.xForColumn(-1 - (side == 0 /* LEFT */ ? delta : 0));
+                    const y0 = this.yForRow(-1 - (side == 1 /* TOP */ ? delta : 0));
+                    const x1 = this.xForColumn(this.columnCount + (side == 2 /* RIGHT */ ? delta : 0));
+                    const y1 = this.yForRow(this.rowCount + (side == 3 /* BOTTOM */ ? delta : 0));
+                    const g = this._resizeOverlayGraphics;
+                    g.clear();
+                    g.lineStyle(2, active ? 16755200 /* HIGHLIGHT */ : 8421504 /* RESIZE_HINT */, 0.75);
+                    if (active)
+                        g.beginFill(16755200 /* HIGHLIGHT */, 0.25);
+                    g.drawRect(x0, y0, x1 - x0, y1 - y0);
+                    if (active)
+                        g.endFill();
+                    renderer_5.Renderer.needsUpdate();
                 }
                 // LAYOUT *******************************************************************
                 // change the size to draw parts at
@@ -3780,8 +3800,9 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     delta = Math.max(-this.columnCount, delta);
                     if (delta == 0)
                         return;
+                    this.bulkUpdate = true;
                     const newColumnCount = this.columnCount + delta;
-                    let c, r, part;
+                    let c, r;
                     if (delta < 0) {
                         r = 0;
                         for (const row of this._grid) {
@@ -3797,9 +3818,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         for (const row of this._grid) {
                             for (c = this.columnCount; c < newColumnCount; c++) {
                                 if (addBackground) {
-                                    part = this.makeBackgroundPart(c, r);
-                                    this.layoutPart(part, c, r);
-                                    row.push(part);
+                                    row.push(this.makeBackgroundPart(c, r));
                                 }
                                 else
                                     row.push(null);
@@ -3808,6 +3827,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                     }
                     this._columnCount = newColumnCount;
+                    this.bulkUpdate = false;
+                    this.layoutParts();
                     this.physicalRouter.onBoardSizeChanged();
                     this.schematicRouter.onBoardSizeChanged();
                     this.onChange();
@@ -3816,8 +3837,9 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     delta = Math.max(-this.rowCount, delta);
                     if (delta == 0)
                         return;
+                    this.bulkUpdate = true;
                     const newRowCount = this.rowCount + delta;
-                    let c, r, part;
+                    let c, r;
                     if (delta < 0) {
                         for (r = newRowCount; r < this.rowCount; r++) {
                             for (c = 0; c < this.columnCount; c++) {
@@ -3831,9 +3853,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             const row = [];
                             for (c = 0; c < this.columnCount; c++) {
                                 if (addBackground) {
-                                    part = this.makeBackgroundPart(c, r);
-                                    this.layoutPart(part, c, r);
-                                    row.push(part);
+                                    row.push(this.makeBackgroundPart(c, r));
                                 }
                                 else
                                     row.push(null);
@@ -3842,6 +3862,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                     }
                     this._rowCount = newRowCount;
+                    this.bulkUpdate = false;
+                    this.layoutParts();
                     this.physicalRouter.onBoardSizeChanged();
                     this.schematicRouter.onBoardSizeChanged();
                     this.onChange();
@@ -3854,16 +3876,16 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     delta = Math.max(-this.columnCount, delta);
                     if (delta == 0)
                         return;
+                    this.bulkUpdate = true;
                     const newColumnCount = this.columnCount + delta;
-                    let c, r, part;
+                    let c, r;
                     if (delta < 0) {
-                        delta = Math.abs(delta);
                         r = 0;
                         for (const row of this._grid) {
-                            for (c = 0; c < delta; c++) {
+                            for (c = 0; c < Math.abs(delta); c++) {
                                 this.setPart(null, c, r);
                             }
-                            row.splice(0, delta);
+                            row.splice(0, Math.abs(delta));
                             r++;
                         }
                     }
@@ -3872,9 +3894,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         for (const row of this._grid) {
                             for (c = delta - 1; c >= 0; c--) {
                                 if (addBackground) {
-                                    part = this.makeBackgroundPart(c, r);
-                                    this.layoutPart(part, c, r);
-                                    row.unshift(part);
+                                    row.unshift(this.makeBackgroundPart(c, r));
                                 }
                                 else
                                     row.unshift(null);
@@ -3883,6 +3903,9 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                     }
                     this._columnCount = newColumnCount;
+                    this.centerColumn += delta;
+                    this.bulkUpdate = false;
+                    this.layoutParts();
                     this.physicalRouter.onBoardSizeChanged();
                     this.schematicRouter.onBoardSizeChanged();
                     this.onChange();
@@ -3895,16 +3918,16 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     delta = Math.max(-this.rowCount, delta);
                     if (delta == 0)
                         return;
+                    this.bulkUpdate = true;
                     const newRowCount = this.rowCount + delta;
                     let c, r, part;
                     if (delta < 0) {
-                        delta = Math.abs(delta);
-                        for (r = 0; r < delta; r++) {
+                        for (r = 0; r < Math.abs(delta); r++) {
                             for (c = 0; c < this.columnCount; c++) {
                                 this.setPart(null, c, r);
                             }
                         }
-                        this._grid.splice(0, delta);
+                        this._grid.splice(0, Math.abs(delta));
                     }
                     else {
                         for (r = delta - 1; r >= 0; r--) {
@@ -3922,6 +3945,9 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                     }
                     this._rowCount = newRowCount;
+                    this.centerRow += delta;
+                    this.bulkUpdate = false;
+                    this.layoutParts();
                     this.physicalRouter.onBoardSizeChanged();
                     this.schematicRouter.onBoardSizeChanged();
                     this.onChange();
@@ -4583,6 +4609,31 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             this._actionPart.hue = this._colorWheel.hue;
                         }
                     }
+                    else if (this._action === 9 /* RESIZE_BOARD */) {
+                        let delta = 0;
+                        if (this._actionSide == 0 /* LEFT */) {
+                            delta = Math.round(this.columnForX(startX - currentX));
+                            if (delta % 2 != 0)
+                                delta += 1;
+                            delta = Math.max(delta, (-this.columnCount) + 2);
+                        }
+                        else if (this._actionSide == 1 /* TOP */) {
+                            delta = Math.round(this.rowForY(startY - currentY));
+                            if (delta % 2 != 0)
+                                delta += 1;
+                            delta = Math.max(delta, (-this.rowCount + 2));
+                        }
+                        else if (this._actionSide == 2 /* RIGHT */) {
+                            delta = Math.round(this.columnForX(currentX - startX));
+                            delta = Math.max(delta, (-this.columnCount) + 2);
+                        }
+                        else if (this._actionSide == 3 /* BOTTOM */) {
+                            delta = Math.round(this.rowForY(currentY - startY));
+                            delta = Math.max(delta, (-this.rowCount) + 2);
+                        }
+                        this._actionResizeDelta = delta;
+                        this._updateResizeOverlay(true, this._actionSide, delta);
+                    }
                 }
                 _onDragFinish() {
                     this._dragFlippedParts.clear();
@@ -4604,6 +4655,17 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     if (this._action === 6 /* COLOR_WHEEL */) {
                         animator_3.Animator.current.animate(this._colorWheel, 'size', 64, this.controlSize, 0.25 /* HIDE_CONTROL */);
                         this._hideControl(this._colorWheel);
+                    }
+                    if (this._action === 9 /* RESIZE_BOARD */) {
+                        if (this._actionSide == 0 /* LEFT */)
+                            this.sizeLeft(this._actionResizeDelta, true);
+                        if (this._actionSide == 1 /* TOP */)
+                            this.sizeTop(this._actionResizeDelta, true);
+                        if (this._actionSide == 2 /* RIGHT */)
+                            this.sizeRight(this._actionResizeDelta, true);
+                        if (this._actionSide == 3 /* BOTTOM */)
+                            this.sizeBottom(this._actionResizeDelta, true);
+                        this._updateResizeOverlay(false, this._actionSide, 0);
                     }
                 }
                 _updateAction(e) {
@@ -4671,6 +4733,26 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this._action = 5 /* DRAG_PART */;
                         cursor = 'grab';
                     }
+                    else if ((this.tool == 3 /* HAND */) &&
+                        (this._actionRow >= 0) && (this._actionRow < this.rowCount) &&
+                        ((Math.abs(this._actionX - this.xForColumn(-1)) < 16 /* RESIZE_THRESHOLD */) ||
+                            (Math.abs(this._actionX - this.xForColumn(this.columnCount)) < 16 /* RESIZE_THRESHOLD */))) {
+                        this._action = 9 /* RESIZE_BOARD */;
+                        this._actionSide = this._actionColumn < (this.columnCount / 2) ?
+                            0 /* LEFT */ : 2 /* RIGHT */;
+                        this._actionResizeDelta = 0;
+                        cursor = 'ew-resize';
+                    }
+                    else if ((this.tool == 3 /* HAND */) &&
+                        (this._actionColumn >= 0) && (this._actionColumn < this.columnCount) &&
+                        ((Math.abs(this._actionY - this.yForRow(-1)) < 16 /* RESIZE_THRESHOLD */) ||
+                            (Math.abs(this._actionY - this.yForRow(this.rowCount)) < 16 /* RESIZE_THRESHOLD */))) {
+                        this._action = 9 /* RESIZE_BOARD */;
+                        this._actionSide = this._actionRow < (this.rowCount / 2) ?
+                            1 /* TOP */ : 3 /* BOTTOM */;
+                        this._actionResizeDelta = 0;
+                        cursor = 'ns-resize';
+                    }
                     else {
                         this._action = 0 /* PAN */;
                         this._actionPart = null;
@@ -4737,6 +4819,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         else {
                             this.partPrototype.visible = false;
                         }
+                    }
+                    if (this._action == 9 /* RESIZE_BOARD */) {
+                        this._showControl(this._resizeOverlay);
+                        this._updateResizeOverlay(false, this._actionSide, 0);
+                    }
+                    else if (this._resizeOverlay.visible) {
+                        this._hideControl(this._resizeOverlay);
                     }
                 }
                 _onClick(e) {

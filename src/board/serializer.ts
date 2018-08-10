@@ -109,7 +109,7 @@ export class URLBoardSerializer implements IBoardSerializer {
       reader.onload = (e) => {
         this._restoring = true;
         try {
-          this._readBoardState(e.target.result, callback);
+          this._readBoardState((e.target as any).result, callback);
         }
         finally {
           this._restoring = false;

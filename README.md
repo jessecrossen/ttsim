@@ -2,10 +2,12 @@ Turing Tumble Simulator
 =======================
 
 This is a software simulator of the [Turing Tumble](https://www.turingtumble.com/),
-a programmable marble-powered computer. It runs entirely in your browser, so 
+an amazing programmable marble-powered computer. It runs entirely in your browser, so 
 you can [try it out here](https://jessecrossen.github.io/ttsim/). If you've used 
 an actual Turing Tumble, it should be straightforward to get started, but here's
 [some documentation about how to use it](https://jessecrossen.github.io/ttsim/usage).
+If you got here but haven't used an actual Turing Tumble yet, you may need one in 
+your life!
 
 What's Inside?
 ==============
@@ -28,12 +30,14 @@ Here are some things I'd like to implement in the near future:
 - [ ] Undo/redo
 - [ ] Allow toggling of whether parts are locked (for setting up challenges)
 
-Bugs
-====
+Reporting Bugs and Requesting Features
+======================================
 
-Please file an issue if you find a bug that doesn't have an issue yet. Or if you have 
+Please file an issue if you find a bug that doesn't have one yet. Or if you have 
 the will and the skill and feel like doing something nice, fix it yourself and submit a
-pull request. Note that this is a hobby project, so it could take some time for me to respond.
+pull request. Feature requests are also welcome, and especially so if you can suggest
+a way to add the feature with minimal complication of the interface. Note that this is 
+a hobby project, so it could take some time for me to respond.
 
 Building
 ========

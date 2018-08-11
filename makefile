@@ -58,7 +58,7 @@ src/parts/partvertices.ts: src/svg/parts.svg \
 
 # NOTE: you'll need Inkscape and ImageMagick to rebuild the graphics
 graphics: docs/images/parts.png docs/images/parts.json docs/images/loading.gif \
-					docs/images/icon.png
+					docs/images/icon.png docs/images/usage/.touch
 
 docs/images/parts.png: src/svg/parts.svg
 	mkdir -p docs/images
@@ -82,6 +82,11 @@ docs/images/icon.png: src/svg/icon.svg
 	mkdir -p docs/images
 	inkscape --export-area-page --export-png=docs/images/icon.png \
 		src/svg/icon.svg
+
+docs/images/usage/.touch: docs/images/parts.png docs/images/parts.json src/svg/usage.py
+	mkdir -p docs/images/usage
+	src/svg/usage.py docs/images/parts.png docs/images/parts.json docs/images/usage | xargs -L 1 convert
+	touch docs/images/usage/.touch
 
 # CLEANUP
 

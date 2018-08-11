@@ -3004,84 +3004,85 @@ System.register("board/serializer", ["parts/drop"], function (exports_24, contex
                     let flip = (part) && ((part.canFlip && part.isFlipped) ||
                         (part.canRotate && part.bitValue));
                     // select a color for the part
-                    switch (part.type) {
-                        // leave both types of locations white so we don't get a checker pattern 
-                        //  in the image, which makes editing harder
-                        case 1 /* PARTLOC */: // fall-through
-                        case 2 /* GEARLOC */: break;
-                        // handle parts
-                        case 3 /* RAMP */:
-                            r = 0x00;
-                            g = 0xFF;
-                            b = 0x00;
-                            break; // green
-                        case 4 /* CROSSOVER */:
-                            r = 0xFF;
-                            g = 0x80;
-                            b = 0x00;
-                            break; // orange
-                        case 5 /* INTERCEPTOR */:
-                            r = 0x00;
-                            g = 0x00;
-                            b = 0x00;
-                            break; // black
-                        case 6 /* BIT */:
-                            r = 0x00;
-                            g = 0xFF;
-                            b = 0xFF;
-                            break; // cyan
-                        case 7 /* GEARBIT */:
-                            r = 0x80;
-                            g = 0x00;
-                            b = 0xFF;
-                            break; // purple
-                        case 8 /* GEAR */:
-                            r = 0xFF;
-                            g = 0x00;
-                            b = 0x00;
-                            break; // red
-                        case 12 /* DROP */:
-                            r = 0xFF;
-                            g = 0xFF;
-                            b = 0x00;
-                            break; // yellow
-                        case 13 /* TURNSTILE */:
-                            r = 0xFF;
-                            g = 0x00;
-                            b = 0xFF;
-                            break; // magenta
-                        case 10 /* SIDE */:
-                            if (!flip) {
-                                r = 0xC0;
-                                g = 0xC0;
-                                b = 0xC0;
-                            } // light gray
-                            else {
-                                r = 0xA0;
-                                g = 0xA0;
-                                b = 0xA0;
-                            }
-                            flip = false;
-                            break;
-                        case 11 /* SLOPE */:
-                            if (!flip) {
-                                r = 0x80;
+                    if (part)
+                        switch (part.type) {
+                            // leave both types of locations white so we don't get a checker pattern 
+                            //  in the image, which makes editing harder
+                            case 1 /* PARTLOC */: // fall-through
+                            case 2 /* GEARLOC */: break;
+                            // handle parts
+                            case 3 /* RAMP */:
+                                r = 0x00;
+                                g = 0xFF;
+                                b = 0x00;
+                                break; // green
+                            case 4 /* CROSSOVER */:
+                                r = 0xFF;
                                 g = 0x80;
-                                b = 0x80;
-                            } // middle gray
-                            else {
-                                r = 0x60;
-                                g = 0x60;
-                                b = 0x60;
-                            }
-                            flip = false;
-                            break;
-                        // leave blank spots and unknown parts a very dark gray
-                        case 0 /* BLANK */: // fall-through
-                        default:
-                            r = g = b = 0x20;
-                            break;
-                    }
+                                b = 0x00;
+                                break; // orange
+                            case 5 /* INTERCEPTOR */:
+                                r = 0x00;
+                                g = 0x00;
+                                b = 0x00;
+                                break; // black
+                            case 6 /* BIT */:
+                                r = 0x00;
+                                g = 0xFF;
+                                b = 0xFF;
+                                break; // cyan
+                            case 7 /* GEARBIT */:
+                                r = 0x80;
+                                g = 0x00;
+                                b = 0xFF;
+                                break; // purple
+                            case 8 /* GEAR */:
+                                r = 0xFF;
+                                g = 0x00;
+                                b = 0x00;
+                                break; // red
+                            case 12 /* DROP */:
+                                r = 0xFF;
+                                g = 0xFF;
+                                b = 0x00;
+                                break; // yellow
+                            case 13 /* TURNSTILE */:
+                                r = 0xFF;
+                                g = 0x00;
+                                b = 0xFF;
+                                break; // magenta
+                            case 10 /* SIDE */:
+                                if (!flip) {
+                                    r = 0xC0;
+                                    g = 0xC0;
+                                    b = 0xC0;
+                                } // light gray
+                                else {
+                                    r = 0xA0;
+                                    g = 0xA0;
+                                    b = 0xA0;
+                                }
+                                flip = false;
+                                break;
+                            case 11 /* SLOPE */:
+                                if (!flip) {
+                                    r = 0x80;
+                                    g = 0x80;
+                                    b = 0x80;
+                                } // middle gray
+                                else {
+                                    r = 0x60;
+                                    g = 0x60;
+                                    b = 0x60;
+                                }
+                                flip = false;
+                                break;
+                            // leave blank spots and unknown parts a very dark gray
+                            case 0 /* BLANK */: // fall-through
+                            default:
+                                r = g = b = 0x20;
+                                break;
+                        }
                     // if a part is flipped or rotated, make the color less bright
                     if (flip) {
                         r = (r >> 2) * 3;
@@ -3551,11 +3552,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     // make a list of parts we should be showing at this time
                     const visible = new Set();
                     // add parts from the grid
-                    let c, r, row;
+                    let c, r, row, part;
                     for (r = rMinGrid; r < rMaxGrid; r++) {
                         row = this._grid[r];
                         for (c = cMinGrid; c < cMaxGrid; c++) {
-                            visible.add(row[c]);
+                            part = row[c];
+                            if (part)
+                                visible.add(part);
                         }
                     }
                     // add balls
@@ -4080,12 +4083,11 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     const oldBulkUpdate = this.bulkUpdate;
                     this.bulkUpdate = true;
                     // remove parts
+                    let part;
                     for (let r = 0; r < this.rowCount; r++) {
                         for (let c = 0; c < this.columnCount; c++) {
-                            if (addBackground)
-                                this.clearPart(c, r);
-                            else
-                                this.setPart(null, c, r);
+                            part = addBackground ? this.makeBackgroundPart(c, r) : null;
+                            this.setPart(part, c, r);
                         }
                     }
                     // remove balls
@@ -4589,6 +4591,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     let changed = false;
                     for (const row of this._grid) {
                         for (const part of row) {
+                            if (!part)
+                                continue;
                             if ((part.type !== 6 /* BIT */) &&
                                 (part.type !== 7 /* GEARBIT */))
                                 continue;
@@ -5364,308 +5368,9 @@ System.register("ui/toolbar", ["pixi.js", "ui/button", "renderer"], function (ex
         }
     };
 });
-System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/config", "renderer", "board/serializer"], function (exports_30, context_30) {
+System.register("board/builder", ["parts/fence"], function (exports_30, context_30) {
     "use strict";
     var __moduleName = context_30 && context_30.id;
-    var PIXI, board_2, button_2, config_4, renderer_8, serializer_1, Actionbar;
-    return {
-        setters: [
-            function (PIXI_7) {
-                PIXI = PIXI_7;
-            },
-            function (board_2_1) {
-                board_2 = board_2_1;
-            },
-            function (button_2_1) {
-                button_2 = button_2_1;
-            },
-            function (config_4_1) {
-                config_4 = config_4_1;
-            },
-            function (renderer_8_1) {
-                renderer_8 = renderer_8_1;
-            },
-            function (serializer_1_1) {
-                serializer_1 = serializer_1_1;
-            }
-        ],
-        execute: function () {
-            Actionbar = class Actionbar extends button_2.ButtonBar {
-                constructor(board) {
-                    super();
-                    this.board = board;
-                    // add a button to toggle schematic view
-                    this._schematicButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['schematic']));
-                    this.addButton(this._schematicButton);
-                    // add zoom controls
-                    this._zoomInButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['zoomin']));
-                    this.addButton(this._zoomInButton);
-                    this._zoomOutButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['zoomout']));
-                    this.addButton(this._zoomOutButton);
-                    this._zoomToFitButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['zoomtofit']));
-                    this.addButton(this._zoomToFitButton);
-                    this._fasterButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['faster']));
-                    this.addButton(this._fasterButton);
-                    this._slowerButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['slower']));
-                    this.addButton(this._slowerButton);
-                    this._returnButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['return']));
-                    this.addButton(this._returnButton);
-                    this._downloadButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['download']));
-                    this.addButton(this._downloadButton);
-                    this._uploadButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['upload']));
-                    this.addButton(this._uploadButton);
-                    // add more top buttons here...
-                    // add a link to the Turing Tumble website
-                    this._heartButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['heart']));
-                    this.addButton(this._heartButton);
-                    this.bottomCount = 1;
-                    this.updateToggled();
-                    // zoom on wheel events
-                    document.addEventListener('wheel', (e) => {
-                        if (e.wheelDelta > 0)
-                            this.zoomIn();
-                        else if (e.wheelDelta < 0)
-                            this.zoomOut();
-                        e.preventDefault();
-                    });
-                }
-                onButtonClick(button) {
-                    if (button === this._schematicButton) {
-                        this.board.schematic = !this.board.schematicView;
-                        this.updateToggled();
-                        if (this.peer)
-                            this.peer.updateToggled();
-                    }
-                    else if (button === this._zoomInButton) {
-                        this.zoomIn();
-                        if (this.peer)
-                            this.peer.updateToggled();
-                    }
-                    else if (button === this._zoomOutButton) {
-                        this.zoomOut();
-                        if (this.peer)
-                            this.peer.updateToggled();
-                    }
-                    else if (button === this._zoomToFitButton) {
-                        this.zoomToFit();
-                        if (this.peer)
-                            this.peer.updateToggled();
-                    }
-                    else if (button === this._fasterButton) {
-                        this.goFaster();
-                    }
-                    else if (button === this._slowerButton) {
-                        this.goSlower();
-                    }
-                    else if (button === this._returnButton) {
-                        this.board.returnBalls();
-                    }
-                    else if (button === this._downloadButton) {
-                        if (this.board.serializer instanceof serializer_1.URLBoardSerializer) {
-                            this.board.serializer.download();
-                        }
-                    }
-                    else if (button === this._uploadButton) {
-                        if (this.board.serializer instanceof serializer_1.URLBoardSerializer) {
-                            this.board.serializer.upload((restored) => {
-                                if (restored)
-                                    this.zoomToFit();
-                            });
-                        }
-                    }
-                    else if (button === this._heartButton) {
-                        window.open('https://www.turingtumble.com/', '_blank');
-                    }
-                }
-                updateToggled() {
-                    // update button toggle states
-                    for (const button of this._buttons) {
-                        if (button === this._schematicButton) {
-                            button.isToggled = this.board.schematic;
-                        }
-                        else if (button == this._zoomInButton) {
-                            button.isEnabled = this.canZoomIn;
-                        }
-                        else if (button == this._zoomOutButton) {
-                            button.isEnabled = this.canZoomOut;
-                        }
-                        else if (button == this._fasterButton) {
-                            button.isEnabled = this.canGoFaster;
-                        }
-                        else if (button == this._slowerButton) {
-                            button.isEnabled = this.canGoSlower;
-                        }
-                        else if (button instanceof button_2.PartButton) {
-                            button.isToggled = ((this.board.tool === 1 /* PART */) &&
-                                (this.board.partPrototype) &&
-                                (button.part.type === this.board.partPrototype.type));
-                            button.schematic = this.board.schematicView;
-                        }
-                    }
-                    renderer_8.Renderer.needsUpdate();
-                }
-                // SPEED CONTROL ************************************************************
-                get canGoFaster() {
-                    return (this.speedIndex < config_4.Speeds.length - 1);
-                }
-                get canGoSlower() {
-                    return (this.speedIndex > 0);
-                }
-                goFaster() {
-                    this.speedIndex++;
-                }
-                goSlower() {
-                    this.speedIndex--;
-                }
-                get speedIndex() {
-                    return (config_4.Speeds.indexOf(this.board.speed));
-                }
-                set speedIndex(i) {
-                    if ((i >= 0) && (i < config_4.Speeds.length))
-                        this.board.speed = config_4.Speeds[i];
-                    this.updateToggled();
-                }
-                // ZOOMING ******************************************************************
-                get canZoomIn() {
-                    return (this.zoomIndex < config_4.Zooms.length - 1);
-                }
-                get canZoomOut() {
-                    return (this.zoomIndex > 0);
-                }
-                zoomIn() {
-                    if (!this.canZoomIn)
-                        return;
-                    this.board.partSize = config_4.Zooms[this.zoomIndex + 1];
-                    this.updateToggled();
-                }
-                zoomOut() {
-                    if (!this.canZoomOut)
-                        return;
-                    this.board.partSize = config_4.Zooms[this.zoomIndex - 1];
-                    this.updateToggled();
-                }
-                // zoom to fit the board
-                zoomToFit() {
-                    this.board.centerColumn = (this.board.columnCount - 1) / 2;
-                    this.board.centerRow = (this.board.rowCount - 1) / 2;
-                    let s = config_4.Zooms[0];
-                    for (let i = config_4.Zooms.length - 1; i >= 0; i--) {
-                        s = config_4.Zooms[i];
-                        const w = this.board.columnCount * Math.floor(s * board_2.SPACING_FACTOR);
-                        const h = this.board.rowCount * Math.floor(s * board_2.SPACING_FACTOR);
-                        if ((w <= this.board.width) && (h <= this.board.height))
-                            break;
-                    }
-                    this.board.partSize = s;
-                    this.updateToggled();
-                }
-                get zoomIndex() {
-                    return (config_4.Zooms.indexOf(this.board.partSize));
-                }
-            };
-            exports_30("Actionbar", Actionbar);
-        }
-    };
-});
-System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "ui/animator", "ui/keyboard", "parts/gearbit"], function (exports_31, context_31) {
-    "use strict";
-    var __moduleName = context_31 && context_31.id;
-    var PIXI, board_3, factory_2, toolbar_1, actionbar_1, renderer_9, animator_4, keyboard_2, gearbit_5, SimulatorApp;
-    return {
-        setters: [
-            function (PIXI_8) {
-                PIXI = PIXI_8;
-            },
-            function (board_3_1) {
-                board_3 = board_3_1;
-            },
-            function (factory_2_1) {
-                factory_2 = factory_2_1;
-            },
-            function (toolbar_1_1) {
-                toolbar_1 = toolbar_1_1;
-            },
-            function (actionbar_1_1) {
-                actionbar_1 = actionbar_1_1;
-            },
-            function (renderer_9_1) {
-                renderer_9 = renderer_9_1;
-            },
-            function (animator_4_1) {
-                animator_4 = animator_4_1;
-            },
-            function (keyboard_2_1) {
-                keyboard_2 = keyboard_2_1;
-            },
-            function (gearbit_5_1) {
-                gearbit_5 = gearbit_5_1;
-            }
-        ],
-        execute: function () {
-            SimulatorApp = class SimulatorApp extends PIXI.Container {
-                constructor(textures) {
-                    super();
-                    this.textures = textures;
-                    this._width = 0;
-                    this._height = 0;
-                    this.partFactory = new factory_2.PartFactory(textures);
-                    this.board = new board_3.Board(this.partFactory);
-                    this.toolbar = new toolbar_1.Toolbar(this.board);
-                    this.toolbar.width = 64;
-                    this.actionbar = new actionbar_1.Actionbar(this.board);
-                    this.actionbar.width = 64;
-                    this.actionbar.peer = this.toolbar;
-                    this.toolbar.peer = this.actionbar;
-                    this.addChild(this.board.view);
-                    this.addChild(this.toolbar);
-                    this.addChild(this.actionbar);
-                    this._layout();
-                    // add event listeners
-                    this._addKeyHandlers();
-                }
-                update(delta) {
-                    animator_4.Animator.current.update(delta);
-                    this.board.update(delta);
-                    gearbit_5.GearBase.update();
-                    renderer_9.Renderer.render();
-                }
-                get width() { return (this._width); }
-                set width(v) {
-                    if (v === this._width)
-                        return;
-                    this._width = v;
-                    this._layout();
-                }
-                get height() { return (this._height); }
-                set height(v) {
-                    if (v === this._height)
-                        return;
-                    this._height = v;
-                    this._layout();
-                }
-                _layout() {
-                    this.toolbar.height = this.height;
-                    this.actionbar.height = this.height;
-                    this.actionbar.x = this.width - this.actionbar.width;
-                    this.board.view.x = this.toolbar.width;
-                    this.board.width = Math.max(0, this.width - (this.toolbar.width + this.actionbar.width));
-                    this.board.height = this.height;
-                    renderer_9.Renderer.needsUpdate();
-                }
-                _addKeyHandlers() {
-                    keyboard_2.makeKeyHandler('w').press = () => {
-                        this.board.physicalRouter.showWireframe =
-                            !this.board.physicalRouter.showWireframe;
-                    };
-                }
-            };
-            exports_31("SimulatorApp", SimulatorApp);
-        }
-    };
-});
-System.register("board/builder", ["parts/fence"], function (exports_32, context_32) {
-    "use strict";
-    var __moduleName = context_32 && context_32.id;
     var fence_5, BoardBuilder;
     return {
         setters: [
@@ -5687,8 +5392,8 @@ System.register("board/builder", ["parts/fence"], function (exports_32, context_
                     const maxModulus = Math.ceil(center / steps);
                     const height = collectLevel + steps + 4;
                     board.bulkUpdate = true;
-                    board.clear(false);
-                    board.setSize(width, height, true);
+                    board.setSize(width, height, false);
+                    board.clear(true);
                     // block out unreachable locations at the top
                     const blank = board.partFactory.make(0 /* BLANK */);
                     blank.isLocked = true;
@@ -5792,14 +5497,403 @@ System.register("board/builder", ["parts/fence"], function (exports_32, context_
                     board.bulkUpdate = false;
                 }
             };
-            exports_32("BoardBuilder", BoardBuilder);
+            exports_30("BoardBuilder", BoardBuilder);
+        }
+    };
+});
+System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/config", "renderer", "board/serializer", "ui/animator", "board/builder"], function (exports_31, context_31) {
+    "use strict";
+    var __moduleName = context_31 && context_31.id;
+    var PIXI, board_2, button_2, config_4, renderer_8, serializer_1, animator_4, builder_1, Actionbar, BoardDrawer;
+    return {
+        setters: [
+            function (PIXI_7) {
+                PIXI = PIXI_7;
+            },
+            function (board_2_1) {
+                board_2 = board_2_1;
+            },
+            function (button_2_1) {
+                button_2 = button_2_1;
+            },
+            function (config_4_1) {
+                config_4 = config_4_1;
+            },
+            function (renderer_8_1) {
+                renderer_8 = renderer_8_1;
+            },
+            function (serializer_1_1) {
+                serializer_1 = serializer_1_1;
+            },
+            function (animator_4_1) {
+                animator_4 = animator_4_1;
+            },
+            function (builder_1_1) {
+                builder_1 = builder_1_1;
+            }
+        ],
+        execute: function () {
+            Actionbar = class Actionbar extends button_2.ButtonBar {
+                constructor(board) {
+                    super();
+                    this.board = board;
+                    // add the drawer behind the background
+                    this._drawer = new BoardDrawer(this.board);
+                    this._drawer.peer = this;
+                    this.addChildAt(this._drawer, 0);
+                    this._drawer.visible = false;
+                    // add a button to show and hide extra board operations
+                    this._drawerButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['board-drawer']));
+                    this.addButton(this._drawerButton);
+                    // add a button to toggle schematic view
+                    this._schematicButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['schematic']));
+                    this.addButton(this._schematicButton);
+                    // add zoom controls
+                    this._zoomInButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['zoomin']));
+                    this.addButton(this._zoomInButton);
+                    this._zoomOutButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['zoomout']));
+                    this.addButton(this._zoomOutButton);
+                    this._zoomToFitButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['zoomtofit']));
+                    this.addButton(this._zoomToFitButton);
+                    // add speed controls
+                    this._fasterButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['faster']));
+                    this.addButton(this._fasterButton);
+                    this._slowerButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['slower']));
+                    this.addButton(this._slowerButton);
+                    // add a ball return
+                    this._returnButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['return']));
+                    this.addButton(this._returnButton);
+                    // add more top buttons here...
+                    // add a link to the Turing Tumble website
+                    this._githubButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['octocat']));
+                    this.addButton(this._githubButton);
+                    this._heartButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['heart']));
+                    this.addButton(this._heartButton);
+                    this.bottomCount = 2;
+                    this.updateToggled();
+                    // zoom on wheel events
+                    document.addEventListener('wheel', (e) => {
+                        if (e.wheelDelta > 0)
+                            this.zoomIn();
+                        else if (e.wheelDelta < 0)
+                            this.zoomOut();
+                        e.preventDefault();
+                    });
+                }
+                onButtonClick(button) {
+                    if (button === this._schematicButton) {
+                        this.board.schematic = !this.board.schematicView;
+                        this.updateToggled();
+                        if (this.peer)
+                            this.peer.updateToggled();
+                    }
+                    else if (button === this._zoomInButton) {
+                        this.zoomIn();
+                        if (this.peer)
+                            this.peer.updateToggled();
+                    }
+                    else if (button === this._zoomOutButton) {
+                        this.zoomOut();
+                        if (this.peer)
+                            this.peer.updateToggled();
+                    }
+                    else if (button === this._zoomToFitButton) {
+                        this.zoomToFit();
+                        if (this.peer)
+                            this.peer.updateToggled();
+                    }
+                    else if (button === this._fasterButton) {
+                        this.goFaster();
+                    }
+                    else if (button === this._slowerButton) {
+                        this.goSlower();
+                    }
+                    else if (button === this._returnButton) {
+                        this.board.returnBalls();
+                    }
+                    else if (button === this._drawerButton)
+                        this.toggleDrawer();
+                    else if (button === this._githubButton) {
+                        let m = window.location.host.match(new RegExp('^([^.]+)[.]github[.]io'));
+                        const user = m ? m[1] : 'jessecrossen';
+                        m = window.location.pathname.match(new RegExp('/*([^/?#]+)'));
+                        const repo = m ? m[1] : 'ttsim';
+                        window.open('https://github.com/' + user + '/' + repo + '/', '_blank');
+                    }
+                    else if (button === this._heartButton) {
+                        window.open('https://www.turingtumble.com/', '_blank');
+                    }
+                }
+                updateToggled() {
+                    // update button toggle states
+                    for (const button of this._buttons) {
+                        if (button === this._schematicButton) {
+                            button.isToggled = this.board.schematic;
+                        }
+                        else if (button === this._zoomInButton) {
+                            button.isEnabled = this.canZoomIn;
+                        }
+                        else if (button === this._zoomOutButton) {
+                            button.isEnabled = this.canZoomOut;
+                        }
+                        else if (button === this._fasterButton) {
+                            button.isEnabled = this.canGoFaster;
+                        }
+                        else if (button === this._slowerButton) {
+                            button.isEnabled = this.canGoSlower;
+                        }
+                        else if (button === this._drawerButton) {
+                            button.isToggled = this._drawer.visible;
+                        }
+                    }
+                    renderer_8.Renderer.needsUpdate();
+                }
+                // SPEED CONTROL ************************************************************
+                get canGoFaster() {
+                    return (this.speedIndex < config_4.Speeds.length - 1);
+                }
+                get canGoSlower() {
+                    return (this.speedIndex > 0);
+                }
+                goFaster() {
+                    this.speedIndex++;
+                }
+                goSlower() {
+                    this.speedIndex--;
+                }
+                get speedIndex() {
+                    return (config_4.Speeds.indexOf(this.board.speed));
+                }
+                set speedIndex(i) {
+                    if ((i >= 0) && (i < config_4.Speeds.length))
+                        this.board.speed = config_4.Speeds[i];
+                    this.updateToggled();
+                }
+                // ZOOMING ******************************************************************
+                get canZoomIn() {
+                    return (this.zoomIndex < config_4.Zooms.length - 1);
+                }
+                get canZoomOut() {
+                    return (this.zoomIndex > 0);
+                }
+                zoomIn() {
+                    if (!this.canZoomIn)
+                        return;
+                    this.board.partSize = config_4.Zooms[this.zoomIndex + 1];
+                    this.updateToggled();
+                }
+                zoomOut() {
+                    if (!this.canZoomOut)
+                        return;
+                    this.board.partSize = config_4.Zooms[this.zoomIndex - 1];
+                    this.updateToggled();
+                }
+                // zoom to fit the board
+                zoomToFit() {
+                    this.board.centerColumn = (this.board.columnCount - 1) / 2;
+                    this.board.centerRow = (this.board.rowCount - 1) / 2;
+                    let s = config_4.Zooms[0];
+                    for (let i = config_4.Zooms.length - 1; i >= 0; i--) {
+                        s = config_4.Zooms[i];
+                        const w = this.board.columnCount * Math.floor(s * board_2.SPACING_FACTOR);
+                        const h = this.board.rowCount * Math.floor(s * board_2.SPACING_FACTOR);
+                        if ((w <= this.board.width) && (h <= this.board.height))
+                            break;
+                    }
+                    this.board.partSize = s;
+                    this.updateToggled();
+                }
+                get zoomIndex() {
+                    return (config_4.Zooms.indexOf(this.board.partSize));
+                }
+                // DRAWER *******************************************************************
+                _layout() {
+                    super._layout();
+                    if (this._drawer) {
+                        this._drawer.width = this.width;
+                        this._drawer.height = this.height;
+                        this._drawer.x = this._drawer.visible ? -this.width : 0;
+                    }
+                }
+                toggleDrawer() {
+                    if (!this._drawer.visible) {
+                        this._drawerButton.scale.x = -Math.abs(this._drawerButton.scale.x);
+                        this._drawer.visible = true;
+                        this._drawer.x = 0;
+                        animator_4.Animator.current.animate(this._drawer, 'x', 0, -this.width, 0.1 /* SHOW_CONTROL */);
+                        this.updateToggled();
+                    }
+                    else {
+                        this._drawerButton.scale.x = Math.abs(this._drawerButton.scale.x);
+                        animator_4.Animator.current.animate(this._drawer, 'x', -this.width, 0, 0.25 /* HIDE_CONTROL */, () => {
+                            this._drawer.visible = false;
+                            this.updateToggled();
+                        });
+                    }
+                }
+            };
+            exports_31("Actionbar", Actionbar);
+            BoardDrawer = class BoardDrawer extends button_2.ButtonBar {
+                constructor(board) {
+                    super();
+                    this.board = board;
+                    // add standard boards in several sizes
+                    this._smallButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['board-small']));
+                    this.addButton(this._smallButton);
+                    this._mediumButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['board-medium']));
+                    this.addButton(this._mediumButton);
+                    this._largeButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['board-large']));
+                    this.addButton(this._largeButton);
+                    // add a button to clear the board
+                    this._clearButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['board-clear']));
+                    this.addButton(this._clearButton);
+                    // add upload download actions
+                    this._downloadButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['download']));
+                    this.addButton(this._downloadButton);
+                    this._uploadButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['upload']));
+                    this.addButton(this._uploadButton);
+                }
+                onButtonClick(button) {
+                    if (button === this._smallButton) {
+                        builder_1.BoardBuilder.initStandardBoard(this.board, 5, 11);
+                        this.zoomToFit();
+                    }
+                    else if (button === this._mediumButton) {
+                        builder_1.BoardBuilder.initStandardBoard(this.board, 7, 15);
+                        this.zoomToFit();
+                    }
+                    else if (button === this._largeButton) {
+                        builder_1.BoardBuilder.initStandardBoard(this.board, 9, 19);
+                        this.zoomToFit();
+                    }
+                    else if (button === this._clearButton) {
+                        this.board.clear();
+                        this.zoomToFit();
+                    }
+                    else if (button === this._downloadButton) {
+                        if (this.board.serializer instanceof serializer_1.URLBoardSerializer) {
+                            this.board.serializer.download();
+                        }
+                    }
+                    else if (button === this._uploadButton) {
+                        if (this.board.serializer instanceof serializer_1.URLBoardSerializer) {
+                            this.board.serializer.upload((restored) => {
+                                if (restored)
+                                    this.zoomToFit();
+                            });
+                        }
+                    }
+                }
+                zoomToFit() {
+                    if (this.peer instanceof Actionbar)
+                        this.peer.zoomToFit();
+                }
+                updateToggled() { }
+            };
+            exports_31("BoardDrawer", BoardDrawer);
+        }
+    };
+});
+System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar", "ui/actionbar", "renderer", "ui/animator", "ui/keyboard", "parts/gearbit"], function (exports_32, context_32) {
+    "use strict";
+    var __moduleName = context_32 && context_32.id;
+    var PIXI, board_3, factory_2, toolbar_1, actionbar_1, renderer_9, animator_5, keyboard_2, gearbit_5, SimulatorApp;
+    return {
+        setters: [
+            function (PIXI_8) {
+                PIXI = PIXI_8;
+            },
+            function (board_3_1) {
+                board_3 = board_3_1;
+            },
+            function (factory_2_1) {
+                factory_2 = factory_2_1;
+            },
+            function (toolbar_1_1) {
+                toolbar_1 = toolbar_1_1;
+            },
+            function (actionbar_1_1) {
+                actionbar_1 = actionbar_1_1;
+            },
+            function (renderer_9_1) {
+                renderer_9 = renderer_9_1;
+            },
+            function (animator_5_1) {
+                animator_5 = animator_5_1;
+            },
+            function (keyboard_2_1) {
+                keyboard_2 = keyboard_2_1;
+            },
+            function (gearbit_5_1) {
+                gearbit_5 = gearbit_5_1;
+            }
+        ],
+        execute: function () {
+            SimulatorApp = class SimulatorApp extends PIXI.Container {
+                constructor(textures) {
+                    super();
+                    this.textures = textures;
+                    this._width = 0;
+                    this._height = 0;
+                    this.partFactory = new factory_2.PartFactory(textures);
+                    this.board = new board_3.Board(this.partFactory);
+                    this.toolbar = new toolbar_1.Toolbar(this.board);
+                    this.toolbar.width = 64;
+                    this.actionbar = new actionbar_1.Actionbar(this.board);
+                    this.actionbar.width = 64;
+                    this.actionbar.peer = this.toolbar;
+                    this.toolbar.peer = this.actionbar;
+                    this.addChild(this.board.view);
+                    this.addChild(this.toolbar);
+                    this.addChild(this.actionbar);
+                    this._layout();
+                    // add event listeners
+                    this._addKeyHandlers();
+                }
+                update(delta) {
+                    animator_5.Animator.current.update(delta);
+                    this.board.update(delta);
+                    gearbit_5.GearBase.update();
+                    renderer_9.Renderer.render();
+                }
+                get width() { return (this._width); }
+                set width(v) {
+                    if (v === this._width)
+                        return;
+                    this._width = v;
+                    this._layout();
+                }
+                get height() { return (this._height); }
+                set height(v) {
+                    if (v === this._height)
+                        return;
+                    this._height = v;
+                    this._layout();
+                }
+                _layout() {
+                    this.toolbar.height = this.height;
+                    this.actionbar.height = this.height;
+                    this.actionbar.x = this.width - this.actionbar.width;
+                    this.board.view.x = this.toolbar.width;
+                    this.board.width = Math.max(0, this.width - (this.toolbar.width + this.actionbar.width));
+                    this.board.height = this.height;
+                    renderer_9.Renderer.needsUpdate();
+                }
+                _addKeyHandlers() {
+                    keyboard_2.makeKeyHandler('w').press = () => {
+                        this.board.physicalRouter.showWireframe =
+                            !this.board.physicalRouter.showWireframe;
+                    };
+                }
+            };
+            exports_32("SimulatorApp", SimulatorApp);
         }
     };
 });
 System.register("index", ["pixi.js", "app", "renderer", "board/builder", "board/serializer"], function (exports_33, context_33) {
     "use strict";
     var __moduleName = context_33 && context_33.id;
-    var PIXI, app_1, renderer_10, builder_1, serializer_2, sim, container, resizeApp, loader;
+    var PIXI, app_1, renderer_10, builder_2, serializer_2, sim, container, resizeApp, loader;
     return {
         setters: [
             function (PIXI_9) {
@@ -5811,8 +5905,8 @@ System.register("index", ["pixi.js", "app", "renderer", "board/builder", "board/
             function (renderer_10_1) {
                 renderer_10 = renderer_10_1;
             },
-            function (builder_1_1) {
-                builder_1 = builder_1_1;
+            function (builder_2_1) {
+                builder_2 = builder_2_1;
             },
             function (serializer_2_1) {
                 serializer_2 = serializer_2_1;
@@ -5847,7 +5941,7 @@ System.register("index", ["pixi.js", "app", "renderer", "board/builder", "board/
                     renderer_10.Renderer.stage.addChild(sim);
                     // set up the standard board if there was no state
                     if (!restored) {
-                        builder_1.BoardBuilder.initStandardBoard(sim.board);
+                        builder_2.BoardBuilder.initStandardBoard(sim.board);
                         sim.actionbar.zoomToFit();
                     }
                     // remove the loading animation

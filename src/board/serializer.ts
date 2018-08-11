@@ -285,7 +285,7 @@ export class URLBoardSerializer implements IBoardSerializer {
     let flip:boolean = (part) && ((part.canFlip && part.isFlipped) ||
                                   (part.canRotate && part.bitValue));
     // select a color for the part
-    switch(part.type) {
+    if (part) switch(part.type) {
       // leave both types of locations white so we don't get a checker pattern 
       //  in the image, which makes editing harder
       case PartType.PARTLOC: // fall-through

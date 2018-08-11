@@ -2,14 +2,25 @@ import * as PIXI from 'pixi.js';
 
 import { Board, ToolType, SPACING_FACTOR } from 'board/board';
 import { Button, PartButton, SpriteButton, ButtonBar } from './button';
-import { Zooms, Speeds } from './config';
+import { Zooms, Speeds, Delays } from './config';
 import { Renderer } from 'renderer';
 import { URLBoardSerializer } from 'board/serializer';
+import { Animator } from './animator';
+import { BoardBuilder } from 'board/builder';
 
 export class Actionbar extends ButtonBar {
 
   constructor(public readonly board:Board) {
     super();
+    // add the drawer behind the background
+    this._drawer = new BoardDrawer(this.board);
+    this._drawer.peer = this;
+    this.addChildAt(this._drawer, 0);
+    this._drawer.visible = false;
+    // add a button to show and hide extra board operations
+    this._drawerButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['board-drawer']));
+    this.addButton(this._drawerButton);
     // add a button to toggle schematic view
     this._schematicButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['schematic']));
@@ -24,29 +35,28 @@ export class Actionbar extends ButtonBar {
     this._zoomToFitButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['zoomtofit']));
     this.addButton(this._zoomToFitButton);
+    // add speed controls
     this._fasterButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['faster']));
     this.addButton(this._fasterButton);
     this._slowerButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['slower']));
     this.addButton(this._slowerButton);
+    // add a ball return
     this._returnButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['return']));
     this.addButton(this._returnButton);
-    this._downloadButton = new SpriteButton(
-      new PIXI.Sprite(board.partFactory.textures['download']));
-    this.addButton(this._downloadButton);
-    this._uploadButton = new SpriteButton(
-      new PIXI.Sprite(board.partFactory.textures['upload']));
-    this.addButton(this._uploadButton);
 
     // add more top buttons here...
     
     // add a link to the Turing Tumble website
+    this._githubButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['octocat']));
+    this.addButton(this._githubButton);
     this._heartButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['heart']));
     this.addButton(this._heartButton);
-    this.bottomCount = 1;
+    this.bottomCount = 2;
     this.updateToggled();
     // zoom on wheel events
     document.addEventListener('wheel', (e:WheelEvent) => {
@@ -62,9 +72,10 @@ export class Actionbar extends ButtonBar {
   private _fasterButton:Button;
   private _slowerButton:Button;
   private _returnButton:Button;
+  private _githubButton:Button;
   private _heartButton:Button;
-  private _downloadButton:Button;
-  private _uploadButton:Button;
+  private _drawerButton:Button;
+  private _drawer:BoardDrawer;
 
   protected onButtonClick(button:Button):void {
     if (button === this._schematicButton) {
@@ -87,17 +98,13 @@ export class Actionbar extends ButtonBar {
     else if (button === this._fasterButton) { this.goFaster(); }
     else if (button === this._slowerButton) { this.goSlower(); }
     else if (button === this._returnButton) { this.board.returnBalls(); }
-    else if (button === this._downloadButton) {
-      if (this.board.serializer instanceof URLBoardSerializer) {
-        this.board.serializer.download();
-      }
-    }
-    else if (button === this._uploadButton) {
-      if (this.board.serializer instanceof URLBoardSerializer) {
-        this.board.serializer.upload((restored:boolean) => {
-          if (restored) this.zoomToFit();
-        });
-      }
+    else if (button === this._drawerButton) this.toggleDrawer();
+    else if (button === this._githubButton) {
+      let m = window.location.host.match(new RegExp('^([^.]+)[.]github[.]io'));
+      const user = m ? m[1] : 'jessecrossen';
+      m = window.location.pathname.match(new RegExp('/*([^/?#]+)'));
+      const repo = m ? m[1] : 'ttsim';
+      window.open('https://github.com/'+user+'/'+repo+'/', '_blank');
     }
     else if (button === this._heartButton) {
       window.open('https://www.turingtumble.com/', '_blank');
@@ -110,23 +117,20 @@ export class Actionbar extends ButtonBar {
       if (button === this._schematicButton) {
         button.isToggled = this.board.schematic;
       }
-      else if (button == this._zoomInButton) {
+      else if (button === this._zoomInButton) {
         button.isEnabled = this.canZoomIn;
       }
-      else if (button == this._zoomOutButton) {
+      else if (button === this._zoomOutButton) {
         button.isEnabled = this.canZoomOut;
       }
-      else if (button == this._fasterButton) {
+      else if (button === this._fasterButton) {
         button.isEnabled = this.canGoFaster;
       }
-      else if (button == this._slowerButton) {
+      else if (button === this._slowerButton) {
         button.isEnabled = this.canGoSlower;
       }
-      else if (button instanceof PartButton) {
-        button.isToggled = ((this.board.tool === ToolType.PART) && 
-                            (this.board.partPrototype) &&
-                            (button.part.type === this.board.partPrototype.type));
-        button.schematic = this.board.schematicView;
+      else if (button === this._drawerButton) {
+        button.isToggled = this._drawer.visible;
       }
     }
     Renderer.needsUpdate();
@@ -196,5 +200,107 @@ export class Actionbar extends ButtonBar {
   protected get zoomIndex():number {
     return(Zooms.indexOf(this.board.partSize));
   }
+
+  // DRAWER *******************************************************************
+
+  protected _layout():void {
+    super._layout();
+    if (this._drawer) {
+      this._drawer.width = this.width;
+      this._drawer.height = this.height;
+      this._drawer.x = this._drawer.visible ? - this.width : 0;
+    }
+  }
+
+  public toggleDrawer():void {
+    if (! this._drawer.visible) {
+      this._drawerButton.scale.x = - Math.abs(this._drawerButton.scale.x);
+      this._drawer.visible = true;
+      this._drawer.x = 0;
+      Animator.current.animate(this._drawer, 'x', 0, -this.width, 
+        Delays.SHOW_CONTROL);
+      this.updateToggled();
+    }
+    else {
+      this._drawerButton.scale.x = Math.abs(this._drawerButton.scale.x);
+      Animator.current.animate(this._drawer, 'x', -this.width, 0,
+        Delays.HIDE_CONTROL, () => {
+          this._drawer.visible = false;
+          this.updateToggled();
+        });
+    }
+  }
+
+}
+
+export class BoardDrawer extends ButtonBar {
+
+  constructor(public readonly board:Board) {
+    super();
+    // add standard boards in several sizes
+    this._smallButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['board-small']));
+    this.addButton(this._smallButton);
+    this._mediumButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['board-medium']));
+    this.addButton(this._mediumButton);
+    this._largeButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['board-large']));
+    this.addButton(this._largeButton);
+    // add a button to clear the board
+    this._clearButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['board-clear']));
+    this.addButton(this._clearButton);
+    // add upload download actions
+    this._downloadButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['download']));
+    this.addButton(this._downloadButton);
+    this._uploadButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['upload']));
+    this.addButton(this._uploadButton);
+  }
+  private _smallButton:Button;
+  private _mediumButton:Button;
+  private _largeButton:Button;
+  private _clearButton:Button;
+  private _downloadButton:Button;
+  private _uploadButton:Button;
+
+  protected onButtonClick(button:Button):void {
+    if (button === this._smallButton) {
+      BoardBuilder.initStandardBoard(this.board, 5, 11);
+      this.zoomToFit();
+    }
+    else if (button === this._mediumButton) {
+      BoardBuilder.initStandardBoard(this.board, 7, 15);
+      this.zoomToFit();
+    }
+    else if (button === this._largeButton) {
+      BoardBuilder.initStandardBoard(this.board, 9, 19);
+      this.zoomToFit();
+    }
+    else if (button === this._clearButton) {
+      this.board.clear();
+      this.zoomToFit();
+    }
+    else if (button === this._downloadButton) {
+      if (this.board.serializer instanceof URLBoardSerializer) {
+        this.board.serializer.download();
+      }
+    }
+    else if (button === this._uploadButton) {
+      if (this.board.serializer instanceof URLBoardSerializer) {
+        this.board.serializer.upload((restored:boolean) => {
+          if (restored) this.zoomToFit();
+        });
+      }
+    }
+  }
+
+  protected zoomToFit():void {
+    if (this.peer instanceof Actionbar) this.peer.zoomToFit();
+  }
+
+  public updateToggled():void { }
 
 }

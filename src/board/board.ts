@@ -151,11 +151,12 @@ export class Board {
     // make a list of parts we should be showing at this time
     const visible:Set<Part> = new Set();
     // add parts from the grid
-    let c:number, r:number, row:Part[];
+    let c:number, r:number, row:Part[], part:Part;
     for (r = rMinGrid; r < rMaxGrid; r++) {
       row = this._grid[r];
       for (c = cMinGrid; c < cMaxGrid; c++) {
-        visible.add(row[c]);
+        part = row[c];
+        if (part) visible.add(part);
       }
     }
     // add balls
@@ -697,10 +698,11 @@ export class Board {
     const oldBulkUpdate = this.bulkUpdate;
     this.bulkUpdate = true;
     // remove parts
+    let part:Part;
     for (let r:number = 0; r < this.rowCount; r++) {
       for (let c:number = 0; c < this.columnCount; c++) {
-        if (addBackground) this.clearPart(c, r);
-        else this.setPart(null, c, r);
+        part = addBackground ? this.makeBackgroundPart(c, r) : null;
+        this.setPart(part, c, r);
       }
     }
     // remove balls
@@ -1193,6 +1195,7 @@ export class Board {
     let changed:boolean = false;
     for (const row of this._grid) {
       for (const part of row) {
+        if (! part) continue;
         if ((part.type !== PartType.BIT) && 
             (part.type !== PartType.GEARBIT)) continue;
         if (this._bitState.get(part) !== part.bitValue) {

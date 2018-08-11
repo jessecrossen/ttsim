@@ -18,8 +18,8 @@ export class BoardBuilder {
     const maxModulus:number = Math.ceil(center / steps);
     const height:number = collectLevel + steps + 4;
     board.bulkUpdate = true;
-    board.clear(false);
-    board.setSize(width, height, true);
+    board.setSize(width, height, false);
+    board.clear(true);
     // block out unreachable locations at the top
     const blank = board.partFactory.make(PartType.BLANK);
     blank.isLocked = true;

@@ -186,7 +186,7 @@ export class PhysicalBallRouter implements IBallRouter {
 
   private _updateWalls():void {
     const w:number = ((this.board.columnCount + 3) * SPACING);
-    const h:number = ((this.board.rowCount + 3) * SPACING);
+    const h:number = ((this.board.rowCount + 5) * SPACING);
     const hw:number = (w - this._wallThickness) / 2;
     const hh:number = (h + this._wallThickness) / 2;
     const cx:number = ((this.board.columnCount - 1) / 2) * SPACING;

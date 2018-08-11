@@ -102,10 +102,8 @@ export class BoardBuilder {
     redDrop.hue = 0;
     redDrop.isLocked = true;
     // add balls
-    for (let i:number = 0; i < 8; i++) {
-      board.addBallToDrop(blueDrop);
-      board.addBallToDrop(redDrop);
-    }
+    board.setDropBallCount(blueDrop, 8);
+    board.setDropBallCount(redDrop, 8);
     // make turnstiles
     const blueTurnstile = board.partFactory.make(PartType.TURNSTILE);
     blueTurnstile.isLocked = true;

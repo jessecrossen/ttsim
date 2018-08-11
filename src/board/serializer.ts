@@ -183,9 +183,7 @@ export class URLBoardSerializer implements IBoardSerializer {
         const drop = drops.shift();
         if (drop) {
           drop.hue = Math.round(params[0]);
-          for (let i:number = 0; i < params[1]; i++) {
-            this.board.addBallToDrop(drop);
-          }
+          this.board.setDropBallCount(drop, Math.floor(params[1]));
         }
       }
     }

@@ -2152,7 +2152,7 @@ System.register("board/physics", ["pixi.js", "matter-js", "renderer", "parts/gea
                 }
                 _updateWalls() {
                     const w = ((this.board.columnCount + 3) * constants_2.SPACING);
-                    const h = ((this.board.rowCount + 3) * constants_2.SPACING);
+                    const h = ((this.board.rowCount + 5) * constants_2.SPACING);
                     const hw = (w - this._wallThickness) / 2;
                     const hh = (h + this._wallThickness) / 2;
                     const cx = ((this.board.columnCount - 1) / 2) * constants_2.SPACING;
@@ -2902,9 +2902,7 @@ System.register("board/serializer", ["parts/drop"], function (exports_24, contex
                             const drop = drops.shift();
                             if (drop) {
                                 drop.hue = Math.round(params[0]);
-                                for (let i = 0; i < params[1]; i++) {
-                                    this.board.addBallToDrop(drop);
-                                }
+                                this.board.setDropBallCount(drop, Math.floor(params[1]));
                             }
                         }
                     }
@@ -4301,7 +4299,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         this.onChange();
                     }
                 }
-                // add a ball to the given drop
+                // add a ball to the given drop without returning all balls to it
                 addBallToDrop(drop) {
                     // get the highest ball associated with the drop
                     let topBall;
@@ -4321,24 +4319,79 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     }
                     this.addBall(this.partFactory.make(9 /* BALL */), c, Math.max(-0.5, r));
                 }
-                // return all balls to their appropriate drops
-                returnBalls() {
-                    const addCounts = new Map();
-                    const radius = constants_4.BALL_RADIUS / constants_4.SPACING;
-                    for (const ball of this.balls) {
-                        if (!ball.drop)
-                            this.removeBall(ball);
-                        else if (ball.row > ball.drop.row + (0.5 - radius)) {
-                            this.removeBall(ball);
-                            if (!addCounts.has(ball.drop))
-                                addCounts.set(ball.drop, 0);
-                            addCounts.set(ball.drop, addCounts.get(ball.drop) + 1);
+                // fill the drop with the given number of balls, adjusting its total count
+                setDropBallCount(drop, count = drop.balls.size) {
+                    // turn off bulk updating so we can make sure slopes are configured properly
+                    const oldBulkUpdate = this.bulkUpdate;
+                    this.bulkUpdate = false;
+                    // remove all existing balls (we'll create new ones)
+                    for (const ball of drop.balls) {
+                        this.removeBall(ball);
+                    }
+                    // dividing each grid square into thirds, make a list of all open locations
+                    const spots = [];
+                    // find all grid locations that drain into the drop
+                    let part, x, y, t;
+                    for (let r = drop.row; r >= -1; r--) {
+                        for (let c = 0; c < this.columnCount; c++) {
+                            if (this.catchmentDrop(c, r) !== drop)
+                                continue;
+                            // add up to 9 locations for each grid unit
+                            part = this.getPart(c, r);
+                            t = part ? part.type : 0 /* BLANK */;
+                            if ((t == 0 /* BLANK */) || (t == 12 /* DROP */) ||
+                                (t == 10 /* SIDE */) || (t == 1 /* PARTLOC */) ||
+                                (t == 2 /* GEARLOC */)) {
+                                for (x = -1; x <= 1; x++) {
+                                    for (y = -1; y <= 1; y++) {
+                                        // leave room for the pins on part/gear locations
+                                        if ((x == 0) && (y == 0) && (!this.schematic) &&
+                                            ((t == 2 /* GEARLOC */) || (t == 1 /* PARTLOC */))) {
+                                            continue;
+                                        }
+                                        spots.push({ c: c + (x / 3), r: r + (y / 3) });
+                                    }
+                                }
+                            }
+                            else if (part instanceof fence_4.Slope) {
+                                const left = part.sequence / part.modulus;
+                                const right = (part.sequence + 1) / part.modulus;
+                                const sign = part.isFlipped ? -1 : 1;
+                                for (x = -1; x <= 1; x++) {
+                                    const bottom = ((right + left) / 2) +
+                                        ((x / 3) * sign * (right - left)) - 0.5 - (1 / 6);
+                                    for (y = -1; y <= 1; y++) {
+                                        if ((y / 3) > bottom)
+                                            continue;
+                                        spots.push({ c: c + (x / 3), r: r + (y / 3) });
+                                    }
+                                }
+                            }
                         }
                     }
-                    for (const [drop, count] of addCounts.entries()) {
-                        for (let i = 0; i < count; i++) {
-                            this.addBallToDrop(drop);
-                        }
+                    // sort all the spots from bottom to top and center to edge
+                    spots.sort((a, b) => {
+                        if (a.r > b.r)
+                            return (-1);
+                        if (a.r < b.r)
+                            return (1);
+                        if (Math.abs(a.c - drop.column) < Math.abs(b.c - drop.column))
+                            return (-1);
+                        if (Math.abs(a.c - drop.column) > Math.abs(b.c - drop.column))
+                            return (1);
+                        return (0);
+                    });
+                    // place balls in the spots
+                    for (let i = 0; i < count; i++) {
+                        const spot = spots[i % spots.length]; // re-use spots if we run out
+                        this.addBall(this.partFactory.make(9 /* BALL */), spot.c, spot.r);
+                    }
+                    this.bulkUpdate = oldBulkUpdate;
+                }
+                // return all balls to their appropriate drops
+                returnBalls() {
+                    for (const drop of this.drops) {
+                        this.setDropBallCount(drop);
                     }
                 }
                 // get the ball under the given point in fractional column/row units
@@ -4363,7 +4416,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                 //  location, or null if it won't definitely reach one
                 catchmentDrop(c, r) {
                     c = Math.round(c);
-                    r = Math.round(r);
+                    r = Math.max(0, Math.round(r));
                     let lc = c; // the last column the ball was in
                     while ((r < this.rowCount) && (c >= 0) && (c < this.columnCount)) {
                         const p = this.getPart(c, r);
@@ -4834,7 +4887,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         cursor = 'all-scroll';
                     }
                     else if ((this.tool == 1 /* PART */) && (this.partPrototype) &&
-                        (this.canPlacePart(this.partPrototype.type, column, row))) {
+                        ((this.canPlacePart(this.partPrototype.type, column, row)) ||
+                            ((row == -1) && (column >= 0) && (column < this.columnCount)))) {
                         this._action = this.partPrototype.type == 9 /* BALL */ ?
                             2 /* PLACE_BALL */ : 1 /* PLACE_PART */;
                         cursor = 'pointer';
@@ -5482,10 +5536,8 @@ System.register("board/builder", ["parts/fence"], function (exports_30, context_
                     redDrop.hue = 0;
                     redDrop.isLocked = true;
                     // add balls
-                    for (let i = 0; i < 8; i++) {
-                        board.addBallToDrop(blueDrop);
-                        board.addBallToDrop(redDrop);
-                    }
+                    board.setDropBallCount(blueDrop, 8);
+                    board.setDropBallCount(redDrop, 8);
                     // make turnstiles
                     const blueTurnstile = board.partFactory.make(13 /* TURNSTILE */);
                     blueTurnstile.isLocked = true;

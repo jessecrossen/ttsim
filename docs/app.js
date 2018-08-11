@@ -1364,7 +1364,7 @@ System.register("board/constants", [], function (exports_18, context_18) {
             exports_18("BIAS_STIFFNESS", BIAS_STIFFNESS = BALL_DENSITY / 16);
             exports_18("BIT_BIAS_STIFFNESS", BIT_BIAS_STIFFNESS = BALL_DENSITY / 4);
             exports_18("BIAS_DAMPING", BIAS_DAMPING = 0.3);
-            exports_18("COUNTERWEIGHT_STIFFNESS", COUNTERWEIGHT_STIFFNESS = BALL_DENSITY / 32);
+            exports_18("COUNTERWEIGHT_STIFFNESS", COUNTERWEIGHT_STIFFNESS = BALL_DENSITY / 8);
             exports_18("COUNTERWEIGHT_DAMPING", COUNTERWEIGHT_DAMPING = 0.1);
             // collision filtering categories
             exports_18("PART_CATEGORY", PART_CATEGORY = 0x0001);
@@ -1410,7 +1410,7 @@ System.register("parts/partvertices", [], function (exports_20, context_20) {
             case 'PartLocation':
                 return ([[{ x: -0.015622, y: -4.546893 }, { x: 2.093748, y: -4.046862 }, { x: 4.046879, y: -2.046887 }, { x: 4.562501, y: 0.015639 }, { x: 4.031251, y: 2.062517 }, { x: 2.093748, y: 4.015626 }, { x: -0.015622, y: 4.468754 }, { x: -2.031251, y: 4.000017 }, { x: -4.015620, y: 2.015613 }, { x: -4.546871, y: -0.031265 }, { x: -4.031252, y: -2.031240 }, { x: -2.046872, y: -3.999996 }]]);
             case 'Ramp':
-                return ([[{ x: 13.000001, y: -13.999998 }, { x: -32.000005, y: -24.999972 }, { x: -34.000006, y: -29.999985 }, { x: -34.000006, y: -31.999997 }, { x: -32.000005, y: -32.999985 }, { x: 16.000001, y: -21.000023 }], [{ x: 16.000001, y: -21.000023 }, { x: 25.000001, y: -24.000023 }, { x: 30.000002, y: -21.000023 }, { x: 23.000000, y: -16.000011 }, { x: 14.000000, y: -16.000011 }], [{ x: 25.000001, y: -24.000023 }, { x: 27.759381, y: -30.974460 }, { x: 30.000002, y: -31.999997 }, { x: 33.000002, y: -30.000023 }, { x: 30.000002, y: -21.000023 }], [{ x: -15.999999, y: 10.999989 }, { x: -27.999999, y: 10.999989 }, { x: -33.000000, y: 18.000014 }, { x: -33.000000, y: 25.999988 }, { x: -27.999999, y: 33.000013 }, { x: -15.999999, y: 33.000013 }, { x: -10.999998, y: 25.999988 }, { x: -10.999998, y: 18.000014 }], [{ x: -17.000002, y: 12.000014 }, { x: -7.999998, y: 2.999976 }, { x: -4.999998, y: 5.999976 }, { x: -12.999999, y: 15.000014 }], [{ x: -4.000000, y: -7.000011 }, { x: -7.999998, y: -3.000024 }, { x: -7.999998, y: 1.999989 }, { x: -4.000000, y: 7.000001 }, { x: 8.999999, y: 13.999989 }, { x: 14.000000, y: 13.999989 }, { x: 14.000000, y: 9.000014 }, { x: 5.999999, y: -6.000023 }], [{ x: -4.000000, y: -17.999985 }, { x: 12.999997, y: -13.999998 }, { x: 5.999999, y: -6.000023 }, { x: -4.000000, y: -7.000011 }]]);
+                return ([[{ x: 13.000001, y: -13.999998 }, { x: -32.000005, y: -24.999972 }, { x: -34.000006, y: -29.999985 }, { x: -34.000006, y: -31.999997 }, { x: -32.000005, y: -32.999985 }, { x: 16.000001, y: -21.000023 }], [{ x: 16.000001, y: -21.000023 }, { x: 25.000001, y: -24.000023 }, { x: 30.000002, y: -21.000023 }, { x: 23.000000, y: -16.000011 }, { x: 14.000000, y: -16.000011 }], [{ x: 25.000001, y: -24.000023 }, { x: 27.759381, y: -30.974460 }, { x: 30.000002, y: -31.999997 }, { x: 33.000002, y: -30.000023 }, { x: 30.000002, y: -21.000023 }], [{ x: -8.000006, y: 3.000014 }, { x: -27.999999, y: 10.999989 }, { x: -33.000000, y: 18.000014 }, { x: -33.000000, y: 25.999988 }, { x: -27.000004, y: 33.000013 }, { x: -16.000007, y: 33.000013 }, { x: -11.000006, y: 25.000001 }, { x: -5.000006, y: 6.000014 }], [{ x: -4.000000, y: -7.000011 }, { x: -7.999998, y: -3.000024 }, { x: -7.999998, y: 1.999989 }, { x: -4.000000, y: 7.000001 }, { x: 8.999999, y: 13.999989 }, { x: 14.000000, y: 13.999989 }, { x: 14.000000, y: 9.000014 }, { x: 5.999999, y: -6.000023 }], [{ x: -4.000000, y: -17.999985 }, { x: 12.999997, y: -13.999998 }, { x: 5.999999, y: -6.000023 }, { x: -4.000000, y: -7.000011 }]]);
             case 'Side':
                 return ([[{ x: -37.000038, y: -34.000014 }, { x: -31.000038, y: -34.000014 }, { x: -31.000038, y: 33.999997 }, { x: -37.000038, y: 33.999997 }]]);
             case 'Slope-1':
@@ -1591,7 +1591,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                 }
                 _damperAnchorVector(flipped, counterweighted) {
                     return (counterweighted ?
-                        { x: flipped ? constants_1.DAMPER_RADIUS : -constants_1.DAMPER_RADIUS, y: 0 } :
+                        { x: (flipped ? constants_1.DAMPER_RADIUS : -constants_1.DAMPER_RADIUS), y: 0 } :
                         { x: 0, y: constants_1.DAMPER_RADIUS });
                 }
                 _makeDropGate() {
@@ -1614,6 +1614,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     this._biasDamper = clear(this._biasDamper);
                     this._dropGate = clear(this._dropGate);
                     this._body = clear(this._body);
+                    this._compositePosition.x = this._compositePosition.y = 0;
                 }
                 // transfer relevant properties to the body
                 updateBodyFromPart() {
@@ -1825,10 +1826,13 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     let mag = 1;
                     let sign = 0;
                     // ramps direct in a single direction
-                    if ((this._part.type == 3 /* RAMP */) &&
-                        (this._part.rotation < 0.25) &&
-                        (ball.row < this._part.row)) {
-                        sign = this._part.isFlipped ? -1 : 1;
+                    if (this._part.type == 3 /* RAMP */) {
+                        if ((this._part.rotation < 0.25) && (ball.row < this._part.row)) {
+                            sign = this._part.isFlipped ? -1 : 1;
+                        }
+                        if (body.velocity.y < 0) {
+                            matter_js_1.Body.setVelocity(body, { x: body.velocity.x, y: 0 });
+                        }
                     }
                     else if (this._part.type == 7 /* GEARBIT */) {
                         if (this._part.rotation < 0.25)

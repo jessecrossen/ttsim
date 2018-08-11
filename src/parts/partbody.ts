@@ -136,7 +136,7 @@ export class PartBody {
   }
   private _damperAnchorVector(flipped:boolean, counterweighted:boolean):Vector {
     return(counterweighted ?
-      { x: flipped ? DAMPER_RADIUS : - DAMPER_RADIUS, y: 0 } : 
+      { x: (flipped ? DAMPER_RADIUS : - DAMPER_RADIUS), y: 0 } : 
       { x: 0, y: DAMPER_RADIUS });
   }
   private _makeDropGate():void {
@@ -161,6 +161,7 @@ export class PartBody {
     this._biasDamper = clear(this._biasDamper);
     this._dropGate = clear(this._dropGate);
     this._body = clear(this._body);
+    this._compositePosition.x = this._compositePosition.y = 0;
   }
   private _counterweightDamper:Constraint;
   private _biasDamper:Constraint;
@@ -384,10 +385,13 @@ export class PartBody {
     let mag:number = 1;
     let sign:number = 0;
     // ramps direct in a single direction
-    if ((this._part.type == PartType.RAMP) &&
-        (this._part.rotation < 0.25) && 
-        (ball.row < this._part.row)) {
-      sign = this._part.isFlipped ? -1 : 1;
+    if (this._part.type == PartType.RAMP) {
+      if ((this._part.rotation < 0.25) && (ball.row < this._part.row)) {
+        sign = this._part.isFlipped ? -1 : 1;
+      }
+      if (body.velocity.y < 0) {
+        Body.setVelocity(body, { x: body.velocity.x, y: 0 });
+      }
     }
     // gearbits are basically like switchable ramps
     else if (this._part.type == PartType.GEARBIT) {

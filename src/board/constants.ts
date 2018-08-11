@@ -27,11 +27,10 @@ export const DAMPER_RADIUS:number = PART_SIZE / 2;
 export const BIAS_STIFFNESS:number = BALL_DENSITY / 16;
 export const BIT_BIAS_STIFFNESS:number = BALL_DENSITY / 4;
 export const BIAS_DAMPING:number = 0.3;
-export const COUNTERWEIGHT_STIFFNESS:number = BALL_DENSITY / 32;
+export const COUNTERWEIGHT_STIFFNESS:number = BALL_DENSITY / 8;
 export const COUNTERWEIGHT_DAMPING:number = 0.1;
 
 // collision filtering categories
-
 export const PART_CATEGORY:number            = 0x0001;
 export const UNRELEASED_BALL_CATEGORY:number = 0x0002;
 export const BALL_CATEGORY:number            = 0x0004;

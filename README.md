@@ -17,6 +17,19 @@ uses [GNU make](https://www.gnu.org/software/make/) as a build system. All the g
 and the vertices for the physics engine are generated from [InkScape](https://inkscape.org/) 
 SVG files.
 
+What's Next?
+============
+
+Here are some things I'd like to implement in the near future:
+
+- [ ] Support for touch events
+- [ ] Select one or more parts and cut/copy/paste/move them
+- [ ] Keyboard shortcuts
+- [ ] Undo/redo
+- [ ] Scale down toolbars if there's not enough vertical room for them
+- [ ] Add an action to remove all balls from the board
+- [ ] Allow toggling of whether parts are locked (for setting up challenges)
+
 Bugs
 ====
 

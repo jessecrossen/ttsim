@@ -49,14 +49,19 @@ export class Actionbar extends ButtonBar {
 
     // add more top buttons here...
     
-    // add a link to the Turing Tumble website
+    // add a link to documentation
+    this._helpButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['help']));
+    this.addButton(this._helpButton);
+    // add a link to the github repo
     this._githubButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['octocat']));
     this.addButton(this._githubButton);
+    // add a link to the Turing Tumble website
     this._heartButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['heart']));
     this.addButton(this._heartButton);
-    this.bottomCount = 2;
+    this.bottomCount = 3;
     this.updateToggled();
     // zoom on wheel events
     document.addEventListener('wheel', (e:WheelEvent) => {
@@ -72,6 +77,7 @@ export class Actionbar extends ButtonBar {
   private _fasterButton:Button;
   private _slowerButton:Button;
   private _returnButton:Button;
+  private _helpButton:Button;
   private _githubButton:Button;
   private _heartButton:Button;
   private _drawerButton:Button;
@@ -99,6 +105,9 @@ export class Actionbar extends ButtonBar {
     else if (button === this._slowerButton) { this.goSlower(); }
     else if (button === this._returnButton) { this.board.returnBalls(); }
     else if (button === this._drawerButton) this.toggleDrawer();
+    else if (button === this._helpButton) {
+      window.open('usage', '_blank');
+    }
     else if (button === this._githubButton) {
       let m = window.location.host.match(new RegExp('^([^.]+)[.]github[.]io'));
       const user = m ? m[1] : 'jessecrossen';
@@ -247,10 +256,13 @@ export class BoardDrawer extends ButtonBar {
     this._largeButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['board-large']));
     this.addButton(this._largeButton);
-    // add a button to clear the board
+    // add clear buttons
     this._clearButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['board-clear']));
     this.addButton(this._clearButton);
+    this._clearBallsButton = new SpriteButton(
+      new PIXI.Sprite(board.partFactory.textures['clear-balls']));
+    this.addButton(this._clearBallsButton);
     // add upload download actions
     this._downloadButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['download']));
@@ -265,6 +277,7 @@ export class BoardDrawer extends ButtonBar {
   private _clearButton:Button;
   private _downloadButton:Button;
   private _uploadButton:Button;
+  private _clearBallsButton:Button;
 
   protected onButtonClick(button:Button):void {
     if (button === this._smallButton) {
@@ -282,6 +295,9 @@ export class BoardDrawer extends ButtonBar {
     else if (button === this._clearButton) {
       this.board.clear();
       this.zoomToFit();
+    }
+    else if (button === this._clearBallsButton) {
+      this.board.clearBalls();
     }
     else if (button === this._downloadButton) {
       if (this.board.serializer instanceof URLBoardSerializer) {

@@ -4089,9 +4089,13 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         }
                     }
                     // remove balls
+                    this.clearBalls();
+                    this.bulkUpdate = oldBulkUpdate;
+                }
+                // remove balls from the board
+                clearBalls() {
                     for (const ball of this.balls)
                         this.removeBall(ball);
-                    this.bulkUpdate = oldBulkUpdate;
                 }
                 // whether a part can be placed at the given row and column
                 canPlacePart(type, column, row) {
@@ -5616,12 +5620,16 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     this._returnButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['return']));
                     this.addButton(this._returnButton);
                     // add more top buttons here...
-                    // add a link to the Turing Tumble website
+                    // add a link to documentation
+                    this._helpButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['help']));
+                    this.addButton(this._helpButton);
+                    // add a link to the github repo
                     this._githubButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['octocat']));
                     this.addButton(this._githubButton);
+                    // add a link to the Turing Tumble website
                     this._heartButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['heart']));
                     this.addButton(this._heartButton);
-                    this.bottomCount = 2;
+                    this.bottomCount = 3;
                     this.updateToggled();
                     // zoom on wheel events
                     document.addEventListener('wheel', (e) => {
@@ -5665,6 +5673,9 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     }
                     else if (button === this._drawerButton)
                         this.toggleDrawer();
+                    else if (button === this._helpButton) {
+                        window.open('usage', '_blank');
+                    }
                     else if (button === this._githubButton) {
                         let m = window.location.host.match(new RegExp('^([^.]+)[.]github[.]io'));
                         const user = m ? m[1] : 'jessecrossen';
@@ -5796,9 +5807,11 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     this.addButton(this._mediumButton);
                     this._largeButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['board-large']));
                     this.addButton(this._largeButton);
-                    // add a button to clear the board
+                    // add clear buttons
                     this._clearButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['board-clear']));
                     this.addButton(this._clearButton);
+                    this._clearBallsButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['clear-balls']));
+                    this.addButton(this._clearBallsButton);
                     // add upload download actions
                     this._downloadButton = new button_2.SpriteButton(new PIXI.Sprite(board.partFactory.textures['download']));
                     this.addButton(this._downloadButton);
@@ -5821,6 +5834,9 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     else if (button === this._clearButton) {
                         this.board.clear();
                         this.zoomToFit();
+                    }
+                    else if (button === this._clearBallsButton) {
+                        this.board.clearBalls();
                     }
                     else if (button === this._downloadButton) {
                         if (this.board.serializer instanceof serializer_1.URLBoardSerializer) {

@@ -706,8 +706,13 @@ export class Board {
       }
     }
     // remove balls
-    for (const ball of this.balls) this.removeBall(ball);
+    this.clearBalls();
     this.bulkUpdate = oldBulkUpdate;
+  }
+
+  // remove balls from the board
+  public clearBalls():void {
+    for (const ball of this.balls) this.removeBall(ball);
   }
 
   // whether a part can be placed at the given row and column

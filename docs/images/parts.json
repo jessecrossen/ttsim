@@ -2452,7 +2452,7 @@
       "frame": {
         "h": 96, 
         "w": 96, 
-        "x": 832, 
+        "x": 836, 
         "y": 4
       }, 
       "pivot": {
@@ -2526,6 +2526,30 @@
         "w": 96, 
         "x": 212, 
         "y": 524
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "clear-balls": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 940, 
+        "y": 4
       }, 
       "pivot": {
         "x": 0.5, 
@@ -2622,6 +2646,30 @@
         "w": 96, 
         "x": 524, 
         "y": 4
+      }, 
+      "pivot": {
+        "x": 0.5, 
+        "y": 0.5
+      }, 
+      "rotated": false, 
+      "sourceSize": {
+        "h": 96, 
+        "w": 96
+      }, 
+      "spriteSourceSize": {
+        "h": 96, 
+        "w": 96, 
+        "x": 0, 
+        "y": 0
+      }, 
+      "trimmed": false
+    }, 
+    "help": {
+      "frame": {
+        "h": 96, 
+        "w": 96, 
+        "x": 940, 
+        "y": 108
       }, 
       "pivot": {
         "x": 0.5, 

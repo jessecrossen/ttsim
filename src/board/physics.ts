@@ -296,8 +296,10 @@ export class PhysicalBallRouter implements IBallRouter {
         if ((gear instanceof Gearbit) && (this._parts.has(gear))) return;
       }
     }
-    Animator.current.animate(part, 'rotation', 
-      part.rotation, part.restingRotation, 0.1);
+    if (this.board.speed > 0) {
+      Animator.current.animate(part, 'rotation', 
+        part.rotation, part.restingRotation, 0.1 / this.board.speed);
+    }
   }
 
   // WIREFRAME PREVIEW ********************************************************

@@ -7,7 +7,9 @@ import { SPACING, PART_SIZE, UNRELEASED_BALL_MASK, UNRELEASED_BALL_CATEGORY, PAR
          PART_MASK, DAMPER_RADIUS, BALL_DENSITY, 
          COUNTERWEIGHT_STIFFNESS, COUNTERWEIGHT_DAMPING, BIAS_STIFFNESS, 
          BIAS_DAMPING,  PART_DENSITY, BALL_FRICTION, PART_FRICTION,
-         BALL_FRICTION_STATIC, PART_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, MAX_V, DROP_FRICTION, DROP_FRICTION_STATIC, BALL_MASK, GATE_CATEGORY, GATE_MASK, BALL_CATEGORY} from 'board/constants';
+         BALL_FRICTION_STATIC, PART_FRICTION_STATIC, IDEAL_VX, NUDGE_ACCEL, 
+         MAX_V, DROP_FRICTION, DROP_FRICTION_STATIC, BALL_MASK, GATE_CATEGORY, 
+         GATE_MASK, BALL_CATEGORY, BIT_BIAS_STIFFNESS, BALL_RADIUS } from 'board/constants';
 import { PartBallContact } from 'board/physics';
 import { Ball } from './ball';
 import { Slope } from './fence';
@@ -46,7 +48,7 @@ export class PartBody {
     this._body = null;
     // construct the ball as a circle
     if (this.type == PartType.BALL) {
-      this._body = Bodies.circle(0, 0, (5 * PART_SIZE) / 32,
+      this._body = Bodies.circle(0, 0, BALL_RADIUS,
       { density: BALL_DENSITY, friction: BALL_FRICTION, 
         frictionStatic: BALL_FRICTION_STATIC,
         collisionFilter: { category: UNRELEASED_BALL_CATEGORY, mask: UNRELEASED_BALL_MASK, group: 0 } });
@@ -112,7 +114,8 @@ export class PartBody {
     }
     else if (this._part.biasRotation) {
       this._biasDamper = this._makeDamper(false, false,
-        BIAS_STIFFNESS, BIAS_DAMPING);
+       this._part.type == PartType.BIT ? BIT_BIAS_STIFFNESS : BIAS_STIFFNESS, 
+       BIAS_DAMPING);
     }
   }
   private _makeDamper(flipped:boolean, counterweighted:boolean, 
@@ -154,10 +157,10 @@ export class PartBody {
       if (item) Composite.remove(this._composite, item);
       return(undefined);
     };
+    this._counterweightDamper = clear(this._counterweightDamper);
+    this._biasDamper = clear(this._biasDamper);
+    this._dropGate = clear(this._dropGate);
     this._body = clear(this._body);
-    this._counterweightDamper = clear(this._body);
-    this._biasDamper = clear(this._body);
-    this._dropGate = clear(this._body);
   }
   private _counterweightDamper:Constraint;
   private _biasDamper:Constraint;
@@ -340,7 +343,7 @@ export class PartBody {
         }
         else if (r >= 1.0) lock = true;
       }
-      else if ((r <= 0.0) || (r >= 1.0)) lock = true;
+      else if ((r < 0) || (r > 1)) lock = true;
       if (lock) {
         angleDelta = target - this._body.angle;
         Body.rotate(this._body, angleDelta);
@@ -395,7 +398,7 @@ export class PartBody {
     //  opposite for the top and bottom halves
     else if (this._part.type == PartType.BIT) {
       const bottomHalf:boolean = ball.row > this._part.row;
-      if (this._part.rotation >= 0.9) sign = bottomHalf ? 1 : 1;
+      if (this._part.rotation >= 0.9) sign = bottomHalf ? 1 : -1;
       else if (this._part.rotation <= 0.1) sign = bottomHalf ? -1 : 1;
       if (! bottomHalf) mag = 0.5;
     }

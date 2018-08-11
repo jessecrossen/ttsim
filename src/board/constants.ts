@@ -6,6 +6,7 @@ export const BALL_RADIUS = 10;
 
 export const PART_DENSITY:number = 0.100;
 export const BALL_DENSITY:number = 0.008;
+export const BALL_MASS:number = BALL_DENSITY * (BALL_RADIUS * BALL_RADIUS * Math.PI);
 
 export const BALL_FRICTION:number = 0.03;
 export const PART_FRICTION:number = 0.03;
@@ -24,6 +25,7 @@ export const MAX_V:number = 12;
 // damping/counterweight constraint parameters
 export const DAMPER_RADIUS:number = PART_SIZE / 2;
 export const BIAS_STIFFNESS:number = BALL_DENSITY / 16;
+export const BIT_BIAS_STIFFNESS:number = BALL_DENSITY / 4;
 export const BIAS_DAMPING:number = 0.3;
 export const COUNTERWEIGHT_STIFFNESS:number = BALL_DENSITY / 32;
 export const COUNTERWEIGHT_DAMPING:number = 0.1;

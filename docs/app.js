@@ -256,7 +256,7 @@ System.register("parts/fence", ["parts/part", "board/board"], function (exports_
                 get canRotate() { return (false); }
                 get canMirror() { return (false); }
                 get canFlip() { return (true); }
-                get type() { return (10 /* SIDE */); }
+                get type() { return (12 /* SIDE */); }
             };
             exports_7("Side", Side);
             Slope = class Slope extends part_7.Part {
@@ -268,7 +268,7 @@ System.register("parts/fence", ["parts/part", "board/board"], function (exports_
                 get canRotate() { return (false); }
                 get canMirror() { return (false); }
                 get canFlip() { return (true); }
-                get type() { return (11 /* SLOPE */); }
+                get type() { return (13 /* SLOPE */); }
                 static get maxModulus() { return (6); }
                 // for slopes, the number of part units in the slope
                 get modulus() { return (this._modulus); }
@@ -508,7 +508,7 @@ System.register("parts/turnstile", ["parts/part", "parts/ball"], function (expor
                 get canRotate() { return (true); }
                 get canMirror() { return (false); }
                 get canFlip() { return (true); }
-                get type() { return (13 /* TURNSTILE */); }
+                get type() { return (11 /* TURNSTILE */); }
                 // the drop the turnstile is connected to
                 get drop() { return (this._drop); }
                 set drop(newDrop) {
@@ -599,7 +599,7 @@ System.register("parts/drop", ["parts/part"], function (exports_12, context_12) 
                 get canRotate() { return (false); }
                 get canMirror() { return (false); }
                 get canFlip() { return (true); }
-                get type() { return (12 /* DROP */); }
+                get type() { return (10 /* DROP */); }
                 // a flag to set signalling a desire to release a ball, which will be cleared
                 //  after a ball is released
                 releaseBall() {
@@ -711,10 +711,10 @@ System.register("parts/factory", ["parts/location", "parts/ramp", "parts/crossov
                         case 8 /* GEAR */: return (gearbit_1.Gear);
                         case 7 /* GEARBIT */: return (gearbit_1.Gearbit);
                         case 9 /* BALL */: return (ball_2.Ball);
-                        case 10 /* SIDE */: return (fence_1.Side);
-                        case 11 /* SLOPE */: return (fence_1.Slope);
-                        case 12 /* DROP */: return (drop_1.Drop);
-                        case 13 /* TURNSTILE */: return (turnstile_1.Turnstile);
+                        case 12 /* SIDE */: return (fence_1.Side);
+                        case 13 /* SLOPE */: return (fence_1.Slope);
+                        case 10 /* DROP */: return (drop_1.Drop);
+                        case 11 /* TURNSTILE */: return (turnstile_1.Turnstile);
                         default: return (null);
                     }
                 }
@@ -1558,7 +1558,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                     // set restitution
                     this._body.restitution = this._part.bodyRestitution;
                     // do special configuration for ball drops
-                    if (this._part.type == 12 /* DROP */) {
+                    if (this._part.type == 10 /* DROP */) {
                         this._makeDropGate();
                     }
                     // perform a first update of properties from the part
@@ -1744,7 +1744,7 @@ System.register("parts/partbody", ["matter-js", "parts/factory", "parts/partvert
                         return;
                     // don't nudge multiple balls on slopes, 
                     //  it tends to cause pileups in the output
-                    if ((this._part.type === 11 /* SLOPE */) && (contacts.size > 1))
+                    if ((this._part.type === 13 /* SLOPE */) && (contacts.size > 1))
                         return;
                     for (const contact of contacts) {
                         const nudged = this._nudgeBall(contact);
@@ -2477,12 +2477,12 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                     const left = this.board.getPart(c - 1, r);
                     const center = this.board.getPart(c, r);
                     const right = this.board.getPart(c + 1, r);
-                    if (((left) && (left.type == 10 /* SIDE */) && (left.isFlipped)) ||
-                        ((center) && (center.type == 10 /* SIDE */) && (!center.isFlipped))) {
+                    if (((left) && (left.type == 12 /* SIDE */) && (left.isFlipped)) ||
+                        ((center) && (center.type == 12 /* SIDE */) && (!center.isFlipped))) {
                         ball.minX = c - 0.5 + RAD + (FENCE / 2);
                     }
-                    if (((right) && (right.type == 10 /* SIDE */) && (!right.isFlipped)) ||
-                        ((center) && (center.type == 10 /* SIDE */) && (center.isFlipped))) {
+                    if (((right) && (right.type == 12 /* SIDE */) && (!right.isFlipped)) ||
+                        ((center) && (center.type == 12 /* SIDE */) && (center.isFlipped))) {
                         ball.maxX = c + 0.5 - RAD - (FENCE / 2);
                     }
                 }
@@ -2495,10 +2495,10 @@ System.register("board/schematic", ["matter-js", "board/constants", "parts/fence
                         case 5 /* INTERCEPTOR */: return (this.routeInterceptor);
                         case 6 /* BIT */: // fall-through
                         case 7 /* GEARBIT */: return (this.routeBit);
-                        case 10 /* SIDE */: return (this.routeSide);
-                        case 11 /* SLOPE */: return (this.routeSlope);
-                        case 12 /* DROP */: return (this.routeDrop);
-                        case 13 /* TURNSTILE */: return (this.routeTurnstile);
+                        case 12 /* SIDE */: return (this.routeSide);
+                        case 13 /* SLOPE */: return (this.routeSlope);
+                        case 10 /* DROP */: return (this.routeDrop);
+                        case 11 /* TURNSTILE */: return (this.routeTurnstile);
                         default: return (null);
                     }
                 }
@@ -3048,17 +3048,17 @@ System.register("board/serializer", ["parts/drop"], function (exports_24, contex
                                 g = 0x00;
                                 b = 0x00;
                                 break; // red
-                            case 12 /* DROP */:
+                            case 10 /* DROP */:
                                 r = 0xFF;
                                 g = 0xFF;
                                 b = 0x00;
                                 break; // yellow
-                            case 13 /* TURNSTILE */:
+                            case 11 /* TURNSTILE */:
                                 r = 0xFF;
                                 g = 0x00;
                                 b = 0xFF;
                                 break; // magenta
-                            case 10 /* SIDE */:
+                            case 12 /* SIDE */:
                                 if (!flip) {
                                     r = 0xC0;
                                     g = 0xC0;
@@ -3071,7 +3071,7 @@ System.register("board/serializer", ["parts/drop"], function (exports_24, contex
                                 }
                                 flip = false;
                                 break;
-                            case 11 /* SLOPE */:
+                            case 13 /* SLOPE */:
                                 if (!flip) {
                                     r = 0x80;
                                     g = 0x80;
@@ -3130,11 +3130,11 @@ System.register("board/serializer", ["parts/drop"], function (exports_24, contex
                         if ((isHigh(r)) && (isHigh(g)) && (isHigh(b))) {
                             if (max >= 0xD0) { } // whiteish, clear the location
                             else if (max >= 0x90) {
-                                type = 10 /* SIDE */;
+                                type = 12 /* SIDE */;
                                 flipped = (max < 0xB0); // distinguish between 0xC0 and 0xA0
                             }
                             else if (max >= 0x40) {
-                                type = 11 /* SLOPE */;
+                                type = 13 /* SLOPE */;
                                 flipped = (max < 0x70); // distinguish between 0x60 and 0x80
                             }
                             else {
@@ -3154,9 +3154,9 @@ System.register("board/serializer", ["parts/drop"], function (exports_24, contex
                             else if ((isHigh(r)) && (isLow(g)) && (isLow(b)))
                                 type = 8 /* GEAR */; // red
                             else if ((isHigh(r)) && (isHigh(g)) && (isLow(b)))
-                                type = 12 /* DROP */; // yellow
+                                type = 10 /* DROP */; // yellow
                             else if ((isHigh(r)) && (isLow(g)) && (isHigh(b)))
-                                type = 13 /* TURNSTILE */; // magenta
+                                type = 11 /* TURNSTILE */; // magenta
                             flipped = (max < 0xDE);
                         }
                     }
@@ -4119,8 +4119,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                     if ((oldPart) && (oldPart.isLocked))
                         return (false);
                     else if ((type == 1 /* PARTLOC */) || (type == 2 /* GEARLOC */) ||
-                        (type == 8 /* GEAR */) || (type == 11 /* SLOPE */) ||
-                        (type == 10 /* SIDE */))
+                        (type == 8 /* GEAR */) || (type == 13 /* SLOPE */) ||
+                        (type == 12 /* SIDE */))
                         return (true);
                     else
                         return ((row + column) % 2 == 0);
@@ -4352,8 +4352,8 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                             // add up to 9 locations for each grid unit
                             part = this.getPart(c, r);
                             t = part ? part.type : 0 /* BLANK */;
-                            if ((t == 0 /* BLANK */) || (t == 12 /* DROP */) ||
-                                (t == 10 /* SIDE */) || (t == 1 /* PARTLOC */) ||
+                            if ((t == 0 /* BLANK */) || (t == 10 /* DROP */) ||
+                                (t == 12 /* SIDE */) || (t == 1 /* PARTLOC */) ||
                                 (t == 2 /* GEARLOC */)) {
                                 for (x = -1; x <= 1; x++) {
                                     for (y = -1; y <= 1; y++) {
@@ -4439,7 +4439,7 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
                         // if we hit a drop we're done
                         if (p instanceof drop_4.Drop)
                             return (p);
-                        else if (p.type == 11 /* SLOPE */) {
+                        else if (p.type == 13 /* SLOPE */) {
                             c += p.isFlipped ? -1 : 1;
                         }
                         else if (p.type == 3 /* RAMP */) {
@@ -5497,7 +5497,7 @@ System.register("board/builder", ["parts/fence"], function (exports_30, context_
                         }
                     }
                     // add fences on the sides
-                    const side = board.partFactory.make(10 /* SIDE */);
+                    const side = board.partFactory.make(12 /* SIDE */);
                     side.isLocked = true;
                     const flippedSide = board.partFactory.copy(side);
                     flippedSide.flip();
@@ -5506,7 +5506,7 @@ System.register("board/builder", ["parts/fence"], function (exports_30, context_
                         board.setPart(board.partFactory.copy(flippedSide), width - 1, r);
                     }
                     // add collection slopes at the bottom
-                    const slope = board.partFactory.make(11 /* SLOPE */);
+                    const slope = board.partFactory.make(13 /* SLOPE */);
                     slope.isLocked = true;
                     const flippedSlope = board.partFactory.copy(slope);
                     flippedSlope.flip();
@@ -5560,11 +5560,11 @@ System.register("board/builder", ["parts/fence"], function (exports_30, context_
                     board.setPart(board.partFactory.copy(slope), center - 1, height - 2);
                     board.setPart(board.partFactory.copy(slope), center - 2, height - 3);
                     // make ball drops
-                    const blueDrop = board.partFactory.make(12 /* DROP */);
+                    const blueDrop = board.partFactory.make(10 /* DROP */);
                     board.setPart(blueDrop, blueColumn - 1, dropLevel);
                     blueDrop.hue = 220;
                     blueDrop.isLocked = true;
-                    const redDrop = board.partFactory.make(12 /* DROP */);
+                    const redDrop = board.partFactory.make(10 /* DROP */);
                     redDrop.isFlipped = true;
                     board.setPart(redDrop, redColumn + 1, dropLevel);
                     redDrop.hue = 0;
@@ -5573,10 +5573,10 @@ System.register("board/builder", ["parts/fence"], function (exports_30, context_
                     board.setDropBallCount(blueDrop, 8);
                     board.setDropBallCount(redDrop, 8);
                     // make turnstiles
-                    const blueTurnstile = board.partFactory.make(13 /* TURNSTILE */);
+                    const blueTurnstile = board.partFactory.make(11 /* TURNSTILE */);
                     blueTurnstile.isLocked = true;
                     board.setPart(blueTurnstile, center - 1, collectLevel + 1);
-                    const redTurnstile = board.partFactory.make(13 /* TURNSTILE */);
+                    const redTurnstile = board.partFactory.make(11 /* TURNSTILE */);
                     redTurnstile.isLocked = true;
                     redTurnstile.isFlipped = true;
                     board.setPart(redTurnstile, center + 1, collectLevel + 1);

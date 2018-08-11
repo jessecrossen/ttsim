@@ -22,10 +22,10 @@ export const enum PartType {
   GEARBIT,
   GEAR,
   BALL, 
-  SIDE,
-  SLOPE, 
   DROP,       
-  TURNSTILE,  TOOLBOX_MAX = TURNSTILE
+  TURNSTILE,  
+  SIDE,
+  SLOPE, TOOLBOX_MAX = SLOPE
 }
 
 type PartConstructor = { new(textures:PIXI.loaders.TextureDictionary):Part };

@@ -17,9 +17,7 @@ export class SimulatorApp extends PIXI.Container {
     this.partFactory = new PartFactory(textures);
     this.board = new Board(this.partFactory);
     this.toolbar = new Toolbar(this.board);
-    this.toolbar.width = 64;
     this.actionbar = new Actionbar(this.board);
-    this.actionbar.width = 64;
     this.actionbar.peer = this.toolbar;
     this.toolbar.peer = this.actionbar;
     this.addChild(this.board.view);

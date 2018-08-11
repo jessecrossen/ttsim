@@ -39,6 +39,8 @@ export const Zooms:number[] =
 export const Speeds:number[] = 
   [ 0.0, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0 ];
 
+export const ButtonSizes:number[] = [ 16, 24, 32, 48, 64 ];
+
 // formats a color as an HTML color code
 export function htmlColor(c:number):string {
   return('#'+('000000'+c.toString(16)).substr(-6));

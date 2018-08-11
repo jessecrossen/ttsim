@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js';
 
 import { Part, Layer } from 'parts/part';
-import { Colors, Alphas } from './config';
+import { Colors, Alphas, ButtonSizes } from './config';
 import { Renderer } from 'renderer';
 import { PartType } from 'parts/factory';
 
@@ -215,8 +215,22 @@ export abstract class ButtonBar extends PIXI.Container {
     if (v === this._height) return;
     this._height = v;
     this._layout();
+    // if the height doesn't allow some buttons to show, make buttons smaller
+    if (this.autowidth) {
+      let safeSize:number = ButtonSizes[0];
+      let s:number;
+      for (s of ButtonSizes) {
+        if (this._contentHeightForWidth(s + (2 * this.margin)) <= this.height) {
+          safeSize = s;
+        }
+      }
+      this.width = safeSize + (2 * this.margin);
+    }
   }
   private _height:number = 96;
+
+  // whether to automatically adjust the width to match the height
+  public autowidth:boolean = true;
 
   public get margin():number { return(this._margin); }
   public set margin(v:number) {
@@ -272,6 +286,12 @@ export abstract class ButtonBar extends PIXI.Container {
     this._background.drawRect(0, 0, this.width, this.height);
     this._background.endFill();
     Renderer.needsUpdate();
+  }
+
+  // get the height taken up by all the buttons at the given width
+  protected _contentHeightForWidth(w:number):number {
+    const m = this.margin;
+    return(m + ((w - m) * this._buttons.length));
   }
 
 }

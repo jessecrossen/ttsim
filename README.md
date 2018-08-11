@@ -26,8 +26,6 @@ Here are some things I'd like to implement in the near future:
 - [ ] Select one or more parts and cut/copy/paste/move them
 - [ ] Keyboard shortcuts
 - [ ] Undo/redo
-- [ ] Scale down toolbars if there's not enough vertical room for them
-- [ ] Add an action to remove all balls from the board
 - [ ] Allow toggling of whether parts are locked (for setting up challenges)
 
 Bugs

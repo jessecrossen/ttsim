@@ -386,12 +386,13 @@ System.register("ui/config", [], function (exports_9, context_9) {
             return (p + (q - p) * (2 / 3 - t) * 6);
         return (p);
     }
-    var Zooms, Speeds;
+    var Zooms, Speeds, ButtonSizes;
     return {
         setters: [],
         execute: function () {
             exports_9("Zooms", Zooms = [2, 4, 6, 8, 12, 16, 24, 32, 48, 64]);
             exports_9("Speeds", Speeds = [0.0, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0]);
+            exports_9("ButtonSizes", ButtonSizes = [16, 24, 32, 48, 64]);
         }
     };
 });
@@ -5076,14 +5077,17 @@ System.register("board/board", ["pixi-filters", "parts/fence", "parts/gearbit", 
         }
     };
 });
-System.register("ui/button", ["pixi.js", "renderer"], function (exports_28, context_28) {
+System.register("ui/button", ["pixi.js", "ui/config", "renderer"], function (exports_28, context_28) {
     "use strict";
     var __moduleName = context_28 && context_28.id;
-    var PIXI, renderer_6, Button, PartButton, SpriteButton, ButtonBar;
+    var PIXI, config_4, renderer_6, Button, PartButton, SpriteButton, ButtonBar;
     return {
         setters: [
             function (PIXI_5) {
                 PIXI = PIXI_5;
+            },
+            function (config_4_1) {
+                config_4 = config_4_1;
             },
             function (renderer_6_1) {
                 renderer_6 = renderer_6_1;
@@ -5261,6 +5265,8 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_28, cont
                     this._bottomCount = 0;
                     this._width = 96;
                     this._height = 96;
+                    // whether to automatically adjust the width to match the height
+                    this.autowidth = true;
                     this._margin = 4;
                     this.addChild(this._background);
                     this._layout();
@@ -5289,6 +5295,17 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_28, cont
                         return;
                     this._height = v;
                     this._layout();
+                    // if the height doesn't allow some buttons to show, make buttons smaller
+                    if (this.autowidth) {
+                        let safeSize = config_4.ButtonSizes[0];
+                        let s;
+                        for (s of config_4.ButtonSizes) {
+                            if (this._contentHeightForWidth(s + (2 * this.margin)) <= this.height) {
+                                safeSize = s;
+                            }
+                        }
+                        this.width = safeSize + (2 * this.margin);
+                    }
                 }
                 get margin() { return (this._margin); }
                 set margin(v) {
@@ -5338,6 +5355,11 @@ System.register("ui/button", ["pixi.js", "renderer"], function (exports_28, cont
                     this._background.drawRect(0, 0, this.width, this.height);
                     this._background.endFill();
                     renderer_6.Renderer.needsUpdate();
+                }
+                // get the height taken up by all the buttons at the given width
+                _contentHeightForWidth(w) {
+                    const m = this.margin;
+                    return (m + ((w - m) * this._buttons.length));
                 }
             };
             exports_28("ButtonBar", ButtonBar);
@@ -5560,7 +5582,7 @@ System.register("board/builder", ["parts/fence"], function (exports_30, context_
 System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/config", "renderer", "board/serializer", "ui/animator", "board/builder"], function (exports_31, context_31) {
     "use strict";
     var __moduleName = context_31 && context_31.id;
-    var PIXI, board_2, button_2, config_4, renderer_8, serializer_1, animator_4, builder_1, Actionbar, BoardDrawer;
+    var PIXI, board_2, button_2, config_5, renderer_8, serializer_1, animator_4, builder_1, Actionbar, BoardDrawer;
     return {
         setters: [
             function (PIXI_7) {
@@ -5572,8 +5594,8 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
             function (button_2_1) {
                 button_2 = button_2_1;
             },
-            function (config_4_1) {
-                config_4 = config_4_1;
+            function (config_5_1) {
+                config_5 = config_5_1;
             },
             function (renderer_8_1) {
                 renderer_8 = renderer_8_1;
@@ -5713,7 +5735,7 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                 }
                 // SPEED CONTROL ************************************************************
                 get canGoFaster() {
-                    return (this.speedIndex < config_4.Speeds.length - 1);
+                    return (this.speedIndex < config_5.Speeds.length - 1);
                 }
                 get canGoSlower() {
                     return (this.speedIndex > 0);
@@ -5725,16 +5747,16 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     this.speedIndex--;
                 }
                 get speedIndex() {
-                    return (config_4.Speeds.indexOf(this.board.speed));
+                    return (config_5.Speeds.indexOf(this.board.speed));
                 }
                 set speedIndex(i) {
-                    if ((i >= 0) && (i < config_4.Speeds.length))
-                        this.board.speed = config_4.Speeds[i];
+                    if ((i >= 0) && (i < config_5.Speeds.length))
+                        this.board.speed = config_5.Speeds[i];
                     this.updateToggled();
                 }
                 // ZOOMING ******************************************************************
                 get canZoomIn() {
-                    return (this.zoomIndex < config_4.Zooms.length - 1);
+                    return (this.zoomIndex < config_5.Zooms.length - 1);
                 }
                 get canZoomOut() {
                     return (this.zoomIndex > 0);
@@ -5742,22 +5764,22 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                 zoomIn() {
                     if (!this.canZoomIn)
                         return;
-                    this.board.partSize = config_4.Zooms[this.zoomIndex + 1];
+                    this.board.partSize = config_5.Zooms[this.zoomIndex + 1];
                     this.updateToggled();
                 }
                 zoomOut() {
                     if (!this.canZoomOut)
                         return;
-                    this.board.partSize = config_4.Zooms[this.zoomIndex - 1];
+                    this.board.partSize = config_5.Zooms[this.zoomIndex - 1];
                     this.updateToggled();
                 }
                 // zoom to fit the board
                 zoomToFit() {
                     this.board.centerColumn = (this.board.columnCount - 1) / 2;
                     this.board.centerRow = (this.board.rowCount - 1) / 2;
-                    let s = config_4.Zooms[0];
-                    for (let i = config_4.Zooms.length - 1; i >= 0; i--) {
-                        s = config_4.Zooms[i];
+                    let s = config_5.Zooms[0];
+                    for (let i = config_5.Zooms.length - 1; i >= 0; i--) {
+                        s = config_5.Zooms[i];
                         const w = this.board.columnCount * Math.floor(s * board_2.SPACING_FACTOR);
                         const h = this.board.rowCount * Math.floor(s * board_2.SPACING_FACTOR);
                         if ((w <= this.board.width) && (h <= this.board.height))
@@ -5767,7 +5789,7 @@ System.register("ui/actionbar", ["pixi.js", "board/board", "ui/button", "ui/conf
                     this.updateToggled();
                 }
                 get zoomIndex() {
-                    return (config_4.Zooms.indexOf(this.board.partSize));
+                    return (config_5.Zooms.indexOf(this.board.partSize));
                 }
                 // DRAWER *******************************************************************
                 _layout() {
@@ -5906,9 +5928,7 @@ System.register("app", ["pixi.js", "board/board", "parts/factory", "ui/toolbar",
                     this.partFactory = new factory_2.PartFactory(textures);
                     this.board = new board_3.Board(this.partFactory);
                     this.toolbar = new toolbar_1.Toolbar(this.board);
-                    this.toolbar.width = 64;
                     this.actionbar = new actionbar_1.Actionbar(this.board);
-                    this.actionbar.width = 64;
                     this.actionbar.peer = this.toolbar;
                     this.toolbar.peer = this.actionbar;
                     this.addChild(this.board.view);

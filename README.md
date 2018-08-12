@@ -19,11 +19,6 @@ uses [GNU make](https://www.gnu.org/software/make/) as a build system. All the g
 and the vertices for the physics engine are generated from [InkScape](https://inkscape.org/) 
 SVG files.
 
-Browser Support
-===============
-
-I've developed and tested it on the latest version of Chrome, and the code should be standards-compliant enough that recent versions of Firefox will probably work as well. I'm not that interested in working around any quirks of platform-specific browsers like Safari or Edge, but will merge in basic fixes if anyone cares enough to make a pull request. Also note that the graphics may be slow/jerky if WebGL doesn't work for whatever reason.
-
 What's Next?
 ============
 
@@ -44,6 +39,11 @@ the will and the skill and feel like doing something nice, fix it yourself and s
 pull request. Feature requests are also welcome, and especially so if you can suggest
 a way to add the feature with minimal complication of the interface. Note that this is 
 a hobby project, so it could take some time for me to respond.
+
+Browser Support
+===============
+
+I've developed and tested it on the latest version of Chrome, and the code should be standards-compliant enough that recent versions of Firefox will probably work as well. I'm not that interested in working around any quirks of platform-specific browsers like Safari or Edge, but will merge in basic fixes if anyone cares enough to make a pull request. Also note that the graphics may be slow/jerky if WebGL doesn't work for whatever reason.
 
 Building
 ========

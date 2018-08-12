@@ -21,3 +21,41 @@ Tools
 <img src="images/usage/Turnstile-t.png"/> | The **turnstile tool** adds a turnstile part to the board. Turnstiles receive balls from either side and route them to one side, but each time a ball goes through, the nearest drop will release another ball. You can tell which drop the turnstile connects to because the circle in the center of the turnstile will have the same color as the balls in the drop.
 <img src="images/usage/Side-t.png"/> | The **side tool** adds a vertical wall to the board, which blocks balls from travelling horizontally. By default, the wall will be on the left of whichever grid unit you add the part to, but you can switch it to the right either by clicking on the tool again when it's selected or by flipping parts on the board with a hand tool. If you flip one wall in a vertical line of parts, they will all flip together.
 <img src="images/usage/Slope-t.png"/> | The **slope tool** adds angled slopes that direct balls horizontally across the board. When you put slopes next to each other, they connect into a continuous line up to six units long, but you can extend the same slope further by moving up or down one row and adding more slope units. By default, slopes direct balls to the right, but you can switch them to direct balls to the left by clicking on the tool when it's selected or by flipping parts on the board with a hand tool. If you flip one slope in a horizontal line, the whole line will flip as one unit.
+
+
+Actions
+-------
+
+&nbsp;&nbsp;&nbsp;&nbsp;Icon&nbsp;&nbsp;&nbsp;&nbsp; | Description
+---------------------------------------------------- | :----------
+<img src="images/usage/schematic.png"/> | The **schematic action** toggles between physical simulation mode and schematic simulation mode. In physical mode, the parts look and act like parts of a real Turing Tumble. In schematic mode, they have a simpler look and action, but the balls should follow the same overall path as they would in physical mode.
+<img src="images/usage/zoomin.png"/> | This makes the view of the board bigger, so you can see the parts in more detail.
+<img src="images/usage/zoomout.png"/> | This makes the view of the board smaller, so you can see more parts at once.
+<img src="images/usage/zoomout.png"/> | This makes the view of the board smaller, so you can see more parts at once.
+<img src="images/usage/zoomtofit.png"/> | This zooms in or out so the whole board is showing at the largest possible size.
+<img src="images/usage/faster.png"/> | This makes the simulation run faster.
+<img src="images/usage/slower.png"/> | This makes the simulation run slower.
+<img src="images/usage/return.png"/> | This returns all the balls on the board to their appropriate drops.
+<img src="images/usage/board-drawer.png"/> | This opens an closes an extra toolbar with additional actions that aren't used as much.
+<img src="images/usage/board-small.png"/> | This clears the board and resets it to the same standard layout as a real Turing Tumble.
+<img src="images/usage/board-medium.png"/> | This clears the board and sets up a slightly larger version of the standard layout.
+<img src="images/usage/board-large.png"/> | This clears the board and sets up an even larger version of the standard layout.
+<img src="images/usage/board-clear.png"/> | This removes all parts and balls from the board without changing its size.
+<img src="images/usage/clear-balls.png"/> | This removes all the balls from the board but leaves all the parts in place.
+<img src="images/usage/download.png"/> | This downloads the state of all the parts on the board as a PNG image. Each part is represented by a pixel in the image, with the color determining the type of part and its state. You can edit this image and upload it again, and as long as the colors you use are close, it should work. Avoid changing lines at the bottom that have a blue pixel on the left, since these contain metadata about the board that can't be encoded in the individual pixels.
+<img src="images/usage/upload.png"/> | This allows you to upload a PNG image, which will replace the entire state of the board.
+
+Links
+-----
+
+&nbsp;&nbsp;&nbsp;&nbsp;Icon&nbsp;&nbsp;&nbsp;&nbsp; | Description
+---------------------------------------------------- | :----------
+<img src="images/usage/help.png"/> | This should link to this documentation, although it may not work unless the app is being hosted on github pages.
+<img src="images/usage/octocat.png"/> | If the app is hosted on github pages, this will link to the forked repository it's based on, otherwise it will link to the original repository.
+<img src="images/usage/heart.png"/> | This links to the Turing Tumble website.
+
+
+
+
+
+

@@ -5528,6 +5528,7 @@ System.register("board/builder", ["parts/fence"], function (exports_30, context_
                         }
                         board.setPart(board.partFactory.copy(flippedSlope), c, r);
                     }
+                    const turnstileLevel = r + 1;
                     // add hoppers for extra balls
                     board.setPart(board.partFactory.copy(slope), blueColumn - 2, dropLevel - 1);
                     board.setPart(board.partFactory.copy(flippedSlope), blueColumn, dropLevel - 1);
@@ -5575,11 +5576,11 @@ System.register("board/builder", ["parts/fence"], function (exports_30, context_
                     // make turnstiles
                     const blueTurnstile = board.partFactory.make(11 /* TURNSTILE */);
                     blueTurnstile.isLocked = true;
-                    board.setPart(blueTurnstile, center - 1, collectLevel + 1);
+                    board.setPart(blueTurnstile, center - 1, turnstileLevel);
                     const redTurnstile = board.partFactory.make(11 /* TURNSTILE */);
                     redTurnstile.isLocked = true;
                     redTurnstile.isFlipped = true;
-                    board.setPart(redTurnstile, center + 1, collectLevel + 1);
+                    board.setPart(redTurnstile, center + 1, turnstileLevel);
                     board.bulkUpdate = false;
                 }
             };

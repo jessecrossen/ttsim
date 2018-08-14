@@ -62,6 +62,7 @@ export class BoardBuilder {
       if (run >= maxModulus) { r++; run = 0; }
       board.setPart(board.partFactory.copy(flippedSlope), c, r);
     }
+    const turnstileLevel = r + 1;
     // add hoppers for extra balls
     board.setPart(board.partFactory.copy(slope), blueColumn - 2, dropLevel - 1);
     board.setPart(board.partFactory.copy(flippedSlope), blueColumn, dropLevel - 1);
@@ -107,11 +108,11 @@ export class BoardBuilder {
     // make turnstiles
     const blueTurnstile = board.partFactory.make(PartType.TURNSTILE);
     blueTurnstile.isLocked = true;
-    board.setPart(blueTurnstile, center - 1, collectLevel + 1);
+    board.setPart(blueTurnstile, center - 1, turnstileLevel);
     const redTurnstile = board.partFactory.make(PartType.TURNSTILE);
     redTurnstile.isLocked = true;
     redTurnstile.isFlipped = true;
-    board.setPart(redTurnstile, center + 1, collectLevel + 1);
+    board.setPart(redTurnstile, center + 1, turnstileLevel);
     board.bulkUpdate = false;
   }
 

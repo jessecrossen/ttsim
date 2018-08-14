@@ -853,7 +853,7 @@ export class Board {
       if (! this.bulkUpdate) this._connectTurnstiles();
     }
     // remove and destroy sprites for the old part to avoid memory leaks
-    if (oldPart) {
+    if ((oldPart) && (oldPart !== this.partPrototype)) {
       this._removeSpritesForPart(oldPart);
       oldPart.destroySprites();
     }

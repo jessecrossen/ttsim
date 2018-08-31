@@ -31,7 +31,6 @@ Actions
 <img src="images/usage/schematic.png"/> | The **schematic action** toggles between physical simulation mode and schematic simulation mode. In physical mode, the parts look and act like parts of a real Turing Tumble. In schematic mode, they have a simpler look and action, but the balls should follow the same overall path as they would in physical mode.
 <img src="images/usage/zoomin.png"/> | This makes the view of the board bigger, so you can see the parts in more detail.
 <img src="images/usage/zoomout.png"/> | This makes the view of the board smaller, so you can see more parts at once.
-<img src="images/usage/zoomout.png"/> | This makes the view of the board smaller, so you can see more parts at once.
 <img src="images/usage/zoomtofit.png"/> | This zooms in or out so the whole board is showing at the largest possible size.
 <img src="images/usage/faster.png"/> | This makes the simulation run faster.
 <img src="images/usage/slower.png"/> | This makes the simulation run slower.

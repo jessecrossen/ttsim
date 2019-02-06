@@ -23,7 +23,8 @@ docs/app.js: node_modules $(shell find src -name '*.ts')
 
 # DEPENDENCIES
 
-dependencies: docs/system.js docs/pixi.min.js docs/pixi-filters.js \
+dependencies: docs/system.js docs/pixi.min.js \
+							docs/pixi-filters.js docs/pixi-sound.js \
 							docs/matter.min.js
 
 docs/system.js: node_modules
@@ -33,6 +34,10 @@ docs/system.js: node_modules
 docs/pixi-filters.js: node_modules
 	mkdir -p docs
 	cp node_modules/pixi-filters/dist/pixi-filters.js docs/
+
+docs/pixi-sound.js: node_modules
+	mkdir -p docs
+	cp node_modules/pixi-sound/dist/pixi-sound.js docs/
 
 docs/pixi.min.js: node_modules
 	mkdir -p docs

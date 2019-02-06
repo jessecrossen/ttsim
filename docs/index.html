@@ -34,6 +34,7 @@
         map: {
           'pixi.js': './pixi.min.js',
           'pixi-filters': './pixi-filters.js',
+          'pixi-sound': './pixi-sound.js',
           'matter-js': './matter.min.js'
         },
         meta: {
@@ -46,6 +47,12 @@
             deps: [ 'pixi.js' ],
             format: 'global',
             exports: 'PIXI.filters',
+            esModule: true
+          },
+          'pixi-sound': {
+            deps: [ 'pixi.js' ],
+            format: 'global',
+            exports: 'PIXI.sound',
             esModule: true
           },
           'matter-js': { esModule: true },

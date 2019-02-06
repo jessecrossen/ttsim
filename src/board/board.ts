@@ -17,6 +17,7 @@ import { ColorWheel, DropButton, TurnButton, BallCounter } from './controls';
 import { Animator } from 'ui/animator';
 import { Turnstile } from 'parts/turnstile';
 import { makeKeyHandler } from 'ui/keyboard';
+import { SoundEffects } from './sound';
 
 export const enum ToolType {
   NONE, MIN = NONE,
@@ -55,6 +56,7 @@ export class Board {
   }
   public readonly view:PIXI.Sprite = new PIXI.Sprite();
   public readonly _layers:PIXI.Container = new PIXI.Container();
+  public readonly sound:SoundEffects = new SoundEffects();
 
   // a serializer for the board state
   public serializer:IBoardSerializer = null;
@@ -107,7 +109,8 @@ export class Board {
   private _speed:number = 1.0;
 
   // routers to manage the positions of the balls
-  public readonly physicalRouter:PhysicalBallRouter = new PhysicalBallRouter(this);
+  public readonly physicalRouter:PhysicalBallRouter = 
+    new PhysicalBallRouter(this, this.sound);
   public readonly schematicRouter:SchematicBallRouter = 
     new SchematicBallRouter(this);
 

@@ -1,9 +1,10 @@
 import * as PIXI from 'pixi.js';
 
 import { Engine, Composite, World, Constraint, Body, Bodies, Vector, 
-         Grid } from 'matter-js';
+         Grid, Events, IEventCollision} from 'matter-js';
 import { IBallRouter } from './router';
 import { Board } from './board';
+import { SoundEffects } from './sound';
 import { Renderer } from 'renderer';
 import { Part } from 'parts/part';
 import { Ball } from 'parts/ball';
@@ -14,6 +15,7 @@ import { PartBody, PartBodyFactory } from 'parts/partbody';
 import { SPACING } from './constants';
 import { Animator } from 'ui/animator';
 import { PartType } from 'parts/factory';
+import { Slope } from 'parts/fence';
 
 export type PartBallContact = {
   ballPartBody: PartBody,
@@ -24,8 +26,9 @@ export type ContactMap = Map<PartBody,Set<PartBallContact>>;
 
 export class PhysicalBallRouter implements IBallRouter {
 
-  constructor(public readonly board:Board) {
+  constructor(public readonly board:Board, public readonly sound?:SoundEffects) {
     this.engine = Engine.create();
+    Events.on(this.engine, 'collisionStart', this._cueCollisionSounds.bind(this));
     this.balls = this.board.balls;
     // make walls to catch stray balls
     this._createWalls();
@@ -85,7 +88,14 @@ export class PhysicalBallRouter implements IBallRouter {
     const nearby = this._mapNearby();
     // apply physics corrections
     for (const partBody of this._parts.values()) {
+      const angularVelocity = partBody.body ? partBody.body.angularVelocity : 0;
       partBody.cheat(contacts.get(partBody), nearby.get(partBody));
+      // make a sound when a part hits its rotation limit
+      if ((this.sound) &&
+          (Math.abs(angularVelocity) > 0.1) && (partBody.body) &&
+          (partBody.body.angularVelocity === 0)) {
+        this.sound.rotationStopped(partBody.part);
+      }
     }
     // transfer part positions
     for (const [ part, partBody ] of this._parts.entries()) {
@@ -94,12 +104,50 @@ export class PhysicalBallRouter implements IBallRouter {
         this.board.layoutPart(part, part.column, part.row);
       }
     }
+    // update whether a ball is rolling on a slope
+    this._updateRollingSounds(contacts);
     // combine the velocities of connected gear trains
     this.connectGears(contacts);
     // re-render the wireframe if there is one
     this.renderWireframe();
     // re-render the whole display if we're managing parts
     if (this._parts.size > 0) Renderer.needsUpdate();
+  }
+
+  // cue sound effect based on part contacts
+  protected _cueCollisionSounds(e:IEventCollision<Engine>):void {
+    if (! this.sound) return;
+    for (const pair of e.pairs) {
+      let part:PartBody;
+      const partA = this._findPartBody(pair.bodyA);
+      const partB = this._findPartBody(pair.bodyB);
+      if (partA.part instanceof Ball) part = partB;
+      else if (partB.part instanceof Ball) part = partA;
+      // ignore part/part contacts
+      else continue;
+      // filter out small bounces using depth as a proxy for collision speed, 
+      //  and discarding all contacts that didn't just begin
+      if ((! (pair as any).collision) || 
+          (! ((pair as any).collision.depth > 1)) ||
+          (pair.timeUpdated > pair.timeCreated)) continue;
+      this.sound.ballHitPart(part.part);
+    }
+  }
+  protected _updateRollingSounds(contacts:ContactMap):void {
+    if (! this.sound) return;
+    let rolling:boolean = false;
+    for (const [ partBody, ballContacts ] of contacts.entries()) {
+      // only track rolling on slopes
+      if (! (partBody.part instanceof Slope)) continue;
+      for (const contact of ballContacts) {
+        if ((contact.ballPartBody.body.speed >= 1) ||
+            (contact.ballPartBody.body.angularSpeed >= 0.1)) {
+          rolling = true;
+          break;
+        }
+      }
+    }
+    this.sound.isRolling = rolling;
   }
 
   // average the angular velocities of all simulated gears with ball contacts,
@@ -305,8 +353,14 @@ export class PhysicalBallRouter implements IBallRouter {
       }
     }
     if (this.board.speed > 0) {
+      // make a sound when the ramp snaps back to its resting position
+      let callback:() => void = undefined;
+      if ((this.sound) && (Math.abs(part.rotation - part.restingRotation) > 0.25)) {
+        callback = () => { this.sound.rotationStopped(part) };
+      }
       Animator.current.animate(part, 'rotation', 
-        part.rotation, part.restingRotation, 0.1 / this.board.speed);
+        part.rotation, part.restingRotation, 
+        0.1 / this.board.speed, callback);
     }
   }
 

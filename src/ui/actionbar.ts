@@ -17,6 +17,7 @@ export class Actionbar extends ButtonBar {
     this._drawer.peer = this;
     this.addChildAt(this._drawer, 0);
     this._drawer.visible = false;
+    this._drawer.autowidth = false;
     // add a button to show and hide extra board operations
     this._drawerButton = new SpriteButton(
       new PIXI.Sprite(board.partFactory.textures['board-drawer']));

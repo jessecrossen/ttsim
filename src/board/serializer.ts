@@ -95,7 +95,9 @@ export class URLBoardSerializer implements IBoardSerializer {
     const a = document.createElement('a');
     a.setAttribute('href', url);
     a.setAttribute('download', 'ttsim.png');
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     return(true);
   }
 

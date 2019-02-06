@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js';
 
 import { Engine, Composite, World, Constraint, Body, Bodies, Vector, 
-         Events } from 'matter-js';
+         Grid } from 'matter-js';
 import { IBallRouter } from './router';
 import { Board } from './board';
 import { Renderer } from 'renderer';
@@ -14,7 +14,6 @@ import { PartBody, PartBodyFactory } from 'parts/partbody';
 import { SPACING } from './constants';
 import { Animator } from 'ui/animator';
 import { PartType } from 'parts/factory';
-import { Drop } from 'parts/drop';
 
 export type PartBallContact = {
   ballPartBody: PartBody,
@@ -66,10 +65,16 @@ export class PhysicalBallRouter implements IBallRouter {
   }
 
   public beforeUpdate():void {
-    this.addNeighborParts(this._boardChangeCounter !== this.board.changeCounter);
+    const partsChanged:boolean = 
+      this.addNeighborParts(this._boardChangeCounter !== this.board.changeCounter);
     this._boardChangeCounter = this.board.changeCounter;
     for (const partBody of this._parts.values()) {
       partBody.updateBodyFromPart();
+    }
+    // if parts have been added or removed, update the broadphase grid
+    if ((partsChanged) && (this.engine.broadphase)) {
+      Grid.update(this.engine.broadphase, 
+        Composite.allBodies(this.engine.world), this.engine, true);
     }
   }
   private _boardChangeCounter:number = -1;
@@ -213,7 +218,9 @@ export class PhysicalBallRouter implements IBallRouter {
   private _bottom:Body;
   private _left:Body;
 
-  protected addNeighborParts(force:boolean = false):void {
+  // update the working set of parts to include those that are near balls,
+  //  and return whether parts have been added or removed
+  protected addNeighborParts(force:boolean = false):boolean {
     // track parts to add and remove
     const addParts:Set<Part> = new Set();
     const removeParts:Set<Part> = new Set(this._parts.keys());
@@ -263,6 +270,7 @@ export class PhysicalBallRouter implements IBallRouter {
     // add new parts and remove old ones
     for (const part of addParts) this.addPart(part);
     for (const part of removeParts) this.removePart(part);
+    return((addParts.size > 0) || (removeParts.size > 0));
   }
   private _ballNeighbors:Map<Ball,Set<Part>> = new Map();
 

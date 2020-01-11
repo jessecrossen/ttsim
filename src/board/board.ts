@@ -1276,6 +1276,11 @@ export class Board {
     this.view.addListener('mousemove', this._onMouseMove.bind(this));
     this.view.addListener('mouseup', this._onMouseUp.bind(this));
     this.view.addListener('click', this._onClick.bind(this));
+
+    this.view.addListener('touchstart', this._onMouseDown.bind(this));
+    this.view.addListener('touchmove', this._onMouseMove.bind(this));
+    this.view.addListener('touchend', this._onMouseUp.bind(this));
+    this.view.addListener('tap', this._onClick.bind(this));
   }
   private _bindKeyEvents():void {
     const ctrl = makeKeyHandler('Control');

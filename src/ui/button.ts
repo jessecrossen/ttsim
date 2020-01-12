@@ -244,7 +244,7 @@ export abstract class ButtonBar extends PIXI.Container {
     this._buttons.push(button);
     this.addChild(button);
     button.addListener('click', this._onButtonClick.bind(this));
-    button.addListener('tap', this._onButtonClickOrTap.bind(this));
+    button.addListener('tap', this._onButtonClick.bind(this));
     this._layout();
   }
 

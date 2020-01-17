@@ -22,6 +22,10 @@ const resizeApp = () => {
 resizeApp();
 window.addEventListener('resize', resizeApp);
 
+window.addEventListener("hashchange", () => {
+  sim.board.serializer.restore();
+});
+
 // load sprites
 const loader = PIXI.loader;
 loader.add('images/parts.json').load(() => {

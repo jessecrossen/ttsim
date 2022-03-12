@@ -17,7 +17,7 @@ args = parser.parse_args()
 with open(args.json, 'r') as f:
   sprites = json.load(f)
 
-for (name, data) in sprites['frames'].iteritems():
+for (name, data) in sprites['frames'].items():
   if ((name.endswith('-t')) or (name[0] == name[0].lower()) or 
       (name == 'Ball-m')):
     tint = ''

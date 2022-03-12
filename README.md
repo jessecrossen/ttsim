@@ -53,14 +53,14 @@ If you'd like to build the project yourself, you'll need at least the following:
 * [GNU make](https://www.gnu.org/software/make/) to run the build
 * [node.js](https://nodejs.org/en/download/) to run TypeScript and npm
 * [npm](https://www.npmjs.com/) to install dependencies
-* [Python](https://www.python.org/) for various custom build scripts (tested on 2.7, may work on 3)
+* [Python 3](https://www.python.org/) for various custom build scripts (tested on 3.8)
 
 To edit and re-build the graphics and physics assets, you'll need:
 
 * [InkScape](https://inkscape.org/) to edit and rasterize SVG files
 * [ImageMagick](https://www.imagemagick.org/script/index.php) for some image conversion operations
 
-The build process is very likely to work well on Linux, will probably kind of work on OS X, and 
+The build process is very likely to work well on Linux, will probably kind of work on macOS, and 
 is very unlikely to work on Windows. Go to the root directory of the project in your console,
 and run `make` to build the whole thing. Running `make server` will start a web server that serves 
 the application on `localhost:8080`. Running `make watch` will watch TypeScript files for changes

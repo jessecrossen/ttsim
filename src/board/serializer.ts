@@ -8,7 +8,7 @@ export interface IBoardSerializer {
   onBoardStateChanged():void;
   onUIStateChanged():void;
   save():void;
-  restore(callback:(restored:boolean) => void):void;
+  restore(callback?:(restored:boolean) => void):void;
 }
 
 export class URLBoardSerializer implements IBoardSerializer {
@@ -66,7 +66,7 @@ export class URLBoardSerializer implements IBoardSerializer {
     }
   }
 
-  public restore(callback:(restored:boolean) => void):void {
+  public restore(callback:(restored:boolean) => void = () => {}):void {
     // if there is no hash, there's nothing to restore
     const hash = window.location.hash.substr(1);
     if (hash.length == 0) {

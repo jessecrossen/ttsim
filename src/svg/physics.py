@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os.path
@@ -44,7 +44,7 @@ for (name, group, ctm) in groups:
   rects = parser.getRectsInGroup(group, ctm)
   rect = largestRect(rects)
   if (rect is None):
-    print 'ERROR: no bounding box found for group labelled %s' % (name)
+    print('ERROR: no bounding box found for group labelled %s' % name)
     sys.exit(1)
   cx = (round(rect['x']) + round(rect['x'] + rect['w'])) / 2
   cy = (round(rect['y']) + round(rect['y'] + rect['h'])) / 2
@@ -98,5 +98,5 @@ code += '''    default:
 
 '''
 
-with open(args.ts, 'wb') as f:
+with open(args.ts, 'w') as f:
   f.write(code)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os.path
 import argparse
@@ -31,7 +31,7 @@ atlas = {
   'meta': { 'image': os.path.basename(args.svg)[:-3]+'png' }, 
   'frames': { }
 }
-for (name, frame) in frames.iteritems():
+for (name, frame) in frames.items():
   # snap to pixels
   x = int(round(frame['x']))
   y = int(round(frame['y']))
@@ -47,5 +47,5 @@ for (name, frame) in frames.iteritems():
   }
 
 # write the atlas
-with open(args.json, 'wb') as f:
+with open(args.json, 'w') as f:
   json.dump(atlas, f, indent=2, sort_keys=True)
